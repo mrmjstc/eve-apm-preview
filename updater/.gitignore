@@ -1,0 +1,29 @@
+# Build artifacts
+release/
+debug/
+Makefile
+Makefile.Debug
+Makefile.Release
+.qmake.stash
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Generated files
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*_resource.rc
+*_plugin_import.cpp
+
+# Qt Creator files
+*.pro.user
+*.pro.user.*
+
+# Backup files
+*.bak
+*~
