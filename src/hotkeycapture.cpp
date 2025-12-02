@@ -215,6 +215,11 @@ QString HotkeyCapture::keyCodeToString(int keyCode) const
         return QString("F%1").arg(keyCode - VK_F13 + 13);
     }
     
+    // Handle numpad keys
+    if (keyCode >= VK_NUMPAD0 && keyCode <= VK_NUMPAD9) {
+        return QString("Numpad %1").arg(keyCode - VK_NUMPAD0);
+    }
+    
     if (keyCode >= '0' && keyCode <= '9') {
         return QString(QChar(keyCode));
     }
@@ -241,6 +246,12 @@ QString HotkeyCapture::keyCodeToString(int keyCode) const
         case VK_RIGHT: return "Right";
         case VK_UP: return "Up";
         case VK_DOWN: return "Down";
+        case VK_MULTIPLY: return "Numpad *";
+        case VK_ADD: return "Numpad +";
+        case VK_SEPARATOR: return "Numpad Separator";
+        case VK_SUBTRACT: return "Numpad -";
+        case VK_DECIMAL: return "Numpad .";
+        case VK_DIVIDE: return "Numpad /";
         default: return QString("Key %1").arg(keyCode);
     }
 }

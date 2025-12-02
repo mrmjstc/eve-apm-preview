@@ -239,7 +239,7 @@ void CharacterHotkeyTableBinding::loadFromConfig()
         
         QWidget *hotkeyWidget = new QWidget();
         QHBoxLayout *hotkeyLayout = new QHBoxLayout(hotkeyWidget);
-        hotkeyLayout->setContentsMargins(0, 0, 0, 0);
+        hotkeyLayout->setContentsMargins(0, 0, 4, 0);
         hotkeyLayout->setSpacing(4);
         
         HotkeyCapture *hotkeyCapture = new HotkeyCapture();
