@@ -4790,67 +4790,187 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
     settingsGrid->setColumnStretch(1, 1);
     
     int row = 0;
-    for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
-        QString legacyKey = it.key();
-        QString displayName = friendlyNames.value(legacyKey, legacyKey);  
+    
+    // Special handling for "Hotkeys & Cycle Groups" category to show detailed preview
+    if (categoryName == "Hotkeys & Cycle Groups") {
+        // Parse and display cycle groups with their characters and hotkeys
+        for (int i = 1; i <= 5; ++i) {
+            QString clientsKey = QString("CycleGroup%1ClientsOrder").arg(i);
+            if (!settings.contains(clientsKey)) {
+                continue;
+            }
+            
+            QVariantMap clientsOrder = settings[clientsKey].toMap();
+            // Skip empty or placeholder groups
+            if (clientsOrder.isEmpty() || 
+                (clientsOrder.size() == 1 && clientsOrder.firstKey().contains("cycle group"))) {
+                continue;
+            }
+            
+            // Get hotkeys for this group
+            QString forwardKey = QString("CycleGroup%1ForwardHotkeys").arg(i);
+            QString backwardKey = QString("CycleGroup%1BackwardHotkeys").arg(i);
+            
+            QString forwardHotkey = "(not set)";
+            QString backwardHotkey = "(not set)";
+            
+            if (settings.contains(forwardKey)) {
+                QVariantList forwardList = settings[forwardKey].toList();
+                if (!forwardList.isEmpty() && !forwardList[0].toString().isEmpty()) {
+                    forwardHotkey = forwardList[0].toString();
+                }
+            }
+            
+            if (settings.contains(backwardKey)) {
+                QVariantList backwardList = settings[backwardKey].toList();
+                if (!backwardList.isEmpty() && !backwardList[0].toString().isEmpty()) {
+                    backwardHotkey = backwardList[0].toString();
+                }
+            }
+            
+            // Order characters by their order value
+            QMap<int, QString> orderedCharacters;
+            for (auto it = clientsOrder.constBegin(); it != clientsOrder.constEnd(); ++it) {
+                QString characterName = it.key();
+                if (characterName.startsWith("EVE - ")) {
+                    characterName = characterName.mid(6);  // Remove "EVE - " prefix
+                }
+                int order = it.value().toInt();
+                orderedCharacters[order] = characterName;
+            }
+            
+            // Build character list string
+            QStringList charNames;
+            for (auto it = orderedCharacters.constBegin(); it != orderedCharacters.constEnd(); ++it) {
+                charNames.append(it.value());
+            }
+            
+            // Display cycle group hotkeys
+            QLabel *groupLabel = new QLabel(QString("Cycle Group %1:").arg(i));
+            groupLabel->setStyleSheet("color: #ffffff; font-size: 10pt; font-weight: bold;");
+            
+            QString valueStr = QString("Forward: %1, Backward: %2")
+                .arg(forwardHotkey)
+                .arg(backwardHotkey);
+            
+            QLabel *valueLabel = new QLabel(valueStr);
+            valueLabel->setStyleSheet("color: #ffffff; font-size: 10pt;");
+            valueLabel->setWordWrap(true);
+            
+            settingsGrid->addWidget(groupLabel, row, 0, Qt::AlignTop);
+            settingsGrid->addWidget(valueLabel, row, 1);
+            row++;
+            
+            // Display characters on a separate row
+            QLabel *charsLabel = new QLabel(QString("Characters (%1):").arg(charNames.size()));
+            charsLabel->setStyleSheet("color: #ffffff; font-size: 10pt; font-weight: bold;");
+            
+            QLabel *charsValueLabel = new QLabel(charNames.join(", "));
+            charsValueLabel->setStyleSheet("color: #ffffff; font-size: 10pt;");
+            charsValueLabel->setWordWrap(true);
+            
+            settingsGrid->addWidget(charsLabel, row, 0, Qt::AlignTop);
+            settingsGrid->addWidget(charsValueLabel, row, 1);
+            row++;
+        }
         
-        QLabel *keyLabel = new QLabel(displayName + ":");
-        keyLabel->setStyleSheet("color: #b0b0b0; font-size: 10pt; font-weight: bold;");
-        
-        QString valueStr;
-        QVariant value = it.value();
-        
-        if (value.type() == QVariant::Map || value.type() == QVariant::Hash) {
-            QVariantMap map = value.toMap();
-            if (legacyKey == "FlatLayout") {
-                int eveCount = 0;
-                for (auto mapIt = map.constBegin(); mapIt != map.constEnd(); ++mapIt) {
-                    if (mapIt.key().startsWith("EVE - ")) {
-                        eveCount++;
+        // Check for character-specific hotkeys
+        if (settings.contains("ClientHotkey")) {
+            QVariantMap clientHotkeys = settings["ClientHotkey"].toMap();
+            if (!clientHotkeys.isEmpty()) {
+                QLabel *keyLabel = new QLabel("Character Hotkeys:");
+                keyLabel->setStyleSheet("color: #ffffff; font-size: 10pt; font-weight: bold;");
+                
+                QStringList hotkeysList;
+                for (auto it = clientHotkeys.constBegin(); it != clientHotkeys.constEnd(); ++it) {
+                    QString characterName = it.key();
+                    if (characterName.startsWith("EVE - ")) {
+                        characterName = characterName.mid(6);
                     }
+                    
+                    QVariantList hotkeyList = it.value().toList();
+                    QString hotkey = "(not set)";
+                    if (!hotkeyList.isEmpty() && !hotkeyList[0].toString().isEmpty()) {
+                        hotkey = hotkeyList[0].toString();
+                    }
+                    
+                    hotkeysList.append(QString("%1: %2").arg(hotkey).arg(characterName));
                 }
-                valueStr = QString("%1 character position%2").arg(eveCount).arg(eveCount != 1 ? "s" : "");
-            } else {
-                valueStr = QString("{%1 items}").arg(map.size());
+                
+                QString valueStr = hotkeysList.join(", ");
+                QLabel *valueLabel = new QLabel(valueStr);
+                valueLabel->setStyleSheet("color: #ffffff; font-size: 10pt;");
+                valueLabel->setWordWrap(true);
+                
+                settingsGrid->addWidget(keyLabel, row, 0, Qt::AlignTop);
+                settingsGrid->addWidget(valueLabel, row, 1);
+                row++;
             }
-        } else if (value.type() == QVariant::List) {
-            QVariantList list = value.toList();
-            if (list.isEmpty() || (list.size() == 1 && list[0].toString().isEmpty())) {
-                valueStr = "(not set)";
-            } else {
-                QStringList strList;
-                for (const QVariant& item : list) {
-                    strList.append(item.toString());
+        }
+    } else {
+        // Standard display for other categories
+        for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
+            QString legacyKey = it.key();
+            QString displayName = friendlyNames.value(legacyKey, legacyKey);  
+            
+            QLabel *keyLabel = new QLabel(displayName + ":");
+            keyLabel->setStyleSheet("color: #ffffff; font-size: 10pt; font-weight: bold;");
+            
+            QString valueStr;
+            QVariant value = it.value();
+            
+            if (value.type() == QVariant::Map || value.type() == QVariant::Hash) {
+                QVariantMap map = value.toMap();
+                if (legacyKey == "FlatLayout") {
+                    int eveCount = 0;
+                    for (auto mapIt = map.constBegin(); mapIt != map.constEnd(); ++mapIt) {
+                        if (mapIt.key().startsWith("EVE - ")) {
+                            eveCount++;
+                        }
+                    }
+                    valueStr = QString("%1 character position%2").arg(eveCount).arg(eveCount != 1 ? "s" : "");
+                } else {
+                    valueStr = QString("{%1 items}").arg(map.size());
                 }
-                valueStr = strList.join(", ");
-            }
-        } else {
-            if (legacyKey == "ThumbnailsOpacity") {
-                double opacity = value.toDouble();
-                valueStr = QString("%1%").arg(static_cast<int>(opacity * 100));
-            } else if (legacyKey == "HideLoginClientThumbnail") {
-                bool hide = value.toBool();
-                valueStr = hide ? "No (Hidden)" : "Yes (Shown)";
-            } else if (legacyKey == "OverlayLabelAnchor") {
-                int anchor = value.toInt();
-                QStringList positions = {"Top Left", "Top Center", "Top Right", "Bottom Left", "Bottom Center", "Bottom Right"};
-                if (anchor >= 0 && anchor < positions.size()) {
-                    valueStr = positions[anchor];
+            } else if (value.type() == QVariant::List) {
+                QVariantList list = value.toList();
+                if (list.isEmpty() || (list.size() == 1 && list[0].toString().isEmpty())) {
+                    valueStr = "(not set)";
+                } else {
+                    QStringList strList;
+                    for (const QVariant& item : list) {
+                        strList.append(item.toString());
+                    }
+                    valueStr = strList.join(", ");
+                }
+            } else {
+                if (legacyKey == "ThumbnailsOpacity") {
+                    double opacity = value.toDouble();
+                    valueStr = QString("%1%").arg(static_cast<int>(opacity * 100));
+                } else if (legacyKey == "HideLoginClientThumbnail") {
+                    bool hide = value.toBool();
+                    valueStr = hide ? "No (Hidden)" : "Yes (Shown)";
+                } else if (legacyKey == "OverlayLabelAnchor") {
+                    int anchor = value.toInt();
+                    QStringList positions = {"Top Left", "Top Center", "Top Right", "Bottom Left", "Bottom Center", "Bottom Right"};
+                    if (anchor >= 0 && anchor < positions.size()) {
+                        valueStr = positions[anchor];
+                    } else {
+                        valueStr = value.toString();
+                    }
                 } else {
                     valueStr = value.toString();
                 }
-            } else {
-                valueStr = value.toString();
             }
+            
+            QLabel *valueLabel = new QLabel(valueStr);
+            valueLabel->setStyleSheet("color: #ffffff; font-size: 10pt;");
+            valueLabel->setWordWrap(true);
+            
+            settingsGrid->addWidget(keyLabel, row, 0, Qt::AlignTop);
+            settingsGrid->addWidget(valueLabel, row, 1);
+            row++;
         }
-        
-        QLabel *valueLabel = new QLabel(valueStr);
-        valueLabel->setStyleSheet("color: #ffffff; font-size: 10pt;");
-        valueLabel->setWordWrap(true);
-        
-        settingsGrid->addWidget(keyLabel, row, 0, Qt::AlignTop);
-        settingsGrid->addWidget(valueLabel, row, 1);
-        row++;
     }
     
     categoryLayout->addLayout(settingsGrid);
