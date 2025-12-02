@@ -60,6 +60,7 @@ private slots:
     void onAssignUniqueColors();
     void onCharacterColorButtonClicked();
     void onBrowseLegacySettings();
+    void onCopyAllLegacySettings();
     void onCopyLegacyCategory(const QString& category);
     void onAddProcessName();
     void onPopulateProcessNames();
@@ -98,6 +99,7 @@ private:
     void parseEVEXPreviewFile(const QVariantMap& rootMap);
     void displayEVEXProfile(const QString& profileName, QWidget* container);
     void displayLegacySettings();
+    void displayLegacySettingsInternal(QLayout* targetLayout);
     QWidget* createLegacyCategoryWidget(const QString& categoryName, const QVariantMap& settings);
     void copyLegacySettings(const QString& category, const QVariantMap& settings);
     void showFeedback(QWidget* nearWidget, const QString& message);
@@ -185,6 +187,7 @@ private:
     QColor m_backgroundColor;
     
     QPushButton *m_browseLegacyButton;
+    QPushButton *m_copyAllLegacyButton;
     QLabel *m_legacyFilePathLabel;
     QWidget *m_legacySettingsContainer;
     QVBoxLayout *m_legacySettingsLayout;

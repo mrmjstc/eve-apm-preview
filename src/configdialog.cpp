@@ -1183,7 +1183,6 @@ void ConfigDialog::createBehaviorPage()
     clientFilterInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
     clientFilterSectionLayout->addWidget(clientFilterInfoLabel);
     
-    // Not Logged In Section
     QWidget *notLoggedInSection = new QWidget();
     notLoggedInSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
     QVBoxLayout *notLoggedInSectionLayout = new QVBoxLayout(notLoggedInSection);
@@ -1702,14 +1701,24 @@ void ConfigDialog::createLegacySettingsPage()
     m_browseLegacyButton = new QPushButton("Browse...");
     m_browseLegacyButton->setStyleSheet(StyleSheet::getButtonStyleSheet());
     m_browseLegacyButton->setFixedWidth(120);
+    m_browseLegacyButton->setMaximumHeight(32);
     connect(m_browseLegacyButton, &QPushButton::clicked, this, &ConfigDialog::onBrowseLegacySettings);
     
     m_legacyFilePathLabel = new QLabel("No file selected");
     m_legacyFilePathLabel->setStyleSheet("color: #b0b0b0; font-size: 11pt;");
     m_legacyFilePathLabel->setWordWrap(true);
     
+    m_copyAllLegacyButton = new QPushButton("Copy All");
+    m_copyAllLegacyButton->setStyleSheet(StyleSheet::getButtonStyleSheet());
+    m_copyAllLegacyButton->setFixedWidth(120);
+    m_copyAllLegacyButton->setMaximumHeight(32);
+    m_copyAllLegacyButton->setVisible(false);
+    m_copyAllLegacyButton->setToolTip("Copy all legacy settings to current profile");
+    connect(m_copyAllLegacyButton, &QPushButton::clicked, this, &ConfigDialog::onCopyAllLegacySettings);
+    
     browseLayout->addWidget(m_browseLegacyButton);
     browseLayout->addWidget(m_legacyFilePathLabel, 1);
+    browseLayout->addWidget(m_copyAllLegacyButton);
     browseSectionLayout->addLayout(browseLayout);
     
     layout->addWidget(browseSection);
@@ -2519,7 +2528,6 @@ void ConfigDialog::onTestOverlays()
 void ConfigDialog::onSetNotLoggedInPosition()
 {
     if (!m_notLoggedInReferenceThumbnail) {
-        // Create the reference thumbnail
         m_notLoggedInReferenceThumbnail = new ThumbnailWidget(quintptr(0), "Not Logged In - Reference Position", nullptr);
         
         m_notLoggedInReferenceThumbnail->setCharacterName("Not Logged In");
@@ -2542,7 +2550,6 @@ void ConfigDialog::onSetNotLoggedInPosition()
         m_notLoggedInReferenceThumbnail->raise();
         m_notLoggedInReferenceThumbnail->activateWindow();
     } else {
-        // Toggle visibility
         if (m_notLoggedInReferenceThumbnail->isVisible()) {
             m_notLoggedInReferenceThumbnail->hide();
         } else {
@@ -4180,6 +4187,188 @@ void ConfigDialog::onBrowseLegacySettings()
     }
 }
 
+void ConfigDialog::onCopyAllLegacySettings()
+{
+    if (m_legacySettings.isEmpty()) {
+        return;
+    }
+    
+    QStringList categoriesToCopy;
+    
+    QVariantMap thumbnailSettings;
+    if (m_legacySettings.contains("ThumbnailSize") || 
+        m_legacySettings.contains("ThumbnailsOpacity") || 
+        m_legacySettings.contains("ThumbnailRefreshPeriod")) {
+        categoriesToCopy << "Thumbnail Settings";
+    }
+    
+    QVariantMap behaviorSettings;
+    if (m_legacySettings.contains("ShowThumbnailsAlwaysOnTop") || 
+        m_legacySettings.contains("MinimizeInactiveClients") || 
+        m_legacySettings.contains("HideActiveClientThumbnail") || 
+        m_legacySettings.contains("HideLoginClientThumbnail")) {
+        categoriesToCopy << "Window Behavior";
+    }
+    
+    QVariantMap overlaySettings;
+    if (m_legacySettings.contains("ShowThumbnailOverlays") || 
+        m_legacySettings.contains("OverlayLabelColor") || 
+        m_legacySettings.contains("OverlayLabelAnchor")) {
+        categoriesToCopy << "Overlay Settings";
+    }
+    
+    QVariantMap highlightSettings;
+    if (m_legacySettings.contains("EnableActiveClientHighlight") || 
+        m_legacySettings.contains("ActiveClientHighlightColor") || 
+        m_legacySettings.contains("ActiveClientHighlightThickness")) {
+        categoriesToCopy << "Highlight Settings";
+    }
+    
+    QVariantMap positionSettings;
+    if (m_legacySettings.contains("EnableThumbnailSnap") || 
+        m_legacySettings.contains("LockThumbnailLocation") || 
+        m_legacySettings.contains("ThumbnailSnapToGridSizeX") || 
+        m_legacySettings.contains("FlatLayout")) {
+        categoriesToCopy << "Position & Snapping";
+    }
+    
+    bool hasHotkeys = false;
+    for (int i = 1; i <= 5; ++i) {
+        if (m_legacySettings.contains(QString("CycleGroup%1ForwardHotkeys").arg(i)) ||
+            m_legacySettings.contains(QString("CycleGroup%1BackwardHotkeys").arg(i)) ||
+            m_legacySettings.contains(QString("CycleGroup%1ClientsOrder").arg(i))) {
+            hasHotkeys = true;
+            break;
+        }
+    }
+    if (hasHotkeys || m_legacySettings.contains("ClientHotkey")) {
+        categoriesToCopy << "Hotkeys & Cycle Groups";
+    }
+    
+    if (categoriesToCopy.isEmpty()) {
+        QMessageBox::information(this, "No Settings", 
+            "No legacy settings found to copy.");
+        return;
+    }
+    
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Copy All Settings",
+        QString("This will copy %1 categor%2 of settings to your current profile:\n\n%3\n\nContinue?")
+            .arg(categoriesToCopy.size())
+            .arg(categoriesToCopy.size() == 1 ? "y" : "ies")
+            .arg(categoriesToCopy.join("\n")),
+        QMessageBox::Yes | QMessageBox::No
+    );
+    
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+    
+    int copiedCount = 0;
+    for (const QString& category : categoriesToCopy) {
+        QVariantMap categorySettings;
+        
+        if (category == "Thumbnail Settings") {
+            if (m_legacySettings.contains("ThumbnailSize")) {
+                categorySettings["ThumbnailSize"] = m_legacySettings["ThumbnailSize"];
+            }
+            if (m_legacySettings.contains("ThumbnailsOpacity")) {
+                categorySettings["ThumbnailsOpacity"] = m_legacySettings["ThumbnailsOpacity"];
+            }
+            if (m_legacySettings.contains("ThumbnailRefreshPeriod")) {
+                categorySettings["ThumbnailRefreshPeriod"] = m_legacySettings["ThumbnailRefreshPeriod"];
+            }
+        }
+        else if (category == "Window Behavior") {
+            if (m_legacySettings.contains("ShowThumbnailsAlwaysOnTop")) {
+                categorySettings["ShowThumbnailsAlwaysOnTop"] = m_legacySettings["ShowThumbnailsAlwaysOnTop"];
+            }
+            if (m_legacySettings.contains("MinimizeInactiveClients")) {
+                categorySettings["MinimizeInactiveClients"] = m_legacySettings["MinimizeInactiveClients"];
+            }
+            if (m_legacySettings.contains("HideActiveClientThumbnail")) {
+                categorySettings["HideActiveClientThumbnail"] = m_legacySettings["HideActiveClientThumbnail"];
+            }
+            if (m_legacySettings.contains("HideLoginClientThumbnail")) {
+                categorySettings["HideLoginClientThumbnail"] = m_legacySettings["HideLoginClientThumbnail"];
+            }
+        }
+        else if (category == "Overlay Settings") {
+            if (m_legacySettings.contains("ShowThumbnailOverlays")) {
+                categorySettings["ShowThumbnailOverlays"] = m_legacySettings["ShowThumbnailOverlays"];
+            }
+            if (m_legacySettings.contains("OverlayLabelColor")) {
+                categorySettings["OverlayLabelColor"] = m_legacySettings["OverlayLabelColor"];
+            }
+            if (m_legacySettings.contains("OverlayLabelAnchor")) {
+                categorySettings["OverlayLabelAnchor"] = m_legacySettings["OverlayLabelAnchor"];
+            }
+        }
+        else if (category == "Highlight Settings") {
+            if (m_legacySettings.contains("EnableActiveClientHighlight")) {
+                categorySettings["EnableActiveClientHighlight"] = m_legacySettings["EnableActiveClientHighlight"];
+            }
+            if (m_legacySettings.contains("ActiveClientHighlightColor")) {
+                categorySettings["ActiveClientHighlightColor"] = m_legacySettings["ActiveClientHighlightColor"];
+            }
+            if (m_legacySettings.contains("ActiveClientHighlightThickness")) {
+                categorySettings["ActiveClientHighlightThickness"] = m_legacySettings["ActiveClientHighlightThickness"];
+            }
+        }
+        else if (category == "Position & Snapping") {
+            if (m_legacySettings.contains("EnableThumbnailSnap")) {
+                categorySettings["EnableThumbnailSnap"] = m_legacySettings["EnableThumbnailSnap"];
+            }
+            if (m_legacySettings.contains("LockThumbnailLocation")) {
+                categorySettings["LockThumbnailLocation"] = m_legacySettings["LockThumbnailLocation"];
+            }
+            if (m_legacySettings.contains("ThumbnailSnapToGridSizeX")) {
+                categorySettings["ThumbnailSnapToGridSizeX"] = m_legacySettings["ThumbnailSnapToGridSizeX"];
+            }
+            if (m_legacySettings.contains("ThumbnailSnapToGridSizeY")) {
+                categorySettings["ThumbnailSnapToGridSizeY"] = m_legacySettings["ThumbnailSnapToGridSizeY"];
+            }
+            if (m_legacySettings.contains("FlatLayout")) {
+                categorySettings["FlatLayout"] = m_legacySettings["FlatLayout"];
+            }
+        }
+        else if (category == "Hotkeys & Cycle Groups") {
+            for (int i = 1; i <= 5; ++i) {
+                QString forwardKey = QString("CycleGroup%1ForwardHotkeys").arg(i);
+                QString backwardKey = QString("CycleGroup%1BackwardHotkeys").arg(i);
+                QString clientsKey = QString("CycleGroup%1ClientsOrder").arg(i);
+                
+                if (m_legacySettings.contains(forwardKey)) {
+                    categorySettings[forwardKey] = m_legacySettings[forwardKey];
+                }
+                if (m_legacySettings.contains(backwardKey)) {
+                    categorySettings[backwardKey] = m_legacySettings[backwardKey];
+                }
+                if (m_legacySettings.contains(clientsKey)) {
+                    categorySettings[clientsKey] = m_legacySettings[clientsKey];
+                }
+            }
+            if (m_legacySettings.contains("ClientHotkey")) {
+                categorySettings["ClientHotkey"] = m_legacySettings["ClientHotkey"];
+            }
+        }
+        
+        if (!categorySettings.isEmpty()) {
+            copyLegacySettings(category, categorySettings);
+            copiedCount++;
+        }
+    }
+    
+    m_copyAllLegacyButton->setText("All Copied!");
+    m_copyAllLegacyButton->setEnabled(false);
+    
+    QMessageBox::information(this, "Success", 
+        QString("Successfully copied %1 categor%2 of settings.")
+            .arg(copiedCount)
+            .arg(copiedCount == 1 ? "y" : "ies"));
+}
+
 void ConfigDialog::onBrowseChatLogDirectory()
 {
     QString currentPath = m_chatLogDirectoryEdit->text().trimmed();
@@ -4257,6 +4446,10 @@ void ConfigDialog::parseLegacySettingsFile(const QString& filePath)
         m_legacyFilePathLabel->setText(fileInfo.fileName() + " (EVE-O-Preview)");
         m_legacyFilePathLabel->setStyleSheet("color: #ffffff; font-size: 11pt; font-weight: bold;");
         displayLegacySettings();
+        
+        m_copyAllLegacyButton->setVisible(true);
+        m_copyAllLegacyButton->setEnabled(true);
+        m_copyAllLegacyButton->setText("Copy All");
     }
 }
 
@@ -4359,6 +4552,14 @@ void ConfigDialog::parseEVEXPreviewFile(const QVariantMap& rootMap)
     }
     
     m_legacySettingsLayout->addStretch();
+    
+    QFileInfo fileInfo(m_legacyFilePath);
+    m_legacyFilePathLabel->setText(fileInfo.fileName() + " (EVE-X-Preview)");
+    m_legacyFilePathLabel->setStyleSheet("color: #ffffff; font-size: 11pt; font-weight: bold;");
+    
+    m_copyAllLegacyButton->setVisible(true);
+    m_copyAllLegacyButton->setEnabled(true);
+    m_copyAllLegacyButton->setText("Copy All");
 }
 
 void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* container)
@@ -4517,11 +4718,14 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         }
     }
     
+    displayLegacySettingsInternal(containerLayout);
+}
+
+void ConfigDialog::displayLegacySettingsInternal(QLayout* targetLayout)
+{
     if (m_legacySettings.isEmpty()) {
         return;
     }
-    
-    QHash<QString, QVariantMap> categories;
     
     QVariantMap thumbnailSettings;
     if (m_legacySettings.contains("ThumbnailSize")) {
@@ -4534,7 +4738,7 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         thumbnailSettings["ThumbnailRefreshPeriod"] = m_legacySettings["ThumbnailRefreshPeriod"];
     }
     if (!thumbnailSettings.isEmpty()) {
-        containerLayout->addWidget(createLegacyCategoryWidget("Thumbnail Settings", thumbnailSettings));
+        targetLayout->addWidget(createLegacyCategoryWidget("Thumbnail Settings", thumbnailSettings));
     }
     
     QVariantMap behaviorSettings;
@@ -4551,7 +4755,7 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         behaviorSettings["HideLoginClientThumbnail"] = m_legacySettings["HideLoginClientThumbnail"];
     }
     if (!behaviorSettings.isEmpty()) {
-        containerLayout->addWidget(createLegacyCategoryWidget("Window Behavior", behaviorSettings));
+        targetLayout->addWidget(createLegacyCategoryWidget("Window Behavior", behaviorSettings));
     }
     
     QVariantMap overlaySettings;
@@ -4565,7 +4769,7 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         overlaySettings["OverlayLabelAnchor"] = m_legacySettings["OverlayLabelAnchor"];
     }
     if (!overlaySettings.isEmpty()) {
-        containerLayout->addWidget(createLegacyCategoryWidget("Overlay Settings", overlaySettings));
+        targetLayout->addWidget(createLegacyCategoryWidget("Overlay Settings", overlaySettings));
     }
     
     QVariantMap highlightSettings;
@@ -4579,7 +4783,7 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         highlightSettings["ActiveClientHighlightThickness"] = m_legacySettings["ActiveClientHighlightThickness"];
     }
     if (!highlightSettings.isEmpty()) {
-        containerLayout->addWidget(createLegacyCategoryWidget("Highlight Settings", highlightSettings));
+        targetLayout->addWidget(createLegacyCategoryWidget("Highlight Settings", highlightSettings));
     }
     
     QVariantMap positionSettings;
@@ -4601,7 +4805,7 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         }
     }
     if (!positionSettings.isEmpty()) {
-        containerLayout->addWidget(createLegacyCategoryWidget("Position & Snapping", positionSettings));
+        targetLayout->addWidget(createLegacyCategoryWidget("Position & Snapping", positionSettings));
     }
     
     QVariantMap hotkeySettings;
@@ -4624,7 +4828,7 @@ void ConfigDialog::displayEVEXProfile(const QString& profileName, QWidget* conta
         hotkeySettings["ClientHotkey"] = m_legacySettings["ClientHotkey"];
     }
     if (!hotkeySettings.isEmpty()) {
-        containerLayout->addWidget(createLegacyCategoryWidget("Hotkeys & Cycle Groups", hotkeySettings));
+        targetLayout->addWidget(createLegacyCategoryWidget("Hotkeys & Cycle Groups", hotkeySettings));
     }
 }
 
@@ -4636,115 +4840,7 @@ void ConfigDialog::displayLegacySettings()
         delete item;
     }
     
-    if (m_legacySettings.isEmpty()) {
-        return;
-    }
-    
-    QHash<QString, QVariantMap> categories;
-    
-    QVariantMap thumbnailSettings;
-    if (m_legacySettings.contains("ThumbnailSize")) {
-        thumbnailSettings["ThumbnailSize"] = m_legacySettings["ThumbnailSize"];
-    }
-    if (m_legacySettings.contains("ThumbnailsOpacity")) {
-        thumbnailSettings["ThumbnailsOpacity"] = m_legacySettings["ThumbnailsOpacity"];
-    }
-    if (m_legacySettings.contains("ThumbnailRefreshPeriod")) {
-        thumbnailSettings["ThumbnailRefreshPeriod"] = m_legacySettings["ThumbnailRefreshPeriod"];
-    }
-    if (!thumbnailSettings.isEmpty()) {
-        m_legacySettingsLayout->addWidget(createLegacyCategoryWidget("Thumbnail Settings", thumbnailSettings));
-    }
-    
-    QVariantMap behaviorSettings;
-    if (m_legacySettings.contains("ShowThumbnailsAlwaysOnTop")) {
-        behaviorSettings["ShowThumbnailsAlwaysOnTop"] = m_legacySettings["ShowThumbnailsAlwaysOnTop"];
-    }
-    if (m_legacySettings.contains("MinimizeInactiveClients")) {
-        behaviorSettings["MinimizeInactiveClients"] = m_legacySettings["MinimizeInactiveClients"];
-    }
-    if (m_legacySettings.contains("HideActiveClientThumbnail")) {
-        behaviorSettings["HideActiveClientThumbnail"] = m_legacySettings["HideActiveClientThumbnail"];
-    }
-    if (m_legacySettings.contains("HideLoginClientThumbnail")) {
-        behaviorSettings["HideLoginClientThumbnail"] = m_legacySettings["HideLoginClientThumbnail"];
-    }
-    if (!behaviorSettings.isEmpty()) {
-        m_legacySettingsLayout->addWidget(createLegacyCategoryWidget("Window Behavior", behaviorSettings));
-    }
-    
-    QVariantMap overlaySettings;
-    if (m_legacySettings.contains("ShowThumbnailOverlays")) {
-        overlaySettings["ShowThumbnailOverlays"] = m_legacySettings["ShowThumbnailOverlays"];
-    }
-    if (m_legacySettings.contains("OverlayLabelColor")) {
-        overlaySettings["OverlayLabelColor"] = m_legacySettings["OverlayLabelColor"];
-    }
-    if (m_legacySettings.contains("OverlayLabelAnchor")) {
-        overlaySettings["OverlayLabelAnchor"] = m_legacySettings["OverlayLabelAnchor"];
-    }
-    if (!overlaySettings.isEmpty()) {
-        m_legacySettingsLayout->addWidget(createLegacyCategoryWidget("Overlay Settings", overlaySettings));
-    }
-    
-    QVariantMap highlightSettings;
-    if (m_legacySettings.contains("EnableActiveClientHighlight")) {
-        highlightSettings["EnableActiveClientHighlight"] = m_legacySettings["EnableActiveClientHighlight"];
-    }
-    if (m_legacySettings.contains("ActiveClientHighlightColor")) {
-        highlightSettings["ActiveClientHighlightColor"] = m_legacySettings["ActiveClientHighlightColor"];
-    }
-    if (m_legacySettings.contains("ActiveClientHighlightThickness")) {
-        highlightSettings["ActiveClientHighlightThickness"] = m_legacySettings["ActiveClientHighlightThickness"];
-    }
-    if (!highlightSettings.isEmpty()) {
-        m_legacySettingsLayout->addWidget(createLegacyCategoryWidget("Highlight Settings", highlightSettings));
-    }
-    
-    QVariantMap positionSettings;
-    if (m_legacySettings.contains("EnableThumbnailSnap")) {
-        positionSettings["EnableThumbnailSnap"] = m_legacySettings["EnableThumbnailSnap"];
-    }
-    if (m_legacySettings.contains("LockThumbnailLocation")) {
-        positionSettings["LockThumbnailLocation"] = m_legacySettings["LockThumbnailLocation"];
-    }
-    if (m_legacySettings.contains("ThumbnailSnapToGridSizeX") && 
-        m_legacySettings.contains("ThumbnailSnapToGridSizeY")) {
-        positionSettings["ThumbnailSnapToGridSizeX"] = m_legacySettings["ThumbnailSnapToGridSizeX"];
-        positionSettings["ThumbnailSnapToGridSizeY"] = m_legacySettings["ThumbnailSnapToGridSizeY"];
-    }
-    if (m_legacySettings.contains("FlatLayout")) {
-        QVariantMap layout = m_legacySettings["FlatLayout"].toMap();
-        if (!layout.isEmpty()) {
-            positionSettings["FlatLayout"] = m_legacySettings["FlatLayout"];
-        }
-    }
-    if (!positionSettings.isEmpty()) {
-        m_legacySettingsLayout->addWidget(createLegacyCategoryWidget("Position & Snapping", positionSettings));
-    }
-    
-    QVariantMap hotkeySettings;
-    for (int i = 1; i <= 5; ++i) {
-        QString forwardKey = QString("CycleGroup%1ForwardHotkeys").arg(i);
-        QString backwardKey = QString("CycleGroup%1BackwardHotkeys").arg(i);
-        QString clientsKey = QString("CycleGroup%1ClientsOrder").arg(i);
-        
-        if (m_legacySettings.contains(forwardKey)) {
-            hotkeySettings[forwardKey] = m_legacySettings[forwardKey];
-        }
-        if (m_legacySettings.contains(backwardKey)) {
-            hotkeySettings[backwardKey] = m_legacySettings[backwardKey];
-        }
-        if (m_legacySettings.contains(clientsKey)) {
-            hotkeySettings[clientsKey] = m_legacySettings[clientsKey];
-        }
-    }
-    if (m_legacySettings.contains("ClientHotkey")) {
-        hotkeySettings["ClientHotkey"] = m_legacySettings["ClientHotkey"];
-    }
-    if (!hotkeySettings.isEmpty()) {
-        m_legacySettingsLayout->addWidget(createLegacyCategoryWidget("Hotkeys & Cycle Groups", hotkeySettings));
-    }
+    displayLegacySettingsInternal(m_legacySettingsLayout);
 }
 
 QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, const QVariantMap& settings)
@@ -4791,9 +4887,7 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
     
     int row = 0;
     
-    // Special handling for "Hotkeys & Cycle Groups" category to show detailed preview
     if (categoryName == "Hotkeys & Cycle Groups") {
-        // Parse and display cycle groups with their characters and hotkeys
         for (int i = 1; i <= 5; ++i) {
             QString clientsKey = QString("CycleGroup%1ClientsOrder").arg(i);
             if (!settings.contains(clientsKey)) {
@@ -4801,13 +4895,11 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
             }
             
             QVariantMap clientsOrder = settings[clientsKey].toMap();
-            // Skip empty or placeholder groups
             if (clientsOrder.isEmpty() || 
                 (clientsOrder.size() == 1 && clientsOrder.firstKey().contains("cycle group"))) {
                 continue;
             }
             
-            // Get hotkeys for this group
             QString forwardKey = QString("CycleGroup%1ForwardHotkeys").arg(i);
             QString backwardKey = QString("CycleGroup%1BackwardHotkeys").arg(i);
             
@@ -4828,24 +4920,21 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
                 }
             }
             
-            // Order characters by their order value
             QMap<int, QString> orderedCharacters;
             for (auto it = clientsOrder.constBegin(); it != clientsOrder.constEnd(); ++it) {
                 QString characterName = it.key();
                 if (characterName.startsWith("EVE - ")) {
-                    characterName = characterName.mid(6);  // Remove "EVE - " prefix
+                    characterName = characterName.mid(6);
                 }
                 int order = it.value().toInt();
                 orderedCharacters[order] = characterName;
             }
             
-            // Build character list string
             QStringList charNames;
             for (auto it = orderedCharacters.constBegin(); it != orderedCharacters.constEnd(); ++it) {
                 charNames.append(it.value());
             }
             
-            // Display cycle group hotkeys
             QLabel *groupLabel = new QLabel(QString("Cycle Group %1:").arg(i));
             groupLabel->setStyleSheet("color: #ffffff; font-size: 10pt; font-weight: bold;");
             
@@ -4861,7 +4950,6 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
             settingsGrid->addWidget(valueLabel, row, 1);
             row++;
             
-            // Display characters on a separate row
             QLabel *charsLabel = new QLabel(QString("Characters (%1):").arg(charNames.size()));
             charsLabel->setStyleSheet("color: #ffffff; font-size: 10pt; font-weight: bold;");
             
@@ -4874,7 +4962,6 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
             row++;
         }
         
-        // Check for character-specific hotkeys
         if (settings.contains("ClientHotkey")) {
             QVariantMap clientHotkeys = settings["ClientHotkey"].toMap();
             if (!clientHotkeys.isEmpty()) {
@@ -4908,7 +4995,6 @@ QWidget* ConfigDialog::createLegacyCategoryWidget(const QString& categoryName, c
             }
         }
     } else {
-        // Standard display for other categories
         for (auto it = settings.constBegin(); it != settings.constEnd(); ++it) {
             QString legacyKey = it.key();
             QString displayName = friendlyNames.value(legacyKey, legacyKey);  
