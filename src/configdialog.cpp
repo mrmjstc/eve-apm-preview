@@ -71,7 +71,7 @@ ConfigDialog::ConfigDialog(QWidget *parent)
     }
     
     setWindowTitle("Settings");
-    resize(920, 800);
+    resize(1050, 800);
 }
 
 ConfigDialog::~ConfigDialog()
@@ -812,8 +812,8 @@ void ConfigDialog::createHotkeysPage()
     m_cycleGroupsTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Fixed);
     m_cycleGroupsTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::Fixed);
     m_cycleGroupsTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Fixed);
-    m_cycleGroupsTable->setColumnWidth(2, 120);
-    m_cycleGroupsTable->setColumnWidth(3, 120);
+    m_cycleGroupsTable->setColumnWidth(2, 140);
+    m_cycleGroupsTable->setColumnWidth(3, 140);
     m_cycleGroupsTable->setColumnWidth(4, 120);
     m_cycleGroupsTable->setColumnWidth(5, 100);
     m_cycleGroupsTable->setColumnWidth(6, 40);

@@ -4,7 +4,25 @@
 #include <QLineEdit>
 #include <QKeyEvent>
 #include <QAbstractNativeEventFilter>
+#include <QVector>
 #include <Windows.h>
+
+/// Represents a single hotkey combination
+struct HotkeyCombination {
+    int keyCode;
+    bool ctrl;
+    bool alt;
+    bool shift;
+    
+    HotkeyCombination(int k = 0, bool c = false, bool a = false, bool s = false)
+        : keyCode(k), ctrl(c), alt(a), shift(s) {}
+    
+    bool isValid() const { return keyCode != 0; }
+    bool operator==(const HotkeyCombination& other) const {
+        return keyCode == other.keyCode && ctrl == other.ctrl && 
+               alt == other.alt && shift == other.shift;
+    }
+};
 
 class HotkeyCapture : public QLineEdit, public QAbstractNativeEventFilter
 {
@@ -14,12 +32,21 @@ public:
     explicit HotkeyCapture(QWidget *parent = nullptr);
     ~HotkeyCapture();
     
+    // Legacy single-hotkey interface (for compatibility)
     void setHotkey(int keyCode, bool ctrl, bool alt, bool shift);
     void clearHotkey();
-    int getKeyCode() const { return m_keyCode; }
-    bool getCtrl() const { return m_ctrl; }
-    bool getAlt() const { return m_alt; }
-    bool getShift() const { return m_shift; }
+    int getKeyCode() const { return m_hotkeys.isEmpty() ? 0 : m_hotkeys.first().keyCode; }
+    bool getCtrl() const { return m_hotkeys.isEmpty() ? false : m_hotkeys.first().ctrl; }
+    bool getAlt() const { return m_hotkeys.isEmpty() ? false : m_hotkeys.first().alt; }
+    bool getShift() const { return m_hotkeys.isEmpty() ? false : m_hotkeys.first().shift; }
+    
+    // Multi-hotkey interface
+    void setHotkeys(const QVector<HotkeyCombination>& hotkeys);
+    void addHotkey(int keyCode, bool ctrl, bool alt, bool shift);
+    void addHotkey(const HotkeyCombination& hotkey);
+    QVector<HotkeyCombination> getHotkeys() const { return m_hotkeys; }
+    void removeHotkeyAt(int index);
+    bool hasMultipleHotkeys() const { return m_hotkeys.size() > 1; }
     
 signals:
     void hotkeyChanged();
@@ -35,14 +62,12 @@ protected:
 private:
     void updateDisplay();
     QString keyCodeToString(int keyCode) const;
+    QString formatHotkey(const HotkeyCombination& hk) const;
     void installKeyboardHook();
     void uninstallKeyboardHook();
     static LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
     
-    int m_keyCode;
-    bool m_ctrl;
-    bool m_alt;
-    bool m_shift;
+    QVector<HotkeyCombination> m_hotkeys;
     bool m_capturing;
     QString m_savedText;
     

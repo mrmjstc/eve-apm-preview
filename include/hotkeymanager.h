@@ -61,8 +61,10 @@ struct CycleGroup
 {
     QString groupName;
     QVector<QString> characterNames;
-    HotkeyBinding forwardBinding;
-    HotkeyBinding backwardBinding;
+    HotkeyBinding forwardBinding;        // Legacy: first forward hotkey
+    HotkeyBinding backwardBinding;       // Legacy: first backward hotkey
+    QVector<HotkeyBinding> forwardBindings;   // Multi-hotkey support
+    QVector<HotkeyBinding> backwardBindings;  // Multi-hotkey support
     bool includeNotLoggedIn;  
     bool noLoop;              
     
@@ -91,10 +93,14 @@ public:
     HotkeyBinding getSuspendHotkey() const { return m_suspendHotkey; }
     
     void setCharacterHotkey(const QString& characterName, const HotkeyBinding& binding);
+    void setCharacterHotkeys(const QString& characterName, const QVector<HotkeyBinding>& bindings);
+    void addCharacterHotkey(const QString& characterName, const HotkeyBinding& binding);
     void removeCharacterHotkey(const QString& characterName);
     HotkeyBinding getCharacterHotkey(const QString& characterName) const;
+    QVector<HotkeyBinding> getCharacterHotkeys(const QString& characterName) const;
     QString getCharacterForHotkey(const HotkeyBinding& binding) const;
     QHash<QString, HotkeyBinding> getAllCharacterHotkeys() const { return m_characterHotkeys; }
+    QHash<QString, QVector<HotkeyBinding>> getAllCharacterMultiHotkeys() const;
     
     void createCycleGroup(const QString& groupName, const QVector<QString>& characterNames,
                          const HotkeyBinding& forwardKey, const HotkeyBinding& backwardKey);
@@ -142,7 +148,8 @@ signals:
     void closeAllClientsRequested();
 
 private:
-    QHash<QString, HotkeyBinding> m_characterHotkeys;  
+    QHash<QString, HotkeyBinding> m_characterHotkeys;  // Legacy: First hotkey per character
+    QHash<QString, QVector<HotkeyBinding>> m_characterMultiHotkeys;  // New: All hotkeys per character
     QHash<int, QString> m_hotkeyIdToCharacter;  
     QHash<int, QString> m_hotkeyIdToCycleGroup;  
     QHash<int, bool> m_hotkeyIdIsForward;  
@@ -152,21 +159,27 @@ private:
     QHash<QString, HWND> m_characterWindows;  
     QHash<QString, CycleGroup> m_cycleGroups;  
     
-    HotkeyBinding m_suspendHotkey;  
+    HotkeyBinding m_suspendHotkey;  // Legacy: first hotkey
+    QVector<HotkeyBinding> m_suspendHotkeys;  // Multi-hotkey support
     int m_suspendHotkeyId;  
     bool m_suspended;  
     
-    HotkeyBinding m_notLoggedInForwardHotkey;   
-    HotkeyBinding m_notLoggedInBackwardHotkey;  
+    HotkeyBinding m_notLoggedInForwardHotkey;   // Legacy: first hotkey
+    HotkeyBinding m_notLoggedInBackwardHotkey;  // Legacy: first hotkey
+    QVector<HotkeyBinding> m_notLoggedInForwardHotkeys;   // Multi-hotkey support
+    QVector<HotkeyBinding> m_notLoggedInBackwardHotkeys;  // Multi-hotkey support
     int m_notLoggedInForwardHotkeyId;           
     int m_notLoggedInBackwardHotkeyId;          
     
-    HotkeyBinding m_nonEVEForwardHotkey;        
-    HotkeyBinding m_nonEVEBackwardHotkey;       
+    HotkeyBinding m_nonEVEForwardHotkey;        // Legacy: first hotkey
+    HotkeyBinding m_nonEVEBackwardHotkey;       // Legacy: first hotkey
+    QVector<HotkeyBinding> m_nonEVEForwardHotkeys;   // Multi-hotkey support
+    QVector<HotkeyBinding> m_nonEVEBackwardHotkeys;  // Multi-hotkey support
     int m_nonEVEForwardHotkeyId;                
     int m_nonEVEBackwardHotkeyId;               
     
-    HotkeyBinding m_closeAllClientsHotkey;
+    HotkeyBinding m_closeAllClientsHotkey;  // Legacy: first hotkey
+    QVector<HotkeyBinding> m_closeAllClientsHotkeys;  // Multi-hotkey support
     int m_closeAllClientsHotkeyId;
     
     int m_nextHotkeyId;

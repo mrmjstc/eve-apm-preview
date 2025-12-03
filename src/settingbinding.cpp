@@ -219,7 +219,131 @@ void CharacterHotkeyTableBinding::loadFromConfig()
     }
     m_table->setRowCount(0);
     
+    // Get multi-hotkeys from HotkeyManager
+    HotkeyManager* mgr = HotkeyManager::instance();
+    QHash<QString, QVector<HotkeyBinding>> multiHotkeys = mgr ? mgr->getAllCharacterMultiHotkeys() : QHash<QString, QVector<HotkeyBinding>>();
+    
+    // Store initial multi-hotkey state for comparison
+    m_initialMultiHotkeys = multiHotkeys;
+    
+    // Use multi-hotkeys if available, otherwise fall back to single hotkeys
+    QSet<QString> processedChars;
+    
+    for (auto it = multiHotkeys.constBegin(); it != multiHotkeys.constEnd(); ++it) {
+        int row = m_table->rowCount();
+        m_table->insertRow(row);
+        
+        QLineEdit* nameEdit = new QLineEdit(it.key());
+        nameEdit->setStyleSheet(
+            "QLineEdit {"
+            "   background-color: transparent;"
+            "   color: #ffffff;"
+            "   border: none;"
+            "   padding: 2px 4px;"
+            "}"
+            "QLineEdit:focus {"
+            "   background-color: #353535;"
+            "}"
+        );
+        m_table->setCellWidget(row, 0, nameEdit);
+        
+        QWidget *hotkeyWidget = new QWidget();
+        QHBoxLayout *hotkeyLayout = new QHBoxLayout(hotkeyWidget);
+        hotkeyLayout->setContentsMargins(0, 0, 4, 0);
+        hotkeyLayout->setSpacing(4);
+        
+        HotkeyCapture *hotkeyCapture = new HotkeyCapture();
+        
+        // Set multiple hotkeys
+        QVector<HotkeyCombination> combinations;
+        for (const HotkeyBinding& binding : it.value()) {
+            combinations.append(HotkeyCombination(binding.keyCode, binding.ctrl, binding.alt, binding.shift));
+        }
+        hotkeyCapture->setHotkeys(combinations);
+        
+        QPushButton *clearButton = new QPushButton("×");
+        clearButton->setFixedSize(24, 24);
+        clearButton->setStyleSheet(
+            "QPushButton {"
+            "    background-color: #3a3a3a;"
+            "    color: #a0a0a0;"
+            "    border: 1px solid #555555;"
+            "    border-radius: 3px;"
+            "    font-size: 16px;"
+            "    font-weight: bold;"
+            "    padding: 0px;"
+            "}"
+            "QPushButton:hover {"
+            "    background-color: #4a4a4a;"
+            "    color: #ffffff;"
+            "    border: 1px solid #666666;"
+            "}"
+            "QPushButton:pressed {"
+            "    background-color: #2a2a2a;"
+            "}"
+        );
+        clearButton->setToolTip("Clear hotkey");
+        QObject::connect(clearButton, &QPushButton::clicked, [hotkeyCapture]() {
+            hotkeyCapture->clearHotkey();
+        });
+        
+        hotkeyLayout->addWidget(hotkeyCapture, 1);
+        hotkeyLayout->addWidget(clearButton, 0);
+        
+        m_table->setCellWidget(row, 1, hotkeyWidget);
+        
+        QWidget *deleteContainer = new QWidget();
+        deleteContainer->setStyleSheet("QWidget { background-color: transparent; }");
+        QHBoxLayout *deleteLayout = new QHBoxLayout(deleteContainer);
+        deleteLayout->setContentsMargins(0, 0, 0, 0);
+        deleteLayout->setAlignment(Qt::AlignCenter);
+        
+        QPushButton *deleteButton = new QPushButton("×");
+        deleteButton->setFixedSize(24, 24);
+        deleteButton->setStyleSheet(
+            "QPushButton {"
+            "    background-color: #3a3a3a;"
+            "    color: #e74c3c;"
+            "    border: 1px solid #555555;"
+            "    border-radius: 3px;"
+            "    font-size: 16px;"
+            "    font-weight: bold;"
+            "    padding: 0px;"
+            "}"
+            "QPushButton:hover {"
+            "    background-color: #e74c3c;"
+            "    color: #ffffff;"
+            "    border: 1px solid #e74c3c;"
+            "}"
+            "QPushButton:pressed {"
+            "    background-color: #c0392b;"
+            "}"
+        );
+        deleteButton->setToolTip("Delete this character hotkey");
+        deleteButton->setCursor(Qt::PointingHandCursor);
+        
+        QObject::connect(deleteButton, &QPushButton::clicked, [this, deleteButton]() {
+            for (int i = 0; i < m_table->rowCount(); ++i) {
+                QWidget *widget = m_table->cellWidget(i, 2);
+                if (widget && widget->findChild<QPushButton*>() == deleteButton) {
+                    m_table->removeRow(i);
+                    break;
+                }
+            }
+        });
+        
+        deleteLayout->addWidget(deleteButton);
+        m_table->setCellWidget(row, 2, deleteContainer);
+        
+        processedChars.insert(it.key());
+    }
+    
+    // Add any characters that only have single hotkeys
     for (auto it = hotkeys.constBegin(); it != hotkeys.constEnd(); ++it) {
+        if (processedChars.contains(it.key())) {
+            continue; // Already processed
+        }
+        
         int row = m_table->rowCount();
         m_table->insertRow(row);
         
@@ -325,6 +449,18 @@ void CharacterHotkeyTableBinding::loadFromConfig()
 void CharacterHotkeyTableBinding::saveToConfig()
 {
     QHash<QString, HotkeyBinding> hotkeys;
+    HotkeyManager* mgr = HotkeyManager::instance();
+    
+    if (mgr) {
+        // Clear all existing character hotkeys
+        QHash<QString, HotkeyBinding> existing = mgr->getAllCharacterHotkeys();
+        for (auto it = existing.constBegin(); it != existing.constEnd(); ++it) {
+            mgr->removeCharacterHotkey(it.key());
+        }
+    }
+    
+    // Build new multi-hotkey state
+    QHash<QString, QVector<HotkeyBinding>> newMultiHotkeys;
     
     for (int row = 0; row < m_table->rowCount(); ++row) {
         QLineEdit* nameEdit = qobject_cast<QLineEdit*>(m_table->cellWidget(row, 0));
@@ -338,19 +474,33 @@ void CharacterHotkeyTableBinding::saveToConfig()
         if (nameEdit && hotkeyCapture) {
             QString charName = nameEdit->text().trimmed();
             if (!charName.isEmpty()) {
-                HotkeyBinding binding(
-                    hotkeyCapture->getKeyCode(),
-                    hotkeyCapture->getCtrl(),
-                    hotkeyCapture->getAlt(),
-                    hotkeyCapture->getShift(),
-                    true
-                );
-                hotkeys[charName] = binding;
+                QVector<HotkeyCombination> combinations = hotkeyCapture->getHotkeys();
+                
+                if (!combinations.isEmpty()) {
+                    // Convert HotkeyCombinations to HotkeyBindings
+                    QVector<HotkeyBinding> bindings;
+                    for (const HotkeyCombination& comb : combinations) {
+                        bindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, true));
+                    }
+                    
+                    if (mgr) {
+                        mgr->setCharacterHotkeys(charName, bindings);
+                    }
+                    
+                    // Store in new multi-hotkey state
+                    newMultiHotkeys[charName] = bindings;
+                    
+                    // Also store first binding for legacy compatibility
+                    hotkeys[charName] = bindings.first();
+                }
             }
         }
     }
     
     m_configSetter(hotkeys);
+    
+    // Update initial state to reflect what was just saved
+    m_initialMultiHotkeys = newMultiHotkeys;
 }
 
 void CharacterHotkeyTableBinding::reset()
@@ -369,7 +519,8 @@ void CharacterHotkeyTableBinding::reset()
 
 bool CharacterHotkeyTableBinding::hasChanged() const
 {
-    QHash<QString, HotkeyBinding> current;
+    // Get current state from UI
+    QHash<QString, QVector<HotkeyBinding>> currentMulti;
     
     for (int row = 0; row < m_table->rowCount(); ++row) {
         QLineEdit* nameEdit = qobject_cast<QLineEdit*>(m_table->cellWidget(row, 0));
@@ -383,19 +534,48 @@ bool CharacterHotkeyTableBinding::hasChanged() const
         if (nameEdit && hotkeyCapture) {
             QString charName = nameEdit->text().trimmed();
             if (!charName.isEmpty()) {
-                HotkeyBinding binding(
-                    hotkeyCapture->getKeyCode(),
-                    hotkeyCapture->getCtrl(),
-                    hotkeyCapture->getAlt(),
-                    hotkeyCapture->getShift(),
-                    true
-                );
-                current[charName] = binding;
+                QVector<HotkeyCombination> combinations = hotkeyCapture->getHotkeys();
+                QVector<HotkeyBinding> bindings;
+                
+                for (const HotkeyCombination& comb : combinations) {
+                    bindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, true));
+                }
+                
+                if (!bindings.isEmpty()) {
+                    currentMulti[charName] = bindings;
+                }
             }
         }
     }
     
-    return current != m_initialValue;
+    // Compare counts first
+    if (currentMulti.size() != m_initialMultiHotkeys.size()) {
+        return true;
+    }
+    
+    // Compare each character's hotkeys
+    for (auto it = currentMulti.constBegin(); it != currentMulti.constEnd(); ++it) {
+        const QString& charName = it.key();
+        const QVector<HotkeyBinding>& currentBindings = it.value();
+        
+        if (!m_initialMultiHotkeys.contains(charName)) {
+            return true;
+        }
+        
+        const QVector<HotkeyBinding>& initialBindings = m_initialMultiHotkeys[charName];
+        
+        if (currentBindings.size() != initialBindings.size()) {
+            return true;
+        }
+        
+        for (int i = 0; i < currentBindings.size(); ++i) {
+            if (!(currentBindings[i] == initialBindings[i])) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
 QWidget* CharacterHotkeyTableBinding::widget() const
@@ -495,10 +675,21 @@ void CycleGroupTableBinding::loadFromConfig()
         forwardLayout->setSpacing(4);
         
         HotkeyCapture *forwardCapture = new HotkeyCapture();
-        forwardCapture->setHotkey(it.value().forwardBinding.keyCode,
-                                 it.value().forwardBinding.ctrl,
-                                 it.value().forwardBinding.alt,
-                                 it.value().forwardBinding.shift);
+        
+        // Set multiple forward hotkeys if available
+        if (!it.value().forwardBindings.isEmpty()) {
+            QVector<HotkeyCombination> combinations;
+            for (const HotkeyBinding& binding : it.value().forwardBindings) {
+                combinations.append(HotkeyCombination(binding.keyCode, binding.ctrl, binding.alt, binding.shift));
+            }
+            forwardCapture->setHotkeys(combinations);
+        } else {
+            // Fallback to single hotkey for backward compatibility
+            forwardCapture->setHotkey(it.value().forwardBinding.keyCode,
+                                     it.value().forwardBinding.ctrl,
+                                     it.value().forwardBinding.alt,
+                                     it.value().forwardBinding.shift);
+        }
         
         QPushButton *clearForwardButton = new QPushButton("×");
         clearForwardButton->setFixedSize(24, 24);
@@ -536,10 +727,21 @@ void CycleGroupTableBinding::loadFromConfig()
         backwardLayout->setSpacing(4);
         
         HotkeyCapture *backwardCapture = new HotkeyCapture();
-        backwardCapture->setHotkey(it.value().backwardBinding.keyCode,
-                                  it.value().backwardBinding.ctrl,
-                                  it.value().backwardBinding.alt,
-                                  it.value().backwardBinding.shift);
+        
+        // Set multiple backward hotkeys if available
+        if (!it.value().backwardBindings.isEmpty()) {
+            QVector<HotkeyCombination> combinations;
+            for (const HotkeyBinding& binding : it.value().backwardBindings) {
+                combinations.append(HotkeyCombination(binding.keyCode, binding.ctrl, binding.alt, binding.shift));
+            }
+            backwardCapture->setHotkeys(combinations);
+        } else {
+            // Fallback to single hotkey for backward compatibility
+            backwardCapture->setHotkey(it.value().backwardBinding.keyCode,
+                                      it.value().backwardBinding.ctrl,
+                                      it.value().backwardBinding.alt,
+                                      it.value().backwardBinding.shift);
+        }
         
         QPushButton *clearBackwardButton = new QPushButton("×");
         clearBackwardButton->setFixedSize(24, 24);
@@ -717,27 +919,36 @@ void CycleGroupTableBinding::saveToConfig()
                 }
                 
                 if (!characters.isEmpty()) {
-                    HotkeyBinding forwardBinding(
-                        forwardCapture->getKeyCode(),
-                        forwardCapture->getCtrl(),
-                        forwardCapture->getAlt(),
-                        forwardCapture->getShift(),
-                        forwardCapture->getKeyCode() != 0
-                    );
+                    // Get multiple hotkeys from forward capture
+                    QVector<HotkeyCombination> forwardCombinations = forwardCapture->getHotkeys();
+                    QVector<HotkeyBinding> forwardBindings;
+                    for (const HotkeyCombination& comb : forwardCombinations) {
+                        forwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
+                    }
                     
-                    HotkeyBinding backwardBinding(
-                        backwardCapture->getKeyCode(),
-                        backwardCapture->getCtrl(),
-                        backwardCapture->getAlt(),
-                        backwardCapture->getShift(),
-                        backwardCapture->getKeyCode() != 0
-                    );
+                    // Get multiple hotkeys from backward capture
+                    QVector<HotkeyCombination> backwardCombinations = backwardCapture->getHotkeys();
+                    QVector<HotkeyBinding> backwardBindings;
+                    for (const HotkeyCombination& comb : backwardCombinations) {
+                        backwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
+                    }
+                    
+                    // Legacy single bindings (use first hotkey for backward compatibility)
+                    HotkeyBinding forwardBinding = !forwardBindings.isEmpty() 
+                        ? forwardBindings.first() 
+                        : HotkeyBinding(0, false, false, false, false);
+                    
+                    HotkeyBinding backwardBinding = !backwardBindings.isEmpty()
+                        ? backwardBindings.first()
+                        : HotkeyBinding(0, false, false, false, false);
                     
                     CycleGroup group;
                     group.groupName = groupName;
                     group.characterNames = characters;
                     group.forwardBinding = forwardBinding;
                     group.backwardBinding = backwardBinding;
+                    group.forwardBindings = forwardBindings;
+                    group.backwardBindings = backwardBindings;
                     group.includeNotLoggedIn = includeNotLoggedIn;
                     group.noLoop = noLoop;
                     
@@ -794,27 +1005,36 @@ bool CycleGroupTableBinding::hasChanged() const
                 }
                 
                 if (!characters.isEmpty()) {
-                    HotkeyBinding forwardBinding(
-                        forwardCapture->getKeyCode(),
-                        forwardCapture->getCtrl(),
-                        forwardCapture->getAlt(),
-                        forwardCapture->getShift(),
-                        forwardCapture->getKeyCode() != 0
-                    );
+                    // Get multiple hotkeys from forward capture
+                    QVector<HotkeyCombination> forwardCombinations = forwardCapture->getHotkeys();
+                    QVector<HotkeyBinding> forwardBindings;
+                    for (const HotkeyCombination& comb : forwardCombinations) {
+                        forwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
+                    }
                     
-                    HotkeyBinding backwardBinding(
-                        backwardCapture->getKeyCode(),
-                        backwardCapture->getCtrl(),
-                        backwardCapture->getAlt(),
-                        backwardCapture->getShift(),
-                        backwardCapture->getKeyCode() != 0
-                    );
+                    // Get multiple hotkeys from backward capture
+                    QVector<HotkeyCombination> backwardCombinations = backwardCapture->getHotkeys();
+                    QVector<HotkeyBinding> backwardBindings;
+                    for (const HotkeyCombination& comb : backwardCombinations) {
+                        backwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
+                    }
+                    
+                    // Legacy single bindings
+                    HotkeyBinding forwardBinding = !forwardBindings.isEmpty() 
+                        ? forwardBindings.first() 
+                        : HotkeyBinding(0, false, false, false, false);
+                    
+                    HotkeyBinding backwardBinding = !backwardBindings.isEmpty()
+                        ? backwardBindings.first()
+                        : HotkeyBinding(0, false, false, false, false);
                     
                     CycleGroup group;
                     group.groupName = groupName;
                     group.characterNames = characters;
                     group.forwardBinding = forwardBinding;
                     group.backwardBinding = backwardBinding;
+                    group.forwardBindings = forwardBindings;
+                    group.backwardBindings = backwardBindings;
                     
                     current[groupName] = group;
                 }
@@ -835,9 +1055,29 @@ bool CycleGroupTableBinding::hasChanged() const
         
         if (currentGroup.groupName != initialGroup.groupName ||
             currentGroup.characterNames != initialGroup.characterNames ||
-            currentGroup.forwardBinding != initialGroup.forwardBinding ||
-            currentGroup.backwardBinding != initialGroup.backwardBinding) {
+            currentGroup.includeNotLoggedIn != initialGroup.includeNotLoggedIn ||
+            currentGroup.noLoop != initialGroup.noLoop) {
             return true;
+        }
+        
+        // Compare multi-hotkeys for forward bindings
+        if (currentGroup.forwardBindings.size() != initialGroup.forwardBindings.size()) {
+            return true;
+        }
+        for (int i = 0; i < currentGroup.forwardBindings.size(); ++i) {
+            if (!(currentGroup.forwardBindings[i] == initialGroup.forwardBindings[i])) {
+                return true;
+            }
+        }
+        
+        // Compare multi-hotkeys for backward bindings
+        if (currentGroup.backwardBindings.size() != initialGroup.backwardBindings.size()) {
+            return true;
+        }
+        for (int i = 0; i < currentGroup.backwardBindings.size(); ++i) {
+            if (!(currentGroup.backwardBindings[i] == initialGroup.backwardBindings[i])) {
+                return true;
+            }
         }
     }
     
@@ -865,19 +1105,25 @@ void HotkeyCaptureBinding::loadFromConfig()
 {
     HotkeyBinding current = m_configGetter();
     m_initialValue = current;
+    // Only set single hotkey (multi-hotkey not supported for these simple bindings yet)
     m_widget->setHotkey(current.keyCode, current.ctrl, current.alt, current.shift);
 }
 
 void HotkeyCaptureBinding::saveToConfig()
 {
-    HotkeyBinding current(
-        m_widget->getKeyCode(),
-        m_widget->getCtrl(),
-        m_widget->getAlt(),
-        m_widget->getShift(),
-        m_widget->getKeyCode() != 0
-    );
-    m_configSetter(current);
+    // Get all hotkeys from the widget
+    QVector<HotkeyCombination> combinations = m_widget->getHotkeys();
+    
+    if (!combinations.isEmpty()) {
+        // Save first hotkey as the primary binding
+        const HotkeyCombination& first = combinations.first();
+        HotkeyBinding current(first.keyCode, first.ctrl, first.alt, first.shift, first.keyCode != 0);
+        m_configSetter(current);
+    } else {
+        // No hotkeys - save disabled binding
+        HotkeyBinding current(0, false, false, false, false);
+        m_configSetter(current);
+    }
 }
 
 void HotkeyCaptureBinding::reset()
@@ -888,13 +1134,16 @@ void HotkeyCaptureBinding::reset()
 
 bool HotkeyCaptureBinding::hasChanged() const
 {
-    HotkeyBinding current(
-        m_widget->getKeyCode(),
-        m_widget->getCtrl(),
-        m_widget->getAlt(),
-        m_widget->getShift(),
-        m_widget->getKeyCode() != 0
-    );
+    QVector<HotkeyCombination> combinations = m_widget->getHotkeys();
+    
+    if (combinations.isEmpty()) {
+        // No hotkeys - check if initial value was also empty/disabled
+        return m_initialValue.keyCode != 0 || m_initialValue.enabled;
+    }
+    
+    // Compare first hotkey with initial value
+    const HotkeyCombination& first = combinations.first();
+    HotkeyBinding current(first.keyCode, first.ctrl, first.alt, first.shift, first.keyCode != 0);
     
     return current != m_initialValue;
 }

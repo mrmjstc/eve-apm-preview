@@ -193,6 +193,7 @@ private:
     Getter m_configGetter;
     Setter m_configSetter;
     QHash<QString, HotkeyBinding> m_initialValue;
+    QHash<QString, QVector<HotkeyBinding>> m_initialMultiHotkeys;
 };
 
 class CharacterColorTableBinding : public SettingBindingBase
