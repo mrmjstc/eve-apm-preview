@@ -69,6 +69,8 @@ private:
     QHash<QString, HWND> m_lastActivatedWindowByGroup;  
     QHash<HWND, qint64> m_windowCreationTimes;
     
+    QHash<HWND, bool> m_clientLocationMoveAttempted;
+    
     QVector<HWND> m_notLoggedInWindows;
     int m_notLoggedInCycleIndex;
     
@@ -116,7 +118,10 @@ private:
     void refreshSingleThumbnail(HWND hwnd);  
     QPoint calculateNotLoggedInPosition(int index);
     void updateProfilesMenu();  
-    QVector<HWND> buildCycleWindowList(const CycleGroup& group);  
+    QVector<HWND> buildCycleWindowList(const CycleGroup& group);
+    void saveCurrentClientLocations();
+    bool tryRestoreClientLocation(HWND hwnd, const QString& characterName);
+    bool isWindowRectValid(const QRect& rect);
 };
 
 #endif 

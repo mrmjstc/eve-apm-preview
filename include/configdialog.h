@@ -33,6 +33,7 @@ public slots:
 
 signals:
     void settingsApplied();
+    void saveClientLocationsRequested();
 
 private slots:
     void onCategoryChanged(int index);
@@ -67,6 +68,7 @@ private slots:
     void onBrowseChatLogDirectory();
     void onBrowseGameLogDirectory();
     void onSetNotLoggedInPosition();
+    void onSetClientLocations();
     
     void onProfileChanged(int index);
     void onNewProfile();
@@ -159,6 +161,8 @@ private:
     QTableWidget *m_neverMinimizeTable;
     QPushButton *m_addNeverMinimizeButton;
     QPushButton *m_populateNeverMinimizeButton;
+    QCheckBox *m_saveClientLocationCheck;
+    QPushButton *m_setClientLocationsButton;
     QCheckBox *m_highlightActiveCheck;
     QCheckBox *m_hideActiveClientThumbnailCheck;
     QPushButton *m_highlightColorButton;

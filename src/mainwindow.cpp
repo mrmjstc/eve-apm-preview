@@ -500,6 +500,9 @@ void MainWindow::refreshWindows()
                             thumbWidget->setSystemName(QString());
                         }
                         
+                        // Try to restore client window location
+                        tryRestoreClientLocation(window.handle, characterName);
+                        
                         if (rememberPos) {
                             QPoint savedPos = cfg.getThumbnailPosition(characterName);
                             if (savedPos != QPoint(-1, -1)) {
@@ -1093,6 +1096,7 @@ void MainWindow::showSettings()
     m_configDialog->setWindowModality(Qt::NonModal);
     
     connect(m_configDialog, &ConfigDialog::settingsApplied, this, &MainWindow::applySettings);
+    connect(m_configDialog, &ConfigDialog::saveClientLocationsRequested, this, &MainWindow::saveCurrentClientLocations);
     
     connect(this, &MainWindow::profileSwitchedExternally, m_configDialog, &ConfigDialog::onExternalProfileSwitch);
     
@@ -1147,6 +1151,7 @@ void MainWindow::applySettings()
     m_lastActivatedWindowByGroup.clear();
     m_notLoggedInCycleIndex = -1;
     m_nonEVECycleIndex = -1;
+    m_clientLocationMoveAttempted.clear();
     
     hotkeyManager->loadFromConfig();
     
@@ -1381,6 +1386,91 @@ void MainWindow::closeAllEVEClients()
         {
             PostMessage(window.handle, WM_CLOSE, 0, 0);
         }
+    }
+}
+
+void MainWindow::saveCurrentClientLocations()
+{
+    Config& cfg = Config::instance();
+    int savedCount = 0;
+    
+    // Iterate through all known windows
+    for (auto it = m_windowToCharacter.constBegin(); it != m_windowToCharacter.constEnd(); ++it) {
+        HWND hwnd = it.key();
+        QString characterName = it.value();
+        
+        if (!IsWindow(hwnd) || characterName.isEmpty()) {
+            continue;
+        }
+        
+        // Get window rectangle
+        RECT rect;
+        if (GetWindowRect(hwnd, &rect)) {
+            QRect qRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+            cfg.setClientWindowRect(characterName, qRect);
+            savedCount++;
+            qDebug() << "Saved window location for" << characterName << ":" << qRect;
+        }
+    }
+    
+    cfg.save();
+    qDebug() << "Saved" << savedCount << "client window locations";
+}
+
+bool MainWindow::isWindowRectValid(const QRect& rect)
+{
+    if (rect.isNull() || rect.isEmpty()) {
+        return false;
+    }
+    
+    // Check if any part of the window is on a valid monitor
+    RECT winRect = { rect.left(), rect.top(), rect.right(), rect.bottom() };
+    HMONITOR hMonitor = MonitorFromRect(&winRect, MONITOR_DEFAULTTONULL);
+    
+    return (hMonitor != nullptr);
+}
+
+bool MainWindow::tryRestoreClientLocation(HWND hwnd, const QString& characterName)
+{
+    const Config& cfg = Config::instance();
+    
+    if (!cfg.saveClientLocation()) {
+        return false;
+    }
+    
+    // Check if we've already attempted to move this window
+    if (m_clientLocationMoveAttempted.value(hwnd, false)) {
+        return false;
+    }
+    
+    // Get saved window rect
+    QRect savedRect = cfg.getClientWindowRect(characterName);
+    
+    if (!isWindowRectValid(savedRect)) {
+        qDebug() << "Saved window location for" << characterName << "is invalid or off-screen";
+        m_clientLocationMoveAttempted[hwnd] = true;
+        return false;
+    }
+    
+    // Attempt to move the window
+    BOOL result = SetWindowPos(
+        hwnd,
+        nullptr,
+        savedRect.x(),
+        savedRect.y(),
+        savedRect.width(),
+        savedRect.height(),
+        SWP_NOZORDER | SWP_NOACTIVATE
+    );
+    
+    m_clientLocationMoveAttempted[hwnd] = true;
+    
+    if (result) {
+        qDebug() << "Restored window location for" << characterName << "to" << savedRect;
+        return true;
+    } else {
+        qDebug() << "Failed to restore window location for" << characterName;
+        return false;
     }
 }
 

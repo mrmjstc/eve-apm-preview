@@ -1033,7 +1033,7 @@ void ConfigDialog::createBehaviorPage()
     windowSectionLayout->setContentsMargins(16, 12, 16, 12);
     windowSectionLayout->setSpacing(10);
     
-    tagWidget(windowSection, {"window", "desktop", "minimize", "inactive", "delay", "never", "management", "client", "eve"});
+    tagWidget(windowSection, {"window", "desktop", "minimize", "inactive", "delay", "never", "management", "client", "eve", "location", "position", "save", "restore", "move"});
     
     QLabel *windowHeader = new QLabel("EVE Client Management");
     windowHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
@@ -1042,6 +1042,37 @@ void ConfigDialog::createBehaviorPage()
     QLabel *windowInfoLabel = new QLabel("Control how EVE client windows behave when switching between them.");
     windowInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
     windowSectionLayout->addWidget(windowInfoLabel);
+    
+    m_saveClientLocationCheck = new QCheckBox("Save and restore client window locations");
+    m_saveClientLocationCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+    windowSectionLayout->addWidget(m_saveClientLocationCheck);
+    
+    QGridLayout *clientLocationGrid = new QGridLayout();
+    clientLocationGrid->setSpacing(10);
+    clientLocationGrid->setColumnMinimumWidth(0, 120);
+    clientLocationGrid->setColumnStretch(2, 1);
+    clientLocationGrid->setContentsMargins(24, 0, 0, 0);
+    
+    QLabel *setLocationLabel = new QLabel("Current Positions:");
+    setLocationLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    
+    m_setClientLocationsButton = new QPushButton("Set Positions");
+    m_setClientLocationsButton->setFixedSize(150, 32);
+    m_setClientLocationsButton->setStyleSheet(StyleSheet::getSecondaryButtonStyleSheet());
+    m_setClientLocationsButton->setToolTip("Save the current window positions of all open EVE clients");
+    
+    clientLocationGrid->addWidget(setLocationLabel, 0, 0, Qt::AlignLeft);
+    clientLocationGrid->addWidget(m_setClientLocationsButton, 0, 1);
+    
+    windowSectionLayout->addLayout(clientLocationGrid);
+    
+    connect(m_setClientLocationsButton, &QPushButton::clicked, this, &ConfigDialog::onSetClientLocations);
+    
+    connect(m_saveClientLocationCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        m_setClientLocationsButton->setEnabled(checked);
+    });
+    
+    windowSectionLayout->addSpacing(10);
     
     m_minimizeInactiveCheck = new QCheckBox("Minimize inactive clients");
     m_minimizeInactiveCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
@@ -1993,6 +2024,13 @@ void ConfigDialog::setupBindings()
     ));
     
     m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+        m_saveClientLocationCheck,
+        [&config]() { return config.saveClientLocation(); },
+        [&config](bool value) { config.setSaveClientLocation(value); },
+        false
+    ));
+    
+    m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
         m_highlightActiveCheck,
         [&config]() { return config.highlightActiveWindow(); },
         [&config](bool value) { config.setHighlightActiveWindow(value); },
@@ -2436,6 +2474,7 @@ void ConfigDialog::loadSettings()
     m_neverMinimizeTable->setEnabled(config.minimizeInactiveClients());
     m_addNeverMinimizeButton->setEnabled(config.minimizeInactiveClients());
     m_populateNeverMinimizeButton->setEnabled(config.minimizeInactiveClients());
+    m_setClientLocationsButton->setEnabled(config.saveClientLocation());
 
 }
 
@@ -2562,6 +2601,16 @@ void ConfigDialog::onSetNotLoggedInPosition()
             m_notLoggedInReferenceThumbnail->activateWindow();
         }
     }
+}
+
+void ConfigDialog::onSetClientLocations()
+{
+    // Emit signal to MainWindow to save current client locations
+    emit saveClientLocationsRequested();
+    
+    // Show feedback to user
+    QMessageBox::information(this, "Client Locations Saved", 
+        "The current window positions of all open EVE clients have been saved.");
 }
 
 void ConfigDialog::onColorButtonClicked()
@@ -4067,6 +4116,7 @@ void ConfigDialog::onResetBehaviorDefaults()
         m_alwaysOnTopCheck->setChecked(Config::DEFAULT_WINDOW_ALWAYS_ON_TOP);
         m_minimizeInactiveCheck->setChecked(Config::DEFAULT_WINDOW_MINIMIZE_INACTIVE);
         m_minimizeDelaySpin->setValue(Config::DEFAULT_WINDOW_MINIMIZE_DELAY);
+        m_saveClientLocationCheck->setChecked(Config::DEFAULT_WINDOW_SAVE_CLIENT_LOCATION);
         
         m_neverMinimizeTable->setRowCount(0);
         

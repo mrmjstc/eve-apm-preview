@@ -75,6 +75,7 @@ void Config::refreshCache() const
     m_cachedMinimizeInactive = m_settings->value(KEY_WINDOW_MINIMIZE_INACTIVE, DEFAULT_WINDOW_MINIMIZE_INACTIVE).toBool();
     m_cachedMinimizeDelay = m_settings->value(KEY_WINDOW_MINIMIZE_DELAY, DEFAULT_WINDOW_MINIMIZE_DELAY).toInt();
     m_cachedNeverMinimizeCharacters = m_settings->value(KEY_WINDOW_NEVER_MINIMIZE_CHARACTERS, QStringList()).toStringList();
+    m_cachedSaveClientLocation = m_settings->value(KEY_WINDOW_SAVE_CLIENT_LOCATION, DEFAULT_WINDOW_SAVE_CLIENT_LOCATION).toBool();
     
     m_cachedRememberPositions = m_settings->value(KEY_POSITION_REMEMBER, DEFAULT_POSITION_REMEMBER).toBool();
     m_cachedPreserveLogoutPositions = m_settings->value(KEY_POSITION_PRESERVE_LOGOUT, DEFAULT_POSITION_PRESERVE_LOGOUT).toBool();
@@ -441,6 +442,31 @@ bool Config::isCharacterNeverMinimize(const QString& characterName) const
 {
     QStringList characters = neverMinimizeCharacters();
     return characters.contains(characterName, Qt::CaseInsensitive);
+}
+
+bool Config::saveClientLocation() const
+{
+    refreshCache();
+    return m_cachedSaveClientLocation;
+}
+
+void Config::setSaveClientLocation(bool enabled)
+{
+    m_settings->setValue(KEY_WINDOW_SAVE_CLIENT_LOCATION, enabled);
+    invalidateCache();
+}
+
+QRect Config::getClientWindowRect(const QString& characterName) const
+{
+    QString key = QString("clientWindowRects/%1").arg(characterName);
+    QRect rect = m_settings->value(key, QRect()).toRect();
+    return rect;
+}
+
+void Config::setClientWindowRect(const QString& characterName, const QRect& rect)
+{
+    QString key = QString("clientWindowRects/%1").arg(characterName);
+    m_settings->setValue(key, rect);
 }
 
 bool Config::rememberPositions() const

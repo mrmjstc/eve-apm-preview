@@ -5,6 +5,7 @@
 #include <QString>
 #include <QStringList>
 #include <QPoint>
+#include <QRect>
 #include <QHash>
 #include <QMap>
 #include <QPair>
@@ -75,6 +76,12 @@ public:
     void addNeverMinimizeCharacter(const QString& characterName);
     void removeNeverMinimizeCharacter(const QString& characterName);
     bool isCharacterNeverMinimize(const QString& characterName) const;
+    
+    bool saveClientLocation() const;
+    void setSaveClientLocation(bool enabled);
+    
+    QRect getClientWindowRect(const QString& characterName) const;
+    void setClientWindowRect(const QString& characterName, const QRect& rect);
     
     bool rememberPositions() const;
     void setRememberPositions(bool enabled);
@@ -239,6 +246,7 @@ public:
     static constexpr bool DEFAULT_WINDOW_ALWAYS_ON_TOP = true;
     static constexpr bool DEFAULT_WINDOW_MINIMIZE_INACTIVE = false;
     static constexpr int DEFAULT_WINDOW_MINIMIZE_DELAY = 100;
+    static constexpr bool DEFAULT_WINDOW_SAVE_CLIENT_LOCATION = false;
     
     static constexpr bool DEFAULT_POSITION_REMEMBER = true;
     static constexpr bool DEFAULT_POSITION_PRESERVE_LOGOUT = false;
@@ -303,6 +311,7 @@ private:
     mutable bool m_cachedMinimizeInactive;
     mutable int m_cachedMinimizeDelay;
     mutable QStringList m_cachedNeverMinimizeCharacters;
+    mutable bool m_cachedSaveClientLocation;
     
     mutable bool m_cachedRememberPositions;
     mutable bool m_cachedPreserveLogoutPositions;
@@ -381,6 +390,7 @@ private:
     static constexpr const char* KEY_WINDOW_MINIMIZE_INACTIVE = "window/minimizeInactiveClients";
     static constexpr const char* KEY_WINDOW_MINIMIZE_DELAY = "window/minimizeDelay";
     static constexpr const char* KEY_WINDOW_NEVER_MINIMIZE_CHARACTERS = "window/neverMinimizeCharacters";
+    static constexpr const char* KEY_WINDOW_SAVE_CLIENT_LOCATION = "window/saveClientLocation";
 
     static constexpr const char* KEY_POSITION_REMEMBER = "position/rememberPositions";
     static constexpr const char* KEY_POSITION_PRESERVE_LOGOUT = "position/preserveLogoutPositions";
