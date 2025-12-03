@@ -319,8 +319,8 @@ void UpdaterDialog::onInstallationFinished(bool success, const QString& message)
             launchApplication();
             QApplication::quit();
         } else {
-            QMessageBox::information(this, "Update Complete", 
-                QString("The update has been installed successfully.\n\n%1\n\nThe application will now launch.").arg(message));
+            QMessageBox::information(this, "Update Complete",
+                "The update has been installed successfully.\n\nThe application will now launch.");
             launchApplication();
             QApplication::quit();
         }
