@@ -31,6 +31,8 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
+#include <QSslSocket>
+#include <QSslError>
 #include <QDesktopServices>
 #include <QUrl>
 #include <algorithm>
@@ -6369,6 +6371,18 @@ void ConfigDialog::onCheckForUpdates()
         m_networkManager = new QNetworkAccessManager(this);
     }
     
+    // Check if SSL is supported
+    if (!QSslSocket::supportsSsl()) {
+        m_updateStatusLabel->setText(QString("❌ SSL not available. OpenSSL libraries required."));
+        QMessageBox::warning(this, "SSL Not Available", 
+            QString("OpenSSL libraries are not available.\n\n"
+                    "Qt requires OpenSSL %1.%2.x libraries to make HTTPS requests.\n\n"
+                    "Please install OpenSSL and ensure the DLLs are in your PATH or application directory.")
+                    .arg(QSslSocket::sslLibraryVersionNumber() >> 28)
+                    .arg((QSslSocket::sslLibraryVersionNumber() >> 20) & 0xff));
+        return;
+    }
+    
     m_checkUpdateButton->setEnabled(false);
     m_updateStatusLabel->setText("🔄 Checking for updates...");
     m_downloadUpdateButton->setVisible(false);
@@ -6378,12 +6392,27 @@ void ConfigDialog::onCheckForUpdates()
     request.setHeader(QNetworkRequest::UserAgentHeader, "EVE-APM-Preview");
     
     QNetworkReply *reply = m_networkManager->get(request);
+    
+    // Handle SSL errors
+    connect(reply, QOverload<const QList<QSslError>&>::of(&QNetworkReply::sslErrors),
+            this, [this, reply](const QList<QSslError>& errors) {
+        QString errorMsg = "SSL Errors:\n";
+        for (const QSslError& error : errors) {
+            errorMsg += error.errorString() + "\n";
+        }
+        qWarning() << errorMsg;
+    });
+    
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         reply->deleteLater();
         m_checkUpdateButton->setEnabled(true);
         
         if (reply->error() != QNetworkReply::NoError) {
-            m_updateStatusLabel->setText(QString("❌ Error checking for updates: %1").arg(reply->errorString()));
+            QString errorMsg = reply->errorString();
+            if (reply->error() == QNetworkReply::SslHandshakeFailedError) {
+                errorMsg = "TLS initialization failed. OpenSSL libraries may be missing.";
+            }
+            m_updateStatusLabel->setText(QString("❌ Error: %1").arg(errorMsg));
             return;
         }
         
