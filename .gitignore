@@ -8,10 +8,7 @@ MinSizeRel/
 x64/
 out/
 dist/
-build.ps1
-bump_version.ps1
-convert_icon.ps1
-comments.py
+tools/
 
 # IDE files
 .vscode/
