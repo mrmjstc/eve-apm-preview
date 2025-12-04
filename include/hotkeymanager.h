@@ -8,6 +8,8 @@
 #include <QPointer>
 #include <Windows.h>
 
+class QSettings;
+
 struct HotkeyBinding
 {
     int keyCode;        
@@ -191,6 +193,17 @@ private:
     
     bool registerHotkey(const HotkeyBinding& binding, int& outHotkeyId);
     void unregisterHotkey(int hotkeyId);
+    
+    /// Helper functions to reduce code duplication
+    void registerHotkeyList(const QVector<HotkeyBinding>& multiHotkeys, 
+                            const HotkeyBinding& legacyHotkey,
+                            int& legacyHotkeyId);
+    void unregisterAndReset(int& hotkeyId);
+    void saveHotkeyList(QSettings& settings, const QString& key,
+                        const QVector<HotkeyBinding>& multiHotkeys,
+                        const HotkeyBinding& legacyHotkey);
+    QVector<HotkeyBinding> loadHotkeyList(QSettings& settings, const QString& key,
+                                          HotkeyBinding& outLegacyHotkey);
 };
 
 #endif 

@@ -105,6 +105,95 @@ void HotkeyManager::unregisterHotkey(int hotkeyId)
     UnregisterHotKey(nullptr, hotkeyId);
 }
 
+/// Helper function to register a list of hotkeys (multi or legacy single)
+void HotkeyManager::registerHotkeyList(const QVector<HotkeyBinding>& multiHotkeys,
+                                        const HotkeyBinding& legacyHotkey,
+                                        int& legacyHotkeyId)
+{
+    if (!multiHotkeys.isEmpty())
+    {
+        for (const HotkeyBinding& binding : multiHotkeys)
+        {
+            if (!binding.enabled) continue;
+            int hotkeyId;
+            registerHotkey(binding, hotkeyId);
+        }
+    }
+    else if (legacyHotkey.enabled)
+    {
+        registerHotkey(legacyHotkey, legacyHotkeyId);
+    }
+}
+
+/// Helper function to unregister and reset a hotkey ID
+void HotkeyManager::unregisterAndReset(int& hotkeyId)
+{
+    if (hotkeyId != -1)
+    {
+        unregisterHotkey(hotkeyId);
+        hotkeyId = -1;
+    }
+}
+
+/// Helper function to save a list of hotkeys to settings
+void HotkeyManager::saveHotkeyList(QSettings& settings, const QString& key,
+                                    const QVector<HotkeyBinding>& multiHotkeys,
+                                    const HotkeyBinding& legacyHotkey)
+{
+    settings.remove(key);
+    if (!multiHotkeys.isEmpty())
+    {
+        QStringList bindingStrs;
+        for (const HotkeyBinding& binding : multiHotkeys)
+        {
+            bindingStrs.append(binding.toString());
+        }
+        settings.setValue(key, bindingStrs.join('|'));
+    }
+    else
+    {
+        settings.setValue(key, legacyHotkey.toString());
+    }
+}
+
+/// Helper function to load a list of hotkeys from settings
+QVector<HotkeyBinding> HotkeyManager::loadHotkeyList(QSettings& settings, const QString& key,
+                                                      HotkeyBinding& outLegacyHotkey)
+{
+    QString value = settings.value(key, QString()).toString();
+    QVector<HotkeyBinding> result;
+    
+    if (value.contains('|'))
+    {
+        // Multi-hotkey format
+        QStringList bindingStrs = value.split('|', Qt::SkipEmptyParts);
+        for (const QString& bindingStr : bindingStrs)
+        {
+            HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
+            if (binding.enabled && binding.keyCode != 0)
+            {
+                // Deduplicate
+                if (!result.contains(binding))
+                {
+                    result.append(binding);
+                }
+            }
+        }
+        // Set legacy to first for compatibility
+        if (!result.isEmpty())
+        {
+            outLegacyHotkey = result.first();
+        }
+    }
+    else if (!value.isEmpty())
+    {
+        // Legacy single hotkey format
+        outLegacyHotkey = HotkeyBinding::fromString(value);
+    }
+    
+    return result;
+}
+
 bool HotkeyManager::registerHotkeys()
 {
     unregisterHotkeys();
@@ -227,80 +316,16 @@ bool HotkeyManager::registerHotkeys()
         }
     }
     
-    // Register all not-logged-in forward hotkeys
-    if (!m_notLoggedInForwardHotkeys.isEmpty())
-    {
-        for (const HotkeyBinding& binding : m_notLoggedInForwardHotkeys)
-        {
-            if (!binding.enabled) continue;
-            int hotkeyId;
-            registerHotkey(binding, hotkeyId);
-        }
-    }
-    else if (m_notLoggedInForwardHotkey.enabled)
-    {
-        registerHotkey(m_notLoggedInForwardHotkey, m_notLoggedInForwardHotkeyId);
-    }
+    // Register not-logged-in cycle hotkeys
+    registerHotkeyList(m_notLoggedInForwardHotkeys, m_notLoggedInForwardHotkey, m_notLoggedInForwardHotkeyId);
+    registerHotkeyList(m_notLoggedInBackwardHotkeys, m_notLoggedInBackwardHotkey, m_notLoggedInBackwardHotkeyId);
     
-    // Register all not-logged-in backward hotkeys
-    if (!m_notLoggedInBackwardHotkeys.isEmpty())
-    {
-        for (const HotkeyBinding& binding : m_notLoggedInBackwardHotkeys)
-        {
-            if (!binding.enabled) continue;
-            int hotkeyId;
-            registerHotkey(binding, hotkeyId);
-        }
-    }
-    else if (m_notLoggedInBackwardHotkey.enabled)
-    {
-        registerHotkey(m_notLoggedInBackwardHotkey, m_notLoggedInBackwardHotkeyId);
-    }
+    // Register non-EVE cycle hotkeys
+    registerHotkeyList(m_nonEVEForwardHotkeys, m_nonEVEForwardHotkey, m_nonEVEForwardHotkeyId);
+    registerHotkeyList(m_nonEVEBackwardHotkeys, m_nonEVEBackwardHotkey, m_nonEVEBackwardHotkeyId);
     
-    // Register all non-EVE forward hotkeys
-    if (!m_nonEVEForwardHotkeys.isEmpty())
-    {
-        for (const HotkeyBinding& binding : m_nonEVEForwardHotkeys)
-        {
-            if (!binding.enabled) continue;
-            int hotkeyId;
-            registerHotkey(binding, hotkeyId);
-        }
-    }
-    else if (m_nonEVEForwardHotkey.enabled)
-    {
-        registerHotkey(m_nonEVEForwardHotkey, m_nonEVEForwardHotkeyId);
-    }
-    
-    // Register all non-EVE backward hotkeys
-    if (!m_nonEVEBackwardHotkeys.isEmpty())
-    {
-        for (const HotkeyBinding& binding : m_nonEVEBackwardHotkeys)
-        {
-            if (!binding.enabled) continue;
-            int hotkeyId;
-            registerHotkey(binding, hotkeyId);
-        }
-    }
-    else if (m_nonEVEBackwardHotkey.enabled)
-    {
-        registerHotkey(m_nonEVEBackwardHotkey, m_nonEVEBackwardHotkeyId);
-    }
-    
-    // Register all close-all-clients hotkeys
-    if (!m_closeAllClientsHotkeys.isEmpty())
-    {
-        for (const HotkeyBinding& binding : m_closeAllClientsHotkeys)
-        {
-            if (!binding.enabled) continue;
-            int hotkeyId;
-            registerHotkey(binding, hotkeyId);
-        }
-    }
-    else if (m_closeAllClientsHotkey.enabled)
-    {
-        registerHotkey(m_closeAllClientsHotkey, m_closeAllClientsHotkeyId);
-    }
+    // Register close-all-clients hotkeys
+    registerHotkeyList(m_closeAllClientsHotkeys, m_closeAllClientsHotkey, m_closeAllClientsHotkeyId);
     
     registerProfileHotkeys();
     
@@ -326,41 +351,13 @@ void HotkeyManager::unregisterHotkeys()
         unregisterHotkey(aliasId);
     }
     
-    if (m_suspendHotkeyId != -1)
-    {
-        unregisterHotkey(m_suspendHotkeyId);
-        m_suspendHotkeyId = -1;
-    }
-    
-    if (m_notLoggedInForwardHotkeyId != -1)
-    {
-        unregisterHotkey(m_notLoggedInForwardHotkeyId);
-        m_notLoggedInForwardHotkeyId = -1;
-    }
-    
-    if (m_notLoggedInBackwardHotkeyId != -1)
-    {
-        unregisterHotkey(m_notLoggedInBackwardHotkeyId);
-        m_notLoggedInBackwardHotkeyId = -1;
-    }
-    
-    if (m_nonEVEForwardHotkeyId != -1)
-    {
-        unregisterHotkey(m_nonEVEForwardHotkeyId);
-        m_nonEVEForwardHotkeyId = -1;
-    }
-    
-    if (m_nonEVEBackwardHotkeyId != -1)
-    {
-        unregisterHotkey(m_nonEVEBackwardHotkeyId);
-        m_nonEVEBackwardHotkeyId = -1;
-    }
-    
-    if (m_closeAllClientsHotkeyId != -1)
-    {
-        unregisterHotkey(m_closeAllClientsHotkeyId);
-        m_closeAllClientsHotkeyId = -1;
-    }
+    // Unregister special hotkeys using helper
+    unregisterAndReset(m_suspendHotkeyId);
+    unregisterAndReset(m_notLoggedInForwardHotkeyId);
+    unregisterAndReset(m_notLoggedInBackwardHotkeyId);
+    unregisterAndReset(m_nonEVEForwardHotkeyId);
+    unregisterAndReset(m_nonEVEBackwardHotkeyId);
+    unregisterAndReset(m_closeAllClientsHotkeyId);
     
     m_hotkeyIdToCharacter.clear();
     m_hotkeyIdToCycleGroup.clear();
@@ -816,97 +813,20 @@ void HotkeyManager::loadFromConfig()
     m_notLoggedInForwardHotkeys.clear();
     m_notLoggedInBackwardHotkeys.clear();
     settings.beginGroup("notLoggedInHotkeys");
-    // Load forward hotkeys (might be multi-hotkey with pipe separator)
-    QVariant forwardVar = settings.value("forward");
-    QString forwardStr = forwardVar.canConvert<QStringList>() ? forwardVar.toStringList().join('|') : forwardVar.toString();
-    if (!forwardStr.isEmpty()) {
-        QStringList forwardBindingStrs = forwardStr.split('|', Qt::SkipEmptyParts);
-        for (const QString& bindingStr : forwardBindingStrs) {
-            HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
-            if (binding.enabled && binding.keyCode != 0) {
-                // Only add if not already present (deduplicate)
-                if (!m_notLoggedInForwardHotkeys.contains(binding)) {
-                    m_notLoggedInForwardHotkeys.append(binding);
-                }
-            }
-        }
-        m_notLoggedInForwardHotkey = !m_notLoggedInForwardHotkeys.isEmpty() ? m_notLoggedInForwardHotkeys.first() : HotkeyBinding();
-    }
-    
-    // Load backward hotkeys (might be multi-hotkey with pipe separator)
-    QVariant backwardVar = settings.value("backward");
-    QString backwardStr = backwardVar.canConvert<QStringList>() ? backwardVar.toStringList().join('|') : backwardVar.toString();
-    if (!backwardStr.isEmpty()) {
-        QStringList backwardBindingStrs = backwardStr.split('|', Qt::SkipEmptyParts);
-        for (const QString& bindingStr : backwardBindingStrs) {
-            HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
-            if (binding.enabled && binding.keyCode != 0) {
-                // Only add if not already present (deduplicate)
-                if (!m_notLoggedInBackwardHotkeys.contains(binding)) {
-                    m_notLoggedInBackwardHotkeys.append(binding);
-                }
-            }
-        }
-        m_notLoggedInBackwardHotkey = !m_notLoggedInBackwardHotkeys.isEmpty() ? m_notLoggedInBackwardHotkeys.first() : HotkeyBinding();
-    }
+    m_notLoggedInForwardHotkeys = loadHotkeyList(settings, "forward", m_notLoggedInForwardHotkey);
+    m_notLoggedInBackwardHotkeys = loadHotkeyList(settings, "backward", m_notLoggedInBackwardHotkey);
     settings.endGroup();
     
     m_nonEVEForwardHotkeys.clear();
     m_nonEVEBackwardHotkeys.clear();
     settings.beginGroup("nonEVEHotkeys");
-    // Load forward hotkeys (might be multi-hotkey with pipe separator)
-    QVariant nonEVEForwardVar = settings.value("forward");
-    QString nonEVEForwardStr = nonEVEForwardVar.canConvert<QStringList>() ? nonEVEForwardVar.toStringList().join('|') : nonEVEForwardVar.toString();
-    if (!nonEVEForwardStr.isEmpty()) {
-        QStringList nonEVEForwardBindingStrs = nonEVEForwardStr.split('|', Qt::SkipEmptyParts);
-        for (const QString& bindingStr : nonEVEForwardBindingStrs) {
-            HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
-            if (binding.enabled && binding.keyCode != 0) {
-                // Only add if not already present (deduplicate)
-                if (!m_nonEVEForwardHotkeys.contains(binding)) {
-                    m_nonEVEForwardHotkeys.append(binding);
-                }
-            }
-        }
-        m_nonEVEForwardHotkey = !m_nonEVEForwardHotkeys.isEmpty() ? m_nonEVEForwardHotkeys.first() : HotkeyBinding();
-    }
-    
-    // Load backward hotkeys (might be multi-hotkey with pipe separator)
-    QVariant nonEVEBackwardVar = settings.value("backward");
-    QString nonEVEBackwardStr = nonEVEBackwardVar.canConvert<QStringList>() ? nonEVEBackwardVar.toStringList().join('|') : nonEVEBackwardVar.toString();
-    if (!nonEVEBackwardStr.isEmpty()) {
-        QStringList nonEVEBackwardBindingStrs = nonEVEBackwardStr.split('|', Qt::SkipEmptyParts);
-        for (const QString& bindingStr : nonEVEBackwardBindingStrs) {
-            HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
-            if (binding.enabled && binding.keyCode != 0) {
-                // Only add if not already present (deduplicate)
-                if (!m_nonEVEBackwardHotkeys.contains(binding)) {
-                    m_nonEVEBackwardHotkeys.append(binding);
-                }
-            }
-        }
-        m_nonEVEBackwardHotkey = !m_nonEVEBackwardHotkeys.isEmpty() ? m_nonEVEBackwardHotkeys.first() : HotkeyBinding();
-    }
+    m_nonEVEForwardHotkeys = loadHotkeyList(settings, "forward", m_nonEVEForwardHotkey);
+    m_nonEVEBackwardHotkeys = loadHotkeyList(settings, "backward", m_nonEVEBackwardHotkey);
     settings.endGroup();
     
     m_closeAllClientsHotkeys.clear();
     settings.beginGroup("closeAllHotkeys");
-    // Load close all hotkeys (might be multi-hotkey with pipe separator)
-    QVariant closeAllVar = settings.value("closeAllClients");
-    QString closeAllStr = closeAllVar.canConvert<QStringList>() ? closeAllVar.toStringList().join('|') : closeAllVar.toString();
-    if (!closeAllStr.isEmpty()) {
-        QStringList closeAllBindingStrs = closeAllStr.split('|', Qt::SkipEmptyParts);
-        for (const QString& bindingStr : closeAllBindingStrs) {
-            HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
-            if (binding.enabled && binding.keyCode != 0) {
-                // Only add if not already present (deduplicate)
-                if (!m_closeAllClientsHotkeys.contains(binding)) {
-                    m_closeAllClientsHotkeys.append(binding);
-                }
-            }
-        }
-        m_closeAllClientsHotkey = !m_closeAllClientsHotkeys.isEmpty() ? m_closeAllClientsHotkeys.first() : HotkeyBinding();
-    }
+    m_closeAllClientsHotkeys = loadHotkeyList(settings, "closeAllClients", m_closeAllClientsHotkey);
     settings.endGroup();
     
     registerHotkeys();
@@ -995,75 +915,17 @@ void HotkeyManager::saveToConfig()
     settings.endGroup();
     
     settings.beginGroup("notLoggedInHotkeys");
-    // Remove old values to prevent appending
-    settings.remove("forward");
-    settings.remove("backward");
-    
-    // Save not-logged-in forward hotkeys (multi-hotkey support)
-    if (!m_notLoggedInForwardHotkeys.isEmpty()) {
-        QStringList forwardBindingStrs;
-        for (const HotkeyBinding& binding : m_notLoggedInForwardHotkeys) {
-            forwardBindingStrs.append(binding.toString());
-        }
-        settings.setValue("forward", forwardBindingStrs.join('|'));
-    } else {
-        settings.setValue("forward", m_notLoggedInForwardHotkey.toString());
-    }
-    
-    // Save not-logged-in backward hotkeys (multi-hotkey support)
-    if (!m_notLoggedInBackwardHotkeys.isEmpty()) {
-        QStringList backwardBindingStrs;
-        for (const HotkeyBinding& binding : m_notLoggedInBackwardHotkeys) {
-            backwardBindingStrs.append(binding.toString());
-        }
-        settings.setValue("backward", backwardBindingStrs.join('|'));
-    } else {
-        settings.setValue("backward", m_notLoggedInBackwardHotkey.toString());
-    }
+    saveHotkeyList(settings, "forward", m_notLoggedInForwardHotkeys, m_notLoggedInForwardHotkey);
+    saveHotkeyList(settings, "backward", m_notLoggedInBackwardHotkeys, m_notLoggedInBackwardHotkey);
     settings.endGroup();
     
     settings.beginGroup("nonEVEHotkeys");
-    // Remove old values to prevent appending
-    settings.remove("forward");
-    settings.remove("backward");
-    
-    // Save non-EVE forward hotkeys (multi-hotkey support)
-    if (!m_nonEVEForwardHotkeys.isEmpty()) {
-        QStringList forwardBindingStrs;
-        for (const HotkeyBinding& binding : m_nonEVEForwardHotkeys) {
-            forwardBindingStrs.append(binding.toString());
-        }
-        settings.setValue("forward", forwardBindingStrs.join('|'));
-    } else {
-        settings.setValue("forward", m_nonEVEForwardHotkey.toString());
-    }
-    
-    // Save non-EVE backward hotkeys (multi-hotkey support)
-    if (!m_nonEVEBackwardHotkeys.isEmpty()) {
-        QStringList backwardBindingStrs;
-        for (const HotkeyBinding& binding : m_nonEVEBackwardHotkeys) {
-            backwardBindingStrs.append(binding.toString());
-        }
-        settings.setValue("backward", backwardBindingStrs.join('|'));
-    } else {
-        settings.setValue("backward", m_nonEVEBackwardHotkey.toString());
-    }
+    saveHotkeyList(settings, "forward", m_nonEVEForwardHotkeys, m_nonEVEForwardHotkey);
+    saveHotkeyList(settings, "backward", m_nonEVEBackwardHotkeys, m_nonEVEBackwardHotkey);
     settings.endGroup();
     
     settings.beginGroup("closeAllHotkeys");
-    // Remove old value to prevent appending
-    settings.remove("closeAllClients");
-    
-    // Save close-all hotkeys (multi-hotkey support)
-    if (!m_closeAllClientsHotkeys.isEmpty()) {
-        QStringList closeAllBindingStrs;
-        for (const HotkeyBinding& binding : m_closeAllClientsHotkeys) {
-            closeAllBindingStrs.append(binding.toString());
-        }
-        settings.setValue("closeAllClients", closeAllBindingStrs.join('|'));
-    } else {
-        settings.setValue("closeAllClients", m_closeAllClientsHotkey.toString());
-    }
+    saveHotkeyList(settings, "closeAllClients", m_closeAllClientsHotkeys, m_closeAllClientsHotkey);
     settings.endGroup();
     
     settings.sync();
