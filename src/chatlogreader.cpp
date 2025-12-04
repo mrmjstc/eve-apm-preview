@@ -30,14 +30,12 @@ ChatLogWorker::ChatLogWorker(QObject *parent)
 
 static QString normalizeLogLine(const QString &line)
 {
+    static const QRegularExpression controlCharsPattern(R"([\x00-\x1F\x7F])");
+    static const QRegularExpression zeroWidthPattern(R"([\uFEFF\u200B\u200C\u200D\u2060])");
+    
     QString s = line;
-    s.remove(QChar(0xFEFF));
-    s.remove(QChar(0xFEFF));
-    s.remove(QRegularExpression(R"([\x00-\x1F\x7F])"));
-    s.remove(QChar(0x200B)); 
-    s.remove(QChar(0x200C)); 
-    s.remove(QChar(0x200D)); 
-    s.remove(QChar(0x2060)); 
+    s.remove(zeroWidthPattern);
+    s.remove(controlCharsPattern);
     s = s.trimmed();
     return s;
 }
