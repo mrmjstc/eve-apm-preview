@@ -346,6 +346,8 @@ private:
     mutable int m_cachedMiningTimeoutSeconds;
     
     mutable QHash<QString, QColor> m_cachedCharacterBorderColors;
+    mutable QHash<QString, QPoint> m_cachedThumbnailPositions;
+    mutable QHash<QString, QRect> m_cachedClientWindowRects;
     
     bool m_configDialogOpen = false;
     

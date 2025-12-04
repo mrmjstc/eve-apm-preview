@@ -148,6 +148,28 @@ void Config::refreshCache() const
     }
     m_settings->endGroup();
     
+    // Cache thumbnail positions
+    m_cachedThumbnailPositions.clear();
+    m_settings->beginGroup("thumbnailPositions");
+    QStringList thumbnailCharNames = m_settings->childKeys();
+    for (const QString& characterName : thumbnailCharNames) {
+        QPoint pos = m_settings->value(characterName).toPoint();
+        m_cachedThumbnailPositions[characterName] = pos;
+    }
+    m_settings->endGroup();
+    
+    // Cache client window rects
+    m_cachedClientWindowRects.clear();
+    m_settings->beginGroup("clientWindowRects");
+    QStringList clientCharNames = m_settings->childKeys();
+    for (const QString& characterName : clientCharNames) {
+        QRect rect = m_settings->value(characterName).toRect();
+        if (rect.isValid()) {
+            m_cachedClientWindowRects[characterName] = rect;
+        }
+    }
+    m_settings->endGroup();
+    
     m_cacheValid = true;
 }
 
@@ -436,15 +458,15 @@ void Config::setSaveClientLocation(bool enabled)
 
 QRect Config::getClientWindowRect(const QString& characterName) const
 {
-    QString key = QString("clientWindowRects/%1").arg(characterName);
-    QRect rect = m_settings->value(key, QRect()).toRect();
-    return rect;
+    refreshCache();
+    return m_cachedClientWindowRects.value(characterName, QRect());
 }
 
 void Config::setClientWindowRect(const QString& characterName, const QRect& rect)
 {
     QString key = QString("clientWindowRects/%1").arg(characterName);
     m_settings->setValue(key, rect);
+    invalidateCache();
 }
 
 bool Config::rememberPositions() const
@@ -473,15 +495,15 @@ void Config::setPreserveLogoutPositions(bool enabled)
 
 QPoint Config::getThumbnailPosition(const QString& characterName) const
 {
-    QString key = QString("thumbnailPositions/%1").arg(characterName);
-    QPoint pos = m_settings->value(key, QPoint(-1, -1)).toPoint();
-    return pos;
+    refreshCache();
+    return m_cachedThumbnailPositions.value(characterName, QPoint(-1, -1));
 }
 
 void Config::setThumbnailPosition(const QString& characterName, const QPoint& pos)
 {
     QString key = QString("thumbnailPositions/%1").arg(characterName);
     m_settings->setValue(key, pos);
+    invalidateCache();
 }
 
 QColor Config::getCharacterBorderColor(const QString& characterName) const
