@@ -143,6 +143,14 @@ MainWindow::MainWindow(QObject *parent)
         WINEVENT_OUTOFCONTEXT
     );
     
+    m_nameChangeHook = SetWinEventHook(
+        EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE,
+        nullptr,
+        WindowEventProc,
+        0, 0,
+        WINEVENT_OUTOFCONTEXT
+    );
+    
     m_chatLogReader = std::make_unique<ChatLogReader>();
     
     QString chatLogDirectory = Config::instance().chatLogDirectory();
@@ -210,6 +218,9 @@ MainWindow::~MainWindow()
     if (m_showHook) {
         UnhookWinEvent(m_showHook);
     }
+    if (m_nameChangeHook) {
+        UnhookWinEvent(m_nameChangeHook);
+    }
     
     qDeleteAll(thumbnails);
     thumbnails.clear();
@@ -246,6 +257,16 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
         if (event == EVENT_OBJECT_CREATE || event == EVENT_OBJECT_DESTROY) {
             s_instance->m_needsEnumeration = true;
         }
+        else if (event == EVENT_OBJECT_NAMECHANGE) {
+            // Only process if this is a tracked window
+            if (s_instance->thumbnails.contains(hwnd)) {
+                QMetaObject::invokeMethod(s_instance, [hwnd]() {
+                    if (s_instance) {
+                        s_instance->handleWindowTitleChange(hwnd);
+                    }
+                }, Qt::QueuedConnection);
+            }
+        }
         else if (event == EVENT_OBJECT_SHOW) {
             if (hwnd == s_instance->m_hwndPendingRefresh) {
                 QMetaObject::invokeMethod(s_instance, [hwnd]() {
@@ -270,12 +291,6 @@ void MainWindow::refreshWindows()
     const bool showNonEVEOverlay = cfg.showNonEVEOverlay();
     const double thumbnailOpacity = cfg.thumbnailOpacity() / 100.0;  
     
-    m_enumerationCounter++;
-    if (m_enumerationCounter >= 10) {
-        m_needsEnumeration = true;
-        m_enumerationCounter = 0;
-    }
-    
     QVector<WindowInfo> windows;
     
     if (m_needsEnumeration) {
@@ -292,7 +307,15 @@ void MainWindow::refreshWindows()
                 break;
             }
             
-            QString title = windowCapture->getWindowTitle(hwnd);
+            // Use cached title instead of retrieving every time
+            QString title = m_lastKnownTitles.value(hwnd, "");
+            
+            // Only retrieve title if we don't have it cached
+            if (title.isEmpty()) {
+                title = windowCapture->getWindowTitle(hwnd);
+                m_lastKnownTitles.insert(hwnd, title);
+            }
+            
             QString processName = m_windowProcessNames.value(hwnd, "exefile.exe");  
             qint64 creationTime = m_windowCreationTimes.value(hwnd, 0);
             
@@ -636,6 +659,97 @@ void MainWindow::refreshSingleThumbnail(HWND hwnd)
     
     ThumbnailWidget* thumbWidget = it.value();
     thumbWidget->forceUpdate();
+}
+
+void MainWindow::handleWindowTitleChange(HWND hwnd)
+{
+    if (!IsWindow(hwnd) || !thumbnails.contains(hwnd)) {
+        return;
+    }
+    
+    QString newTitle = windowCapture->getWindowTitle(hwnd);
+    QString lastTitle = m_lastKnownTitles.value(hwnd, "");
+    
+    if (lastTitle == newTitle) {
+        return; // No actual change
+    }
+    
+    m_lastKnownTitles.insert(hwnd, newTitle);
+    ThumbnailWidget* thumbWidget = thumbnails[hwnd];
+    thumbWidget->setTitle(newTitle);
+    
+    // Check if this is an EVE client
+    QString processName = m_windowProcessNames.value(hwnd, "");
+    bool isEVEClient = processName.compare("exefile.exe", Qt::CaseInsensitive) == 0;
+    
+    if (!isEVEClient) {
+        // Update non-EVE overlay if needed
+        if (Config::instance().showNonEVEOverlay()) {
+            thumbWidget->setCharacterName(newTitle);
+        }
+        return;
+    }
+    
+    // Handle EVE client login/logout state changes
+    QString lastCharacterName = OverlayInfo::extractCharacterName(lastTitle);
+    QString newCharacterName = OverlayInfo::extractCharacterName(newTitle);
+    
+    bool wasNotLoggedIn = lastCharacterName.isEmpty();
+    bool isNowLoggedIn = !newCharacterName.isEmpty();
+    bool wasLoggedIn = !lastCharacterName.isEmpty();
+    bool isNowNotLoggedIn = newCharacterName.isEmpty();
+    
+    const Config& cfg = Config::instance();
+    
+    if (wasNotLoggedIn && isNowLoggedIn) {
+        // Character just logged in
+        thumbWidget->setCharacterName(newCharacterName);
+        
+        QString cachedSystem = m_characterSystems.value(newCharacterName);
+        if (!cachedSystem.isEmpty()) {
+            thumbWidget->setSystemName(cachedSystem);
+        } else {
+            thumbWidget->setSystemName(QString());
+        }
+        
+        tryRestoreClientLocation(hwnd, newCharacterName);
+        
+        if (cfg.rememberPositions()) {
+            QPoint savedPos = cfg.getThumbnailPosition(newCharacterName);
+            if (savedPos != QPoint(-1, -1)) {
+                QRect thumbRect(savedPos, QSize(cfg.thumbnailWidth(), cfg.thumbnailHeight()));
+                QScreen* targetScreen = nullptr;
+                for (QScreen* screen : QGuiApplication::screens()) {
+                    if (screen->geometry().intersects(thumbRect)) {
+                        targetScreen = screen;
+                        break;
+                    }
+                }
+                if (targetScreen) {
+                    thumbWidget->move(savedPos);
+                }
+            }
+        }
+        
+        m_needsMappingUpdate = true;
+        updateCharacterMappings();
+        
+    } else if (wasLoggedIn && isNowNotLoggedIn) {
+        // Character logged out
+        QString displayName = cfg.showNotLoggedInOverlay() ? NOT_LOGGED_IN_TEXT : "";
+        thumbWidget->setCharacterName(displayName);
+        thumbWidget->setSystemName(QString());
+        
+        if (!cfg.preserveLogoutPositions()) {
+            // Move to "not logged in" position
+            int notLoggedInIndex = m_notLoggedInWindows.size();
+            QPoint pos = calculateNotLoggedInPosition(notLoggedInIndex);
+            thumbWidget->move(pos);
+        }
+        
+        m_needsMappingUpdate = true;
+        updateCharacterMappings();
+    }
 }
 
 QPoint MainWindow::calculateNotLoggedInPosition(int index)

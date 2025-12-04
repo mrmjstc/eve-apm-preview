@@ -84,10 +84,10 @@ private:
     HWINEVENTHOOK m_eventHook = nullptr;
     HWINEVENTHOOK m_createHook = nullptr;
     HWINEVENTHOOK m_destroyHook = nullptr;
-    HWINEVENTHOOK m_showHook = nullptr;  
+    HWINEVENTHOOK m_showHook = nullptr;
+    HWINEVENTHOOK m_nameChangeHook = nullptr;
     
     bool m_needsEnumeration = true;
-    int m_enumerationCounter = 0;
     bool m_needsMappingUpdate = false;  
     
     QHash<HWND, QString> m_lastKnownTitles;
@@ -115,7 +115,8 @@ private:
     void activateCharacter(const QString& characterName);
     void updateCharacterMappings();
     void updateSnappingLists();
-    void refreshSingleThumbnail(HWND hwnd);  
+    void refreshSingleThumbnail(HWND hwnd);
+    void handleWindowTitleChange(HWND hwnd);
     QPoint calculateNotLoggedInPosition(int index);
     void updateProfilesMenu();  
     QVector<HWND> buildCycleWindowList(const CycleGroup& group);
