@@ -30,6 +30,8 @@ Config::Config()
         initializeDefaultProfile();
     }
     
+    loadCacheFromSettings();  // Initialize cache once
+    
     saveGlobalSettings();
 }
 
@@ -44,11 +46,10 @@ Config& Config::instance()
     return instance;
 }
 
-void Config::refreshCache() const
+void Config::loadCacheFromSettings()
 {
-    if (m_cacheValid) {
-        return;
-    }
+    // Load all settings into cache
+    // Called once in constructor and when switching profiles
     
     m_cachedHighlightActive = m_settings->value(KEY_UI_HIGHLIGHT_ACTIVE, DEFAULT_UI_HIGHLIGHT_ACTIVE).toBool();
     m_cachedHideActiveThumbnail = m_settings->value(KEY_UI_HIDE_ACTIVE_THUMBNAIL, DEFAULT_UI_HIDE_ACTIVE_THUMBNAIL).toBool();
@@ -169,193 +170,172 @@ void Config::refreshCache() const
         }
     }
     m_settings->endGroup();
-    
-    m_cacheValid = true;
-}
-
-void Config::invalidateCache()
-{
-    m_cacheValid = false;
 }
 
 int Config::fileChangeDebounceMs() const
 {
-    refreshCache();
     return m_cachedFileChangeDebounceMs;
 }
 
 void Config::setFileChangeDebounceMs(int milliseconds)
 {
     m_settings->setValue(KEY_CHATLOG_FILEDEBOUNCE_MS, milliseconds);
-    invalidateCache();
+    m_cachedFileChangeDebounceMs = milliseconds;
 }
 
 bool Config::highlightActiveWindow() const
 {
-    refreshCache();
     return m_cachedHighlightActive;
 }
 
 void Config::setHighlightActiveWindow(bool enabled)
 {
     m_settings->setValue(KEY_UI_HIGHLIGHT_ACTIVE, enabled);
-    invalidateCache();
+    m_cachedHighlightActive = enabled;
 }
 
 bool Config::hideActiveClientThumbnail() const
 {
-    refreshCache();
     return m_cachedHideActiveThumbnail;
 }
 
 void Config::setHideActiveClientThumbnail(bool enabled)
 {
     m_settings->setValue(KEY_UI_HIDE_ACTIVE_THUMBNAIL, enabled);
-    invalidateCache();
+    m_cachedHideActiveThumbnail = enabled;
 }
 
 QColor Config::highlightColor() const
 {
-    refreshCache();
     return m_cachedHighlightColor;
 }
 
 void Config::setHighlightColor(const QColor& color)
 {
     m_settings->setValue(KEY_UI_HIGHLIGHT_COLOR, color.name());
-    invalidateCache();
+    m_cachedHighlightColor = color;
 }
 
 int Config::highlightBorderWidth() const
 {
-    refreshCache();
     return m_cachedHighlightBorderWidth;
 }
 
 void Config::setHighlightBorderWidth(int width)
 {
     m_settings->setValue(KEY_UI_HIGHLIGHT_BORDER_WIDTH, width);
-    invalidateCache();
+    m_cachedHighlightBorderWidth = width;
 }
 
 int Config::thumbnailWidth() const
 {
-    refreshCache();
     return m_cachedThumbnailWidth;
 }
 
 void Config::setThumbnailWidth(int width)
 {
     m_settings->setValue(KEY_THUMBNAIL_WIDTH, width);
-    invalidateCache();
+    m_cachedThumbnailWidth = width;
 }
 
 int Config::thumbnailHeight() const
 {
-    refreshCache();
     return m_cachedThumbnailHeight;
 }
 
 void Config::setThumbnailHeight(int height)
 {
     m_settings->setValue(KEY_THUMBNAIL_HEIGHT, height);
-    invalidateCache();
+    m_cachedThumbnailHeight = height;
 }
 
 int Config::refreshInterval() const
 {
-    refreshCache();
     return m_cachedRefreshInterval;
 }
 
 void Config::setRefreshInterval(int milliseconds)
 {
     m_settings->setValue(KEY_THUMBNAIL_REFRESH_INTERVAL, milliseconds);
-    invalidateCache();
+    m_cachedRefreshInterval = milliseconds;
 }
 
 int Config::thumbnailOpacity() const
 {
-    refreshCache();
     return m_cachedThumbnailOpacity;
 }
 
 void Config::setThumbnailOpacity(int opacity)
 {
-    m_settings->setValue(KEY_THUMBNAIL_OPACITY, qBound(OPACITY_MIN, opacity, OPACITY_MAX));
-    invalidateCache();
+    int boundedOpacity = qBound(OPACITY_MIN, opacity, OPACITY_MAX);
+    m_settings->setValue(KEY_THUMBNAIL_OPACITY, boundedOpacity);
+    m_cachedThumbnailOpacity = boundedOpacity;
 }
 
 bool Config::showNotLoggedInClients() const
 {
-    refreshCache();
     return m_cachedShowNotLoggedIn;
 }
 
 void Config::setShowNotLoggedInClients(bool enabled)
 {
     m_settings->setValue(KEY_THUMBNAIL_SHOW_NOT_LOGGED_IN, enabled);
-    invalidateCache();
+    m_cachedShowNotLoggedIn = enabled;
 }
 
 int Config::notLoggedInStackMode() const
 {
-    refreshCache();
     return m_cachedNotLoggedInStackMode;
 }
 
 void Config::setNotLoggedInStackMode(int mode)
 {
     m_settings->setValue(KEY_THUMBNAIL_NOT_LOGGED_IN_STACK_MODE, mode);
-    invalidateCache();
+    m_cachedNotLoggedInStackMode = mode;
 }
 
 QPoint Config::notLoggedInReferencePosition() const
 {
-    refreshCache();
     return m_cachedNotLoggedInReferencePosition;
 }
 
 void Config::setNotLoggedInReferencePosition(const QPoint& pos)
 {
     m_settings->setValue(KEY_THUMBNAIL_NOT_LOGGED_IN_REF_POSITION, pos);
-    invalidateCache();
+    m_cachedNotLoggedInReferencePosition = pos;
 }
 
 bool Config::showNotLoggedInOverlay() const
 {
-    refreshCache();
     return m_cachedShowNotLoggedInOverlay;
 }
 
 void Config::setShowNotLoggedInOverlay(bool show)
 {
     m_settings->setValue(KEY_THUMBNAIL_SHOW_NOT_LOGGED_IN_OVERLAY, show);
-    invalidateCache();
+    m_cachedShowNotLoggedInOverlay = show;
 }
 
 bool Config::showNonEVEOverlay() const
 {
-    refreshCache();
     return m_cachedShowNonEVEOverlay;
 }
 
 void Config::setShowNonEVEOverlay(bool show)
 {
     m_settings->setValue(KEY_THUMBNAIL_SHOW_NON_EVE_OVERLAY, show);
-    invalidateCache();
+    m_cachedShowNonEVEOverlay = show;
 }
 
 QStringList Config::processNames() const
 {
-    refreshCache();
     return m_cachedProcessNames;
 }
 
 void Config::setProcessNames(const QStringList& names)
 {
     m_settings->setValue(KEY_THUMBNAIL_PROCESS_NAMES, names);
-    invalidateCache();
+    m_cachedProcessNames = names;
 }
 
 void Config::addProcessName(const QString& name)
@@ -376,50 +356,46 @@ void Config::removeProcessName(const QString& name)
 
 bool Config::alwaysOnTop() const
 {
-    refreshCache();
     return m_cachedAlwaysOnTop;
 }
 
 void Config::setAlwaysOnTop(bool enabled)
 {
     m_settings->setValue(KEY_WINDOW_ALWAYS_ON_TOP, enabled);
-    invalidateCache();
+    m_cachedAlwaysOnTop = enabled;
 }
 
 bool Config::minimizeInactiveClients() const
 {
-    refreshCache();
     return m_cachedMinimizeInactive;
 }
 
 void Config::setMinimizeInactiveClients(bool enabled)
 {
     m_settings->setValue(KEY_WINDOW_MINIMIZE_INACTIVE, enabled);
-    invalidateCache();
+    m_cachedMinimizeInactive = enabled;
 }
 
 int Config::minimizeDelay() const
 {
-    refreshCache();
     return m_cachedMinimizeDelay;
 }
 
 void Config::setMinimizeDelay(int delayMs)
 {
     m_settings->setValue(KEY_WINDOW_MINIMIZE_DELAY, delayMs);
-    invalidateCache();
+    m_cachedMinimizeDelay = delayMs;
 }
 
 QStringList Config::neverMinimizeCharacters() const
 {
-    refreshCache();
     return m_cachedNeverMinimizeCharacters;
 }
 
 void Config::setNeverMinimizeCharacters(const QStringList& characters)
 {
     m_settings->setValue(KEY_WINDOW_NEVER_MINIMIZE_CHARACTERS, characters);
-    invalidateCache();
+    m_cachedNeverMinimizeCharacters = characters;
 }
 
 void Config::addNeverMinimizeCharacter(const QString& characterName)
@@ -446,19 +422,17 @@ bool Config::isCharacterNeverMinimize(const QString& characterName) const
 
 bool Config::saveClientLocation() const
 {
-    refreshCache();
     return m_cachedSaveClientLocation;
 }
 
 void Config::setSaveClientLocation(bool enabled)
 {
     m_settings->setValue(KEY_WINDOW_SAVE_CLIENT_LOCATION, enabled);
-    invalidateCache();
+    m_cachedSaveClientLocation = enabled;
 }
 
 QRect Config::getClientWindowRect(const QString& characterName) const
 {
-    refreshCache();
     return m_cachedClientWindowRects.value(characterName, QRect());
 }
 
@@ -466,36 +440,33 @@ void Config::setClientWindowRect(const QString& characterName, const QRect& rect
 {
     QString key = QString("clientWindowRects/%1").arg(characterName);
     m_settings->setValue(key, rect);
-    invalidateCache();
+    m_cachedClientWindowRects[characterName] = rect;
 }
 
 bool Config::rememberPositions() const
 {
-    refreshCache();
     return m_cachedRememberPositions;
 }
 
 void Config::setRememberPositions(bool enabled)
 {
     m_settings->setValue(KEY_POSITION_REMEMBER, enabled);
-    invalidateCache();
+    m_cachedRememberPositions = enabled;
 }
 
 bool Config::preserveLogoutPositions() const
 {
-    refreshCache();
     return m_cachedPreserveLogoutPositions;
 }
 
 void Config::setPreserveLogoutPositions(bool enabled)
 {
     m_settings->setValue(KEY_POSITION_PRESERVE_LOGOUT, enabled);
-    invalidateCache();
+    m_cachedPreserveLogoutPositions = enabled;
 }
 
 QPoint Config::getThumbnailPosition(const QString& characterName) const
 {
-    refreshCache();
     return m_cachedThumbnailPositions.value(characterName, QPoint(-1, -1));
 }
 
@@ -503,12 +474,11 @@ void Config::setThumbnailPosition(const QString& characterName, const QPoint& po
 {
     QString key = QString("thumbnailPositions/%1").arg(characterName);
     m_settings->setValue(key, pos);
-    invalidateCache();
+    m_cachedThumbnailPositions[characterName] = pos;
 }
 
 QColor Config::getCharacterBorderColor(const QString& characterName) const
 {
-    refreshCache();
     return m_cachedCharacterBorderColors.value(characterName, QColor());
 }
 
@@ -516,80 +486,74 @@ void Config::setCharacterBorderColor(const QString& characterName, const QColor&
 {
     QString key = QString("characterBorderColors/%1").arg(characterName);
     m_settings->setValue(key, color.name());
-    invalidateCache();
+    m_cachedCharacterBorderColors[characterName] = color;
 }
 
 void Config::removeCharacterBorderColor(const QString& characterName)
 {
     QString key = QString("characterBorderColors/%1").arg(characterName);
     m_settings->remove(key);
-    invalidateCache();
+    m_cachedCharacterBorderColors.remove(characterName);
 }
 
 QHash<QString, QColor> Config::getAllCharacterBorderColors() const
 {
-    refreshCache();
     return m_cachedCharacterBorderColors;
 }
 
 bool Config::enableSnapping() const
 {
-    refreshCache();
     return m_cachedEnableSnapping;
 }
 
 void Config::setEnableSnapping(bool enabled)
 {
     m_settings->setValue(KEY_POSITION_ENABLE_SNAPPING, enabled);
-    invalidateCache();
+    m_cachedEnableSnapping = enabled;
 }
 
 int Config::snapDistance() const
 {
-    refreshCache();
     return m_cachedSnapDistance;
 }
 
 void Config::setSnapDistance(int distance)
 {
     m_settings->setValue(KEY_POSITION_SNAP_DISTANCE, distance);
-    invalidateCache();
+    m_cachedSnapDistance = distance;
 }
 
 bool Config::lockThumbnailPositions() const
 {
-    refreshCache();
     return m_cachedLockPositions;
 }
 
 void Config::setLockThumbnailPositions(bool locked)
 {
     m_settings->setValue(KEY_POSITION_LOCK, locked);
-    invalidateCache();
+    m_cachedLockPositions = locked;
 }
 
 bool Config::wildcardHotkeys() const
 {
-    refreshCache();
     return m_cachedWildcardHotkeys;
 }
 
 void Config::setWildcardHotkeys(bool enabled)
 {
     m_settings->setValue(KEY_HOTKEY_WILDCARD, enabled);
-    invalidateCache();
+    m_cachedWildcardHotkeys = enabled;
 }
 
 bool Config::hotkeysOnlyWhenEVEFocused() const
 {
-    refreshCache();
     return m_cachedHotkeysOnlyWhenEVEFocused;
 }
 
 void Config::setHotkeysOnlyWhenEVEFocused(bool enabled)
 {
     m_settings->setValue(KEY_HOTKEY_ONLY_WHEN_EVE_FOCUSED, enabled);
-    invalidateCache();
+    m_cachedHotkeysOnlyWhenEVEFocused = enabled;
 }
 
 bool Config::isConfigDialogOpen() const
@@ -604,146 +568,134 @@ void Config::setConfigDialogOpen(bool open)
 
 bool Config::showCharacterName() const
 {
-    refreshCache();
     return m_cachedShowCharacterName;
 }
 
 void Config::setShowCharacterName(bool enabled)
 {
     m_settings->setValue(KEY_OVERLAY_SHOW_CHARACTER, enabled);
-    invalidateCache();
+    m_cachedShowCharacterName = enabled;
 }
 
 QColor Config::characterNameColor() const
 {
-    refreshCache();
     return m_cachedCharacterNameColor;
 }
 
 void Config::setCharacterNameColor(const QColor& color)
 {
     m_settings->setValue(KEY_OVERLAY_CHARACTER_COLOR, color.name());
-    invalidateCache();
+    m_cachedCharacterNameColor = color;
 }
 
 int Config::characterNamePosition() const
 {
-    refreshCache();
     return m_cachedCharacterNamePosition;
 }
 
 void Config::setCharacterNamePosition(int position)
 {
     m_settings->setValue(KEY_OVERLAY_CHARACTER_POSITION, position);
-    invalidateCache();
+    m_cachedCharacterNamePosition = position;
 }
 
 bool Config::showSystemName() const
 {
-    refreshCache();
     return m_cachedShowSystemName;
 }
 
 void Config::setShowSystemName(bool enabled)
 {
     m_settings->setValue(KEY_OVERLAY_SHOW_SYSTEM, enabled);
-    invalidateCache();
+    m_cachedShowSystemName = enabled;
 }
 
 QColor Config::systemNameColor() const
 {
-    refreshCache();
     return m_cachedSystemNameColor;
 }
 
 void Config::setSystemNameColor(const QColor& color)
 {
     m_settings->setValue(KEY_OVERLAY_SYSTEM_COLOR, color.name());
-    invalidateCache();
+    m_cachedSystemNameColor = color;
 }
 
 int Config::systemNamePosition() const
 {
-    refreshCache();
     return m_cachedSystemNamePosition;
 }
 
 void Config::setSystemNamePosition(int position)
 {
     m_settings->setValue(KEY_OVERLAY_SYSTEM_POSITION, position);
-    invalidateCache();
+    m_cachedSystemNamePosition = position;
 }
 
 bool Config::showOverlayBackground() const
 {
-    refreshCache();
     return m_cachedShowOverlayBackground;
 }
 
 void Config::setShowOverlayBackground(bool enabled)
 {
     m_settings->setValue(KEY_OVERLAY_SHOW_BACKGROUND, enabled);
-    invalidateCache();
+    m_cachedShowOverlayBackground = enabled;
 }
 
 QColor Config::overlayBackgroundColor() const
 {
-    refreshCache();
     return m_cachedOverlayBackgroundColor;
 }
 
 void Config::setOverlayBackgroundColor(const QColor& color)
 {
     m_settings->setValue(KEY_OVERLAY_BACKGROUND_COLOR, color.name());
-    invalidateCache();
+    m_cachedOverlayBackgroundColor = color;
 }
 
 int Config::overlayBackgroundOpacity() const
 {
-    refreshCache();
     return m_cachedOverlayBackgroundOpacity;
 }
 
 void Config::setOverlayBackgroundOpacity(int opacity)
 {
     m_settings->setValue(KEY_OVERLAY_BACKGROUND_OPACITY, opacity);
-    invalidateCache();
+    m_cachedOverlayBackgroundOpacity = opacity;
 }
 
 QFont Config::characterNameFont() const
 {
-    refreshCache();
     return m_cachedCharacterNameFont;
 }
 
 void Config::setCharacterNameFont(const QFont& font)
 {
     m_settings->setValue(KEY_OVERLAY_CHARACTER_FONT, font.toString());
-    invalidateCache();
+    m_cachedCharacterNameFont = font;
 }
 
 QFont Config::systemNameFont() const
 {
-    refreshCache();
     return m_cachedSystemNameFont;
 }
 
 void Config::setSystemNameFont(const QFont& font)
 {
     m_settings->setValue(KEY_OVERLAY_SYSTEM_FONT, font.toString());
-    invalidateCache();
+    m_cachedSystemNameFont = font;
 }
 
 QFont Config::overlayFont() const
 {
-    refreshCache();
     return m_cachedOverlayFont;
 }
 
 void Config::setOverlayFont(const QFont& font)
 {
     m_settings->setValue(KEY_OVERLAY_FONT, font.toString());
-    invalidateCache();
+    m_cachedOverlayFont = font;
 }
 
 QString Config::configFilePath() const
@@ -982,7 +934,7 @@ bool Config::loadProfile(const QString& profileName)
     
     migrateLegacyCombatKeys();
 
-    invalidateCache();
+    loadCacheFromSettings();  // Reload cache from new profile
     
     saveGlobalSettings();
     
@@ -1257,26 +1209,24 @@ QMap<QString, QPair<int, int>> Config::getAllProfileHotkeys() const
 
 bool Config::enableChatLogMonitoring() const
 {
-    refreshCache();
     return m_cachedEnableChatLogMonitoring;
 }
 
 void Config::setEnableChatLogMonitoring(bool enabled)
 {
     m_settings->setValue(KEY_CHATLOG_ENABLE_MONITORING, enabled);
-    invalidateCache();
+    m_cachedEnableChatLogMonitoring = enabled;
 }
 
 QString Config::chatLogDirectory() const
 {
-    refreshCache();
     return m_cachedChatLogDirectory;
 }
 
 void Config::setChatLogDirectory(const QString& directory)
 {
     m_settings->setValue(KEY_CHATLOG_DIRECTORY, directory);
-    invalidateCache();
+    m_cachedChatLogDirectory = directory;
 }
 
 QString Config::getDefaultChatLogDirectory()
@@ -1307,74 +1257,68 @@ QString Config::getDefaultGameLogDirectory()
 
 QString Config::gameLogDirectory() const
 {
-    refreshCache();
     return m_cachedGameLogDirectory;
 }
 
 void Config::setGameLogDirectory(const QString& directory)
 {
     m_settings->setValue(KEY_GAMELOG_DIRECTORY, directory);
-    invalidateCache();
+    m_cachedGameLogDirectory = directory;
 }
 
 bool Config::enableGameLogMonitoring() const
 {
-    refreshCache();
     return m_cachedEnableGameLogMonitoring;
 }
 
 void Config::setEnableGameLogMonitoring(bool enabled)
 {
     m_settings->setValue(KEY_GAMELOG_ENABLE_MONITORING, enabled);
-    invalidateCache();
+    m_cachedEnableGameLogMonitoring = enabled;
 }
 
 bool Config::showCombatMessages() const
 {
-    refreshCache();
     return m_cachedShowCombatMessages;
 }
 
 void Config::setShowCombatMessages(bool enabled)
 {
     m_settings->setValue(KEY_COMBAT_ENABLED, enabled);
-    invalidateCache();
+    m_cachedShowCombatMessages = enabled;
 }
 
 int Config::combatMessagePosition() const
 {
-    refreshCache();
     return m_cachedCombatMessagePosition;
 }
 
 void Config::setCombatMessagePosition(int position)
 {
     m_settings->setValue(KEY_COMBAT_POSITION, position);
-    invalidateCache();
+    m_cachedCombatMessagePosition = position;
 }
 
 QFont Config::combatMessageFont() const
 {
-    refreshCache();
     return m_cachedCombatMessageFont;
 }
 
 void Config::setCombatMessageFont(const QFont& font)
 {
     m_settings->setValue(KEY_COMBAT_FONT, font);
-    invalidateCache();
+    m_cachedCombatMessageFont = font;
 }
 
 QStringList Config::enabledCombatEventTypes() const
 {
-    refreshCache();
     return m_cachedEnabledCombatEventTypes;
 }
 
 void Config::setEnabledCombatEventTypes(const QStringList& types)
 {
     m_settings->setValue(KEY_COMBAT_ENABLED_EVENT_TYPES, types);
-    invalidateCache();
+    m_cachedEnabledCombatEventTypes = types;
 }
 
 bool Config::isCombatEventTypeEnabled(const QString& eventType) const
@@ -1385,19 +1329,17 @@ bool Config::isCombatEventTypeEnabled(const QString& eventType) const
 
 int Config::miningTimeoutSeconds() const
 {
-    refreshCache();
     return m_cachedMiningTimeoutSeconds;
 }
 
 void Config::setMiningTimeoutSeconds(int seconds)
 {
     m_settings->setValue(KEY_MINING_TIMEOUT_SECONDS, seconds);
-    invalidateCache();
+    m_cachedMiningTimeoutSeconds = seconds;
 }
 
 QColor Config::combatEventColor(const QString& eventType) const
 {
-    refreshCache();
     return m_cachedCombatEventColors.value(eventType, QColor(DEFAULT_EVENT_COLORS().value(eventType, DEFAULT_COMBAT_MESSAGE_COLOR)));
 }
 
@@ -1405,12 +1347,11 @@ void Config::setCombatEventColor(const QString& eventType, const QColor& color)
 {
     QString key = combatEventColorKey(eventType);
     m_settings->setValue(key, color);
-    invalidateCache();
+    m_cachedCombatEventColors[eventType] = color;
 }
 
 int Config::combatEventDuration(const QString& eventType) const
 {
-    refreshCache();
     return m_cachedCombatEventDurations.value(eventType, DEFAULT_COMBAT_MESSAGE_DURATION);
 }
 
@@ -1418,12 +1359,11 @@ void Config::setCombatEventDuration(const QString& eventType, int milliseconds)
 {
     QString key = combatEventDurationKey(eventType);
     m_settings->setValue(key, milliseconds);
-    invalidateCache();
+    m_cachedCombatEventDurations[eventType] = milliseconds;
 }
 
 bool Config::combatEventBorderHighlight(const QString& eventType) const
 {
-    refreshCache();
     return m_cachedCombatEventBorderHighlights.value(eventType, DEFAULT_COMBAT_EVENT_BORDER_HIGHLIGHT);
 }
 
@@ -1431,7 +1371,7 @@ void Config::setCombatEventBorderHighlight(const QString& eventType, bool enable
 {
     QString key = combatEventBorderHighlightKey(eventType);
     m_settings->setValue(key, enabled);
-    invalidateCache();
+    m_cachedCombatEventBorderHighlights[eventType] = enabled;
 }
 
 
