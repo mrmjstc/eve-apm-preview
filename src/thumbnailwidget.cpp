@@ -30,7 +30,9 @@ ThumbnailWidget::ThumbnailWidget(quintptr windowId, const QString& title, QWidge
     m_updateTimer = new QTimer(this);
     connect(m_updateTimer, &QTimer::timeout, this, &ThumbnailWidget::updateDwmThumbnail);
     
-    int interval = Config::instance().refreshInterval();
+    // Get refresh interval once instead of repeatedly
+    const Config& cfg = Config::instance();
+    int interval = cfg.refreshInterval();
     m_updateTimer->start(interval);
     
     m_combatMessageTimer = new QTimer(this);
@@ -103,7 +105,9 @@ void ThumbnailWidget::setCombatMessage(const QString& message, const QString& ev
     }
     
     if (!message.isEmpty()) {
-        int duration = Config::instance().combatEventDuration(eventType);
+        // Cache config reference to avoid repeated instance() calls
+        const Config& cfg = Config::instance();
+        int duration = cfg.combatEventDuration(eventType);
         m_combatMessageTimer->start(duration);
     } else {
         m_combatMessageTimer->stop();
@@ -746,9 +750,15 @@ void OverlayWidget::setCombatEventState(bool hasCombatEvent, const QString& even
     m_hasCombatEvent = hasCombatEvent;
     m_combatEventType = eventType;
     
-    if (hasCombatEvent && Config::instance().combatEventBorderHighlight(eventType)) {
-        m_dashOffset = 0.0;
-        m_borderAnimationTimer->start();
+    // Cache config reference to avoid repeated instance() calls
+    if (hasCombatEvent) {
+        const Config& cfg = Config::instance();
+        if (cfg.combatEventBorderHighlight(eventType)) {
+            m_dashOffset = 0.0;
+            m_borderAnimationTimer->start();
+        } else {
+            m_borderAnimationTimer->stop();
+        }
     } else {
         m_borderAnimationTimer->stop();
     }

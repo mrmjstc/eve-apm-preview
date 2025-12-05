@@ -40,7 +40,9 @@ bool HotkeyManager::registerHotkey(const HotkeyBinding& binding, int& outHotkeyI
 
     int hotkeyId = m_nextHotkeyId++;
     
-    bool wildcardMode = Config::instance().wildcardHotkeys();
+    // Cache config value to avoid repeated instance() calls
+    const Config& cfg = Config::instance();
+    bool wildcardMode = cfg.wildcardHotkeys();
     
     if (RegisterHotKey(nullptr, hotkeyId, modifiers, binding.keyCode))
     {

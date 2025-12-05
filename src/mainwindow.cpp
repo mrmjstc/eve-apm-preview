@@ -48,7 +48,9 @@ MainWindow::MainWindow(QObject *parent)
     
     refreshTimer = new QTimer(this);
     connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshWindows);
-    refreshTimer->start(Config::instance().refreshInterval());
+    // Cache config reference to avoid multiple instance() calls
+    const Config& cfg = Config::instance();
+    refreshTimer->start(cfg.refreshInterval());
     
     minimizeTimer = new QTimer(this);
     minimizeTimer->setSingleShot(true);
@@ -153,13 +155,15 @@ MainWindow::MainWindow(QObject *parent)
     
     m_chatLogReader = std::make_unique<ChatLogReader>();
     
-    QString chatLogDirectory = Config::instance().chatLogDirectory();
-    QString gameLogDirectory = Config::instance().gameLogDirectory();
+    // Cache config reference to avoid multiple instance() calls in constructor
+    const Config& cfgChatLog = Config::instance();
+    QString chatLogDirectory = cfgChatLog.chatLogDirectory();
+    QString gameLogDirectory = cfgChatLog.gameLogDirectory();
     m_chatLogReader->setLogDirectory(chatLogDirectory);
     m_chatLogReader->setGameLogDirectory(gameLogDirectory);
     
-    bool enableChatLog = Config::instance().enableChatLogMonitoring();
-    bool enableGameLog = Config::instance().enableGameLogMonitoring();
+    bool enableChatLog = cfgChatLog.enableChatLogMonitoring();
+    bool enableGameLog = cfgChatLog.enableGameLogMonitoring();
     m_chatLogReader->setEnableChatLogMonitoring(enableChatLog);
     m_chatLogReader->setEnableGameLogMonitoring(enableGameLog);
     
@@ -644,7 +648,9 @@ void MainWindow::updateCharacterMappings()
     
     hotkeyManager->updateCharacterWindows(m_characterToWindow);
     
-    if (m_chatLogReader && (Config::instance().enableChatLogMonitoring() || Config::instance().enableGameLogMonitoring())) {
+    // Cache config reference to avoid multiple instance() calls
+    const Config& cfgLog = Config::instance();
+    if (m_chatLogReader && (cfgLog.enableChatLogMonitoring() || cfgLog.enableGameLogMonitoring())) {
         QStringList characterNames = m_characterToWindow.keys();
         m_chatLogReader->setCharacterNames(characterNames);
     }
@@ -684,7 +690,9 @@ void MainWindow::handleWindowTitleChange(HWND hwnd)
     
     if (!isEVEClient) {
         // Update non-EVE overlay if needed
-        if (Config::instance().showNonEVEOverlay()) {
+        // Cache config reference
+        const Config& cfgOverlay = Config::instance();
+        if (cfgOverlay.showNonEVEOverlay()) {
             thumbWidget->setCharacterName(newTitle);
         }
         return;
