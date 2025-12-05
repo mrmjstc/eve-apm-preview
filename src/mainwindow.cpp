@@ -482,8 +482,19 @@ void MainWindow::refreshWindows() {
     ThumbnailWidget *thumbWidget = thumbnails.value(window.handle, nullptr);
 
     if (!thumbWidget) {
+      // Determine thumbnail size (custom or default)
+      int actualThumbWidth = thumbWidth;
+      int actualThumbHeight = thumbHeight;
+
+      if (isEVEClient && !characterName.isEmpty() &&
+          cfg.hasCustomThumbnailSize(characterName)) {
+        QSize customSize = cfg.getThumbnailSize(characterName);
+        actualThumbWidth = customSize.width();
+        actualThumbHeight = customSize.height();
+      }
+
       thumbWidget = new ThumbnailWidget(window.id, window.title, nullptr);
-      thumbWidget->setFixedSize(thumbWidth, thumbHeight);
+      thumbWidget->setFixedSize(actualThumbWidth, actualThumbHeight);
 
       thumbWidget->setCharacterName(displayName);
       thumbWidget->setWindowOpacity(thumbnailOpacity);
@@ -527,7 +538,7 @@ void MainWindow::refreshWindows() {
       thumbWidget->show();
 
       if (hasSavedPosition) {
-        QRect thumbRect(savedPos, QSize(thumbWidth, thumbHeight));
+        QRect thumbRect(savedPos, QSize(actualThumbWidth, actualThumbHeight));
         QScreen *targetScreen = nullptr;
         for (QScreen *screen : QGuiApplication::screens()) {
           if (screen->geometry().intersects(thumbRect)) {
@@ -790,11 +801,25 @@ void MainWindow::handleWindowTitleChange(HWND hwnd) {
 
     tryRestoreClientLocation(hwnd, newCharacterName);
 
+    // Apply custom size if exists
+    if (cfg.hasCustomThumbnailSize(newCharacterName)) {
+      QSize customSize = cfg.getThumbnailSize(newCharacterName);
+      thumbWidget->setFixedSize(customSize);
+      thumbWidget->forceUpdate();
+    }
+
     if (cfg.rememberPositions()) {
       QPoint savedPos = cfg.getThumbnailPosition(newCharacterName);
       if (savedPos != QPoint(-1, -1)) {
-        QRect thumbRect(savedPos,
-                        QSize(cfg.thumbnailWidth(), cfg.thumbnailHeight()));
+        // Use custom size if available, otherwise use global default
+        QSize thumbSize;
+        if (cfg.hasCustomThumbnailSize(newCharacterName)) {
+          thumbSize = cfg.getThumbnailSize(newCharacterName);
+        } else {
+          thumbSize = QSize(cfg.thumbnailWidth(), cfg.thumbnailHeight());
+        }
+
+        QRect thumbRect(savedPos, thumbSize);
         QScreen *targetScreen = nullptr;
         for (QScreen *screen : QGuiApplication::screens()) {
           if (screen->geometry().intersects(thumbRect)) {
@@ -1437,19 +1462,29 @@ void MainWindow::applySettings() {
     HWND hwnd = it.key();
     ThumbnailWidget *thumb = it.value();
 
-    QSize currentSize = thumb->size();
+    QString processName = m_windowProcessNames.value(hwnd, "");
+    bool isEVEClient =
+        processName.compare("exefile.exe", Qt::CaseInsensitive) == 0;
+
+    // Determine size (custom or default)
     QSize newSize(thumbWidth, thumbHeight);
+    if (isEVEClient) {
+      QString characterName = m_windowToCharacter.value(hwnd);
+      if (!characterName.isEmpty() &&
+          cfg.hasCustomThumbnailSize(characterName)) {
+        newSize = cfg.getThumbnailSize(characterName);
+      }
+    }
+
+    QSize currentSize = thumb->size();
     if (currentSize != newSize) {
       thumb->setFixedSize(newSize);
+      thumb->forceUpdate();
     }
 
     thumb->setWindowOpacity(cfg.thumbnailOpacity() / 100.0);
 
     thumb->updateWindowFlags(cfg.alwaysOnTop());
-
-    QString processName = m_windowProcessNames.value(hwnd, "");
-    bool isEVEClient =
-        processName.compare("exefile.exe", Qt::CaseInsensitive) == 0;
 
     QPoint savedPos(-1, -1);
     bool hasSavedPosition = false;
@@ -1472,7 +1507,7 @@ void MainWindow::applySettings() {
     }
 
     if (hasSavedPosition) {
-      QRect thumbRect(savedPos, QSize(thumbWidth, thumbHeight));
+      QRect thumbRect(savedPos, newSize);
       QScreen *targetScreen = nullptr;
       for (QScreen *screen : QGuiApplication::screens()) {
         if (screen->geometry().intersects(thumbRect)) {

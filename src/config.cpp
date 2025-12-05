@@ -31,7 +31,7 @@ Config::Config() {
     initializeDefaultProfile();
   }
 
-  loadCacheFromSettings(); 
+  loadCacheFromSettings();
 
   saveGlobalSettings();
 }
@@ -290,6 +290,17 @@ void Config::loadCacheFromSettings() {
   }
   m_settings->endGroup();
 
+  m_cachedThumbnailSizes.clear();
+  m_settings->beginGroup("thumbnailSizes");
+  QStringList sizeCharNames = m_settings->childKeys();
+  for (const QString &characterName : sizeCharNames) {
+    QSize size = m_settings->value(characterName).toSize();
+    if (size.isValid()) {
+      m_cachedThumbnailSizes[characterName] = size;
+    }
+  }
+  m_settings->endGroup();
+
   m_cachedClientWindowRects.clear();
   m_settings->beginGroup("clientWindowRects");
   QStringList clientCharNames = m_settings->childKeys();
@@ -542,6 +553,31 @@ void Config::removeCharacterBorderColor(const QString &characterName) {
 
 QHash<QString, QColor> Config::getAllCharacterBorderColors() const {
   return m_cachedCharacterBorderColors;
+}
+
+QSize Config::getThumbnailSize(const QString &characterName) const {
+  return m_cachedThumbnailSizes.value(characterName, QSize(-1, -1));
+}
+
+void Config::setThumbnailSize(const QString &characterName, const QSize &size) {
+  QString key = QString("thumbnailSizes/%1").arg(characterName);
+  m_settings->setValue(key, size);
+  m_cachedThumbnailSizes[characterName] = size;
+}
+
+void Config::removeThumbnailSize(const QString &characterName) {
+  QString key = QString("thumbnailSizes/%1").arg(characterName);
+  m_settings->remove(key);
+  m_cachedThumbnailSizes.remove(characterName);
+}
+
+bool Config::hasCustomThumbnailSize(const QString &characterName) const {
+  QSize size = m_cachedThumbnailSizes.value(characterName, QSize(-1, -1));
+  return size.isValid() && size.width() > 0 && size.height() > 0;
+}
+
+QHash<QString, QSize> Config::getAllCustomThumbnailSizes() const {
+  return m_cachedThumbnailSizes;
 }
 
 bool Config::enableSnapping() const { return m_cachedEnableSnapping; }
@@ -925,7 +961,7 @@ bool Config::loadProfile(const QString &profileName) {
 
   migrateLegacyCombatKeys();
 
-  loadCacheFromSettings(); 
+  loadCacheFromSettings();
 
   saveGlobalSettings();
 

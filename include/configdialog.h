@@ -59,6 +59,10 @@ private slots:
   void onPopulateCharacterColors();
   void onAssignUniqueColors();
   void onCharacterColorButtonClicked();
+  void onAddThumbnailSize();
+  void onPopulateThumbnailSizes();
+  void onRemoveThumbnailSize();
+  void onResetThumbnailSizesToDefault();
   void onBrowseLegacySettings();
   void onCopyAllLegacySettings();
   void onCopyLegacyCategory(const QString &category);
@@ -182,6 +186,11 @@ private:
   QPushButton *m_addCharacterColorButton;
   QPushButton *m_populateCharacterColorsButton;
   QPushButton *m_assignUniqueColorsButton;
+
+  QTableWidget *m_thumbnailSizesTable;
+  QPushButton *m_addThumbnailSizeButton;
+  QPushButton *m_populateThumbnailSizesButton;
+  QPushButton *m_resetThumbnailSizesButton;
 
   QCheckBox *m_showCharacterNameCheck;
   QPushButton *m_characterNameColorButton;

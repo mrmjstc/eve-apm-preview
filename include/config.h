@@ -94,6 +94,12 @@ public:
   void removeCharacterBorderColor(const QString &characterName);
   QHash<QString, QColor> getAllCharacterBorderColors() const;
 
+  QSize getThumbnailSize(const QString &characterName) const;
+  void setThumbnailSize(const QString &characterName, const QSize &size);
+  void removeThumbnailSize(const QString &characterName);
+  bool hasCustomThumbnailSize(const QString &characterName) const;
+  QHash<QString, QSize> getAllCustomThumbnailSizes() const;
+
   bool enableSnapping() const;
   void setEnableSnapping(bool enabled);
 
@@ -346,6 +352,7 @@ private:
 
   mutable QHash<QString, QColor> m_cachedCharacterBorderColors;
   mutable QHash<QString, QPoint> m_cachedThumbnailPositions;
+  mutable QHash<QString, QSize> m_cachedThumbnailSizes;
   mutable QHash<QString, QRect> m_cachedClientWindowRects;
 
   bool m_configDialogOpen = false;
@@ -353,7 +360,7 @@ private:
   QString m_currentProfileName;
   std::unique_ptr<QSettings> m_globalSettings;
 
-  void loadCacheFromSettings(); 
+  void loadCacheFromSettings();
 
   QString getProfilesDirectory() const;
   QString getProfileFilePath(const QString &profileName) const;

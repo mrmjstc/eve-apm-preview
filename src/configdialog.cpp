@@ -83,7 +83,6 @@ ConfigDialog::~ConfigDialog() {
     m_notLoggedInReferenceThumbnail = nullptr;
   }
 
-
   Config::instance().setConfigDialogOpen(false);
 }
 
@@ -298,6 +297,81 @@ void ConfigDialog::createAppearancePage() {
   sizeSectionLayout->addLayout(sizeGrid);
 
   layout->addWidget(sizeSection);
+
+  // Per-Character Thumbnail Sizes section
+  QWidget *thumbnailSizesSection = new QWidget();
+  thumbnailSizesSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *thumbnailSizesSectionLayout =
+      new QVBoxLayout(thumbnailSizesSection);
+  thumbnailSizesSectionLayout->setContentsMargins(16, 12, 16, 12);
+  thumbnailSizesSectionLayout->setSpacing(10);
+
+  tagWidget(thumbnailSizesSection,
+            {"thumbnail", "size", "custom", "individual", "per-character",
+             "width", "height", "dimension"});
+
+  QLabel *thumbnailSizesHeader = new QLabel("Per-Character Thumbnail Sizes");
+  thumbnailSizesHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
+  thumbnailSizesSectionLayout->addWidget(thumbnailSizesHeader);
+
+  QLabel *thumbnailSizesInfoLabel =
+      new QLabel("Set custom thumbnail sizes for specific characters. "
+                 "Leave empty to use the default size above.");
+  thumbnailSizesInfoLabel->setWordWrap(true);
+  thumbnailSizesInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
+  thumbnailSizesSectionLayout->addWidget(thumbnailSizesInfoLabel);
+
+  m_thumbnailSizesTable = new QTableWidget(0, 4);
+  m_thumbnailSizesTable->setHorizontalHeaderLabels(
+      {"Character Name", "Width (px)", "Height (px)", ""});
+  m_thumbnailSizesTable->horizontalHeader()->setStretchLastSection(false);
+  m_thumbnailSizesTable->horizontalHeader()->setSectionResizeMode(
+      0, QHeaderView::Stretch);
+  m_thumbnailSizesTable->horizontalHeader()->setSectionResizeMode(
+      1, QHeaderView::Fixed);
+  m_thumbnailSizesTable->horizontalHeader()->setSectionResizeMode(
+      2, QHeaderView::Fixed);
+  m_thumbnailSizesTable->horizontalHeader()->setSectionResizeMode(
+      3, QHeaderView::Fixed);
+  m_thumbnailSizesTable->setColumnWidth(1, 100);
+  m_thumbnailSizesTable->setColumnWidth(2, 100);
+  m_thumbnailSizesTable->setColumnWidth(3, 40);
+  m_thumbnailSizesTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+  m_thumbnailSizesTable->setMinimumHeight(150);
+  m_thumbnailSizesTable->setMaximumHeight(250);
+  m_thumbnailSizesTable->verticalHeader()->setDefaultSectionSize(44);
+  m_thumbnailSizesTable->setFocusPolicy(Qt::NoFocus);
+  m_thumbnailSizesTable->setStyleSheet(StyleSheet::getTableStyleSheet());
+  thumbnailSizesSectionLayout->addWidget(m_thumbnailSizesTable);
+
+  QHBoxLayout *thumbnailSizesButtonLayout = new QHBoxLayout();
+  m_addThumbnailSizeButton = new QPushButton("Add Character");
+  m_populateThumbnailSizesButton =
+      new QPushButton("Populate from Open Clients");
+  m_resetThumbnailSizesButton = new QPushButton("Reset All to Default");
+
+  QString thumbnailSizesButtonStyle =
+      StyleSheet::getSecondaryButtonStyleSheet();
+
+  m_addThumbnailSizeButton->setStyleSheet(thumbnailSizesButtonStyle);
+  m_populateThumbnailSizesButton->setStyleSheet(thumbnailSizesButtonStyle);
+  m_resetThumbnailSizesButton->setStyleSheet(thumbnailSizesButtonStyle);
+
+  connect(m_addThumbnailSizeButton, &QPushButton::clicked, this,
+          &ConfigDialog::onAddThumbnailSize);
+  connect(m_populateThumbnailSizesButton, &QPushButton::clicked, this,
+          &ConfigDialog::onPopulateThumbnailSizes);
+  connect(m_resetThumbnailSizesButton, &QPushButton::clicked, this,
+          &ConfigDialog::onResetThumbnailSizesToDefault);
+
+  thumbnailSizesButtonLayout->addWidget(m_addThumbnailSizeButton);
+  thumbnailSizesButtonLayout->addWidget(m_populateThumbnailSizesButton);
+  thumbnailSizesButtonLayout->addWidget(m_resetThumbnailSizesButton);
+  thumbnailSizesButtonLayout->addStretch();
+
+  thumbnailSizesSectionLayout->addLayout(thumbnailSizesButtonLayout);
+
+  layout->addWidget(thumbnailSizesSection);
 
   QWidget *highlightSection = new QWidget();
   highlightSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
@@ -1487,8 +1561,7 @@ void ConfigDialog::createBehaviorPage() {
   m_stackedWidget->addWidget(page);
 }
 
-void ConfigDialog::createPerformancePage() {
-}
+void ConfigDialog::createPerformancePage() {}
 
 void ConfigDialog::createDataSourcesPage() {
   QWidget *page = new QWidget();
@@ -2615,6 +2688,71 @@ void ConfigDialog::loadSettings() {
       m_eventBorderCheckBoxes[eventType]->setEnabled(eventEnabled);
     }
   }
+
+  // Load per-character thumbnail sizes
+  m_thumbnailSizesTable->setRowCount(0);
+  QHash<QString, QSize> customSizes = config.getAllCustomThumbnailSizes();
+  for (auto it = customSizes.constBegin(); it != customSizes.constEnd(); ++it) {
+    int row = m_thumbnailSizesTable->rowCount();
+    m_thumbnailSizesTable->insertRow(row);
+
+    QLineEdit *nameEdit = new QLineEdit(it.key());
+    nameEdit->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+    m_thumbnailSizesTable->setCellWidget(row, 0, nameEdit);
+
+    QSpinBox *widthSpin = new QSpinBox();
+    widthSpin->setRange(50, 800);
+    widthSpin->setSuffix(" px");
+    widthSpin->setValue(it.value().width());
+    widthSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+
+    QWidget *widthContainer = new QWidget();
+    QHBoxLayout *widthLayout = new QHBoxLayout(widthContainer);
+    widthLayout->setContentsMargins(3, 3, 3, 3);
+    widthLayout->addWidget(widthSpin);
+    m_thumbnailSizesTable->setCellWidget(row, 1, widthContainer);
+
+    QSpinBox *heightSpin = new QSpinBox();
+    heightSpin->setRange(50, 600);
+    heightSpin->setSuffix(" px");
+    heightSpin->setValue(it.value().height());
+    heightSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+
+    QWidget *heightContainer = new QWidget();
+    QHBoxLayout *heightLayout = new QHBoxLayout(heightContainer);
+    heightLayout->setContentsMargins(3, 3, 3, 3);
+    heightLayout->addWidget(heightSpin);
+    m_thumbnailSizesTable->setCellWidget(row, 2, heightContainer);
+
+    QWidget *deleteButtonContainer = new QWidget();
+    QHBoxLayout *deleteButtonLayout = new QHBoxLayout(deleteButtonContainer);
+    deleteButtonLayout->setContentsMargins(0, 0, 0, 0);
+
+    QPushButton *deleteButton = new QPushButton("×");
+    deleteButton->setFixedSize(24, 24);
+    deleteButton->setStyleSheet("QPushButton {"
+                                "    background-color: #3a3a3a;"
+                                "    color: #ffffff;"
+                                "    border: 1px solid #555555;"
+                                "    border-radius: 4px;"
+                                "    font-size: 16px;"
+                                "    font-weight: bold;"
+                                "    padding: 0px;"
+                                "}"
+                                "QPushButton:hover {"
+                                "    background-color: #e74c3c;"
+                                "    border: 1px solid #c0392b;"
+                                "}"
+                                "QPushButton:pressed {"
+                                "    background-color: #c0392b;"
+                                "}");
+
+    connect(deleteButton, &QPushButton::clicked, this,
+            [this, row]() { m_thumbnailSizesTable->removeRow(row); });
+
+    deleteButtonLayout->addWidget(deleteButton, 0, Qt::AlignCenter);
+    m_thumbnailSizesTable->setCellWidget(row, 3, deleteButtonContainer);
+  }
 }
 
 void ConfigDialog::saveSettings() {
@@ -2632,6 +2770,41 @@ void ConfigDialog::saveSettings() {
            << Config::instance().enableGameLogMonitoring();
   qDebug() << "ConfigDialog::saveSettings() - checkbox state:"
            << m_enableGameLogMonitoringCheck->isChecked();
+
+  // Save per-character thumbnail sizes
+  Config &cfg = Config::instance();
+
+  // First, clear existing custom sizes
+  QHash<QString, QSize> existingSizes = cfg.getAllCustomThumbnailSizes();
+  for (const QString &charName : existingSizes.keys()) {
+    cfg.removeThumbnailSize(charName);
+  }
+
+  // Then save current table values
+  for (int row = 0; row < m_thumbnailSizesTable->rowCount(); ++row) {
+    QLineEdit *nameEdit =
+        qobject_cast<QLineEdit *>(m_thumbnailSizesTable->cellWidget(row, 0));
+
+    QWidget *widthContainer = m_thumbnailSizesTable->cellWidget(row, 1);
+    QSpinBox *widthSpin =
+        widthContainer ? widthContainer->findChild<QSpinBox *>() : nullptr;
+
+    QWidget *heightContainer = m_thumbnailSizesTable->cellWidget(row, 2);
+    QSpinBox *heightSpin =
+        heightContainer ? heightContainer->findChild<QSpinBox *>() : nullptr;
+
+    if (!nameEdit || !widthSpin || !heightSpin) {
+      continue;
+    }
+
+    QString charName = nameEdit->text().trimmed();
+    if (charName.isEmpty()) {
+      continue;
+    }
+
+    QSize size(widthSpin->value(), heightSpin->value());
+    cfg.setThumbnailSize(charName, size);
+  }
 
   Config::instance().save();
 }
@@ -3871,6 +4044,274 @@ void ConfigDialog::onAssignUniqueColors() {
           .arg(rowCount == 1 ? "" : "s"));
 }
 
+void ConfigDialog::onAddThumbnailSize() {
+  int row = m_thumbnailSizesTable->rowCount();
+  m_thumbnailSizesTable->insertRow(row);
+
+  QLineEdit *nameEdit = new QLineEdit();
+  nameEdit->setPlaceholderText("Enter character name");
+  nameEdit->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+  m_thumbnailSizesTable->setCellWidget(row, 0, nameEdit);
+
+  QSpinBox *widthSpin = new QSpinBox();
+  widthSpin->setRange(50, 800);
+  widthSpin->setSuffix(" px");
+  widthSpin->setValue(Config::instance().thumbnailWidth());
+  widthSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+
+  QWidget *widthContainer = new QWidget();
+  QHBoxLayout *widthLayout = new QHBoxLayout(widthContainer);
+  widthLayout->setContentsMargins(3, 3, 3, 3);
+  widthLayout->addWidget(widthSpin);
+  m_thumbnailSizesTable->setCellWidget(row, 1, widthContainer);
+
+  QSpinBox *heightSpin = new QSpinBox();
+  heightSpin->setRange(50, 600);
+  heightSpin->setSuffix(" px");
+  heightSpin->setValue(Config::instance().thumbnailHeight());
+  heightSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+
+  QWidget *heightContainer = new QWidget();
+  QHBoxLayout *heightLayout = new QHBoxLayout(heightContainer);
+  heightLayout->setContentsMargins(3, 3, 3, 3);
+  heightLayout->addWidget(heightSpin);
+  m_thumbnailSizesTable->setCellWidget(row, 2, heightContainer);
+
+  QWidget *deleteButtonContainer = new QWidget();
+  QHBoxLayout *deleteButtonLayout = new QHBoxLayout(deleteButtonContainer);
+  deleteButtonLayout->setContentsMargins(0, 0, 0, 0);
+
+  QPushButton *deleteButton = new QPushButton("×");
+  deleteButton->setFixedSize(24, 24);
+  deleteButton->setStyleSheet("QPushButton {"
+                              "    background-color: #3a3a3a;"
+                              "    color: #ffffff;"
+                              "    border: 1px solid #555555;"
+                              "    border-radius: 4px;"
+                              "    font-size: 16px;"
+                              "    font-weight: bold;"
+                              "    padding: 0px;"
+                              "}"
+                              "QPushButton:hover {"
+                              "    background-color: #e74c3c;"
+                              "    border: 1px solid #c0392b;"
+                              "}"
+                              "QPushButton:pressed {"
+                              "    background-color: #c0392b;"
+                              "}");
+
+  connect(deleteButton, &QPushButton::clicked, this, [this, deleteButton]() {
+    // Find which row this button is in
+    for (int r = 0; r < m_thumbnailSizesTable->rowCount(); ++r) {
+      QWidget *container = m_thumbnailSizesTable->cellWidget(r, 3);
+      if (container && container->findChild<QPushButton *>() == deleteButton) {
+        m_thumbnailSizesTable->removeRow(r);
+        break;
+      }
+    }
+  });
+
+  deleteButtonLayout->addWidget(deleteButton, 0, Qt::AlignCenter);
+  m_thumbnailSizesTable->setCellWidget(row, 3, deleteButtonContainer);
+
+  // Scroll to the newly added row
+  m_thumbnailSizesTable->scrollToBottom();
+}
+
+void ConfigDialog::onPopulateThumbnailSizes() {
+  WindowCapture capture;
+  QVector<WindowInfo> windows = capture.getEVEWindows();
+
+  if (windows.isEmpty()) {
+    QMessageBox::information(this, "No Windows Found",
+                             "No EVE Online windows are currently open.");
+    return;
+  }
+
+  // Filter to only logged-in characters
+  QStringList characterNames;
+  for (const auto &window : windows) {
+    QString characterName = window.title;
+    if (characterName.startsWith("EVE - ")) {
+      characterName = characterName.mid(6);
+    }
+
+    if (characterName == "EVE" || characterName.trimmed().isEmpty()) {
+      continue;
+    }
+
+    if (!characterNames.contains(characterName)) {
+      characterNames.append(characterName);
+    }
+  }
+
+  if (characterNames.isEmpty()) {
+    QMessageBox::information(this, "No Characters Found",
+                             "No logged-in EVE characters detected.");
+    return;
+  }
+
+  QMessageBox msgBox(this);
+  msgBox.setWindowTitle("Populate Thumbnail Sizes");
+  msgBox.setText(QString("Found %1 logged-in character%2.")
+                     .arg(characterNames.count())
+                     .arg(characterNames.count() == 1 ? "" : "s"));
+  msgBox.setInformativeText(
+      "Do you want to clear existing entries or add to them?");
+
+  QPushButton *clearButton =
+      msgBox.addButton("Clear & Replace", QMessageBox::ActionRole);
+  QPushButton *addButton =
+      msgBox.addButton("Add to Existing", QMessageBox::ActionRole);
+  QPushButton *cancelButton =
+      msgBox.addButton("Cancel", QMessageBox::RejectRole);
+
+  msgBox.setStyleSheet(StyleSheet::getMessageBoxStyleSheet());
+  msgBox.exec();
+
+  if (msgBox.clickedButton() == cancelButton) {
+    return;
+  }
+
+  bool clearExisting = (msgBox.clickedButton() == clearButton);
+
+  QSet<QString> existingCharacters;
+  if (!clearExisting) {
+    for (int row = 0; row < m_thumbnailSizesTable->rowCount(); ++row) {
+      QLineEdit *nameEdit =
+          qobject_cast<QLineEdit *>(m_thumbnailSizesTable->cellWidget(row, 0));
+      if (nameEdit) {
+        existingCharacters.insert(nameEdit->text().trimmed());
+      }
+    }
+  } else {
+    m_thumbnailSizesTable->setRowCount(0);
+  }
+
+  Config &cfg = Config::instance();
+  int addedCount = 0;
+
+  for (const QString &characterName : characterNames) {
+    if (!clearExisting && existingCharacters.contains(characterName)) {
+      continue;
+    }
+
+    int row = m_thumbnailSizesTable->rowCount();
+    m_thumbnailSizesTable->insertRow(row);
+
+    QLineEdit *nameEdit = new QLineEdit(characterName);
+    nameEdit->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+    m_thumbnailSizesTable->setCellWidget(row, 0, nameEdit);
+
+    // Check if character has custom size, otherwise use defaults
+    int width, height;
+    if (cfg.hasCustomThumbnailSize(characterName)) {
+      QSize customSize = cfg.getThumbnailSize(characterName);
+      width = customSize.width();
+      height = customSize.height();
+    } else {
+      width = cfg.thumbnailWidth();
+      height = cfg.thumbnailHeight();
+    }
+
+    QSpinBox *widthSpin = new QSpinBox();
+    widthSpin->setRange(50, 800);
+    widthSpin->setSuffix(" px");
+    widthSpin->setValue(width);
+    widthSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+
+    QWidget *widthContainer = new QWidget();
+    QHBoxLayout *widthLayout = new QHBoxLayout(widthContainer);
+    widthLayout->setContentsMargins(3, 3, 3, 3);
+    widthLayout->addWidget(widthSpin);
+    m_thumbnailSizesTable->setCellWidget(row, 1, widthContainer);
+
+    QSpinBox *heightSpin = new QSpinBox();
+    heightSpin->setRange(50, 600);
+    heightSpin->setSuffix(" px");
+    heightSpin->setValue(height);
+    heightSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+
+    QWidget *heightContainer = new QWidget();
+    QHBoxLayout *heightLayout = new QHBoxLayout(heightContainer);
+    heightLayout->setContentsMargins(3, 3, 3, 3);
+    heightLayout->addWidget(heightSpin);
+    m_thumbnailSizesTable->setCellWidget(row, 2, heightContainer);
+
+    QWidget *deleteButtonContainer = new QWidget();
+    QHBoxLayout *deleteButtonLayout = new QHBoxLayout(deleteButtonContainer);
+    deleteButtonLayout->setContentsMargins(0, 0, 0, 0);
+
+    QPushButton *deleteButton = new QPushButton("×");
+    deleteButton->setFixedSize(24, 24);
+    deleteButton->setStyleSheet("QPushButton {"
+                                "    background-color: #3a3a3a;"
+                                "    color: #ffffff;"
+                                "    border: 1px solid #555555;"
+                                "    border-radius: 4px;"
+                                "    font-size: 16px;"
+                                "    font-weight: bold;"
+                                "    padding: 0px;"
+                                "}"
+                                "QPushButton:hover {"
+                                "    background-color: #e74c3c;"
+                                "    border: 1px solid #c0392b;"
+                                "}"
+                                "QPushButton:pressed {"
+                                "    background-color: #c0392b;"
+                                "}");
+
+    connect(deleteButton, &QPushButton::clicked, this, [this, deleteButton]() {
+      // Find which row this button is in
+      for (int r = 0; r < m_thumbnailSizesTable->rowCount(); ++r) {
+        QWidget *container = m_thumbnailSizesTable->cellWidget(r, 3);
+        if (container &&
+            container->findChild<QPushButton *>() == deleteButton) {
+          m_thumbnailSizesTable->removeRow(r);
+          break;
+        }
+      }
+    });
+
+    deleteButtonLayout->addWidget(deleteButton, 0, Qt::AlignCenter);
+    m_thumbnailSizesTable->setCellWidget(row, 3, deleteButtonContainer);
+
+    addedCount++;
+  }
+
+  QString resultMsg = clearExisting ? QString("Replaced with %1 character%2.")
+                                          .arg(addedCount)
+                                          .arg(addedCount == 1 ? "" : "s")
+                                    : QString("Added %1 new character%2.")
+                                          .arg(addedCount)
+                                          .arg(addedCount == 1 ? "" : "s");
+
+  QMessageBox::information(this, "Populate Complete", resultMsg);
+}
+
+void ConfigDialog::onRemoveThumbnailSize() {
+  int currentRow = m_thumbnailSizesTable->currentRow();
+  if (currentRow >= 0) {
+    m_thumbnailSizesTable->removeRow(currentRow);
+  }
+}
+
+void ConfigDialog::onResetThumbnailSizesToDefault() {
+  if (m_thumbnailSizesTable->rowCount() == 0) {
+    return;
+  }
+
+  QMessageBox::StandardButton reply = QMessageBox::question(
+      this, "Reset All Sizes",
+      "Are you sure you want to remove all custom thumbnail sizes?\n"
+      "All characters will revert to the default size.",
+      QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+  if (reply == QMessageBox::Yes) {
+    m_thumbnailSizesTable->setRowCount(0);
+  }
+}
+
 void ConfigDialog::onAddProcessName() {
   int row = m_processNamesTable->rowCount();
   m_processNamesTable->insertRow(row);
@@ -4297,7 +4738,6 @@ void ConfigDialog::onResetBehaviorDefaults() {
         "Click Apply or OK to save the changes.");
   }
 }
-
 
 void ConfigDialog::onResetCombatMessagesDefaults() {
   QMessageBox msgBox(this);
