@@ -1821,7 +1821,7 @@ void ConfigDialog::createLegacySettingsPage()
     browseSectionLayout->addWidget(browseHeader);
     
     QLabel *infoLabel = new QLabel(
-        "Import settings from the original EVE-O Preview JSON configuration file. "
+        "Import settings from EVE-O/X Preview configuration file."
         "Select your legacy settings file, then use the Copy buttons to import settings into the current configuration."
     );
     infoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
