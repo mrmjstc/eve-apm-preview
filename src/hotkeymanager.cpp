@@ -40,7 +40,6 @@ bool HotkeyManager::registerHotkey(const HotkeyBinding& binding, int& outHotkeyI
 
     int hotkeyId = m_nextHotkeyId++;
     
-    // Cache config value to avoid repeated instance() calls
     const Config& cfg = Config::instance();
     bool wildcardMode = cfg.wildcardHotkeys();
     
@@ -107,7 +106,6 @@ void HotkeyManager::unregisterHotkey(int hotkeyId)
     UnregisterHotKey(nullptr, hotkeyId);
 }
 
-/// Helper function to register a list of hotkeys (multi or legacy single)
 void HotkeyManager::registerHotkeyList(const QVector<HotkeyBinding>& multiHotkeys,
                                         const HotkeyBinding& legacyHotkey,
                                         int& legacyHotkeyId)
@@ -127,7 +125,6 @@ void HotkeyManager::registerHotkeyList(const QVector<HotkeyBinding>& multiHotkey
     }
 }
 
-/// Helper function to unregister and reset a hotkey ID
 void HotkeyManager::unregisterAndReset(int& hotkeyId)
 {
     if (hotkeyId != -1)
@@ -137,7 +134,6 @@ void HotkeyManager::unregisterAndReset(int& hotkeyId)
     }
 }
 
-/// Helper function to save a list of hotkeys to settings
 void HotkeyManager::saveHotkeyList(QSettings& settings, const QString& key,
                                     const QVector<HotkeyBinding>& multiHotkeys,
                                     const HotkeyBinding& legacyHotkey)
@@ -158,7 +154,6 @@ void HotkeyManager::saveHotkeyList(QSettings& settings, const QString& key,
     }
 }
 
-/// Helper function to load a list of hotkeys from settings
 QVector<HotkeyBinding> HotkeyManager::loadHotkeyList(QSettings& settings, const QString& key,
                                                       HotkeyBinding& outLegacyHotkey)
 {
@@ -167,21 +162,18 @@ QVector<HotkeyBinding> HotkeyManager::loadHotkeyList(QSettings& settings, const 
     
     if (value.contains('|'))
     {
-        // Multi-hotkey format
         QStringList bindingStrs = value.split('|', Qt::SkipEmptyParts);
         for (const QString& bindingStr : bindingStrs)
         {
             HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
             if (binding.enabled && binding.keyCode != 0)
             {
-                // Deduplicate
                 if (!result.contains(binding))
                 {
                     result.append(binding);
                 }
             }
         }
-        // Set legacy to first for compatibility
         if (!result.isEmpty())
         {
             outLegacyHotkey = result.first();
@@ -189,7 +181,6 @@ QVector<HotkeyBinding> HotkeyManager::loadHotkeyList(QSettings& settings, const 
     }
     else if (!value.isEmpty())
     {
-        // Legacy single hotkey format
         outLegacyHotkey = HotkeyBinding::fromString(value);
     }
     
@@ -203,7 +194,6 @@ bool HotkeyManager::registerHotkeys()
     m_hotkeyIdToCycleGroup.clear();
     m_hotkeyIdIsForward.clear();
 
-    // Register all suspend hotkeys
     if (!m_suspendHotkeys.isEmpty())
     {
         for (const HotkeyBinding& binding : m_suspendHotkeys)
@@ -223,7 +213,6 @@ bool HotkeyManager::registerHotkeys()
         return true;
     }
 
-    // Register all hotkeys for each character (including multiple bindings)
     for (auto it = m_characterMultiHotkeys.begin(); it != m_characterMultiHotkeys.end(); ++it)
     {
         const QString& characterName = it.key();
@@ -241,12 +230,10 @@ bool HotkeyManager::registerHotkeys()
         }
     }
     
-    // Also register legacy single hotkeys that aren't in multi-hotkeys
     for (auto it = m_characterHotkeys.begin(); it != m_characterHotkeys.end(); ++it)
     {
         const QString& characterName = it.key();
         
-        // Skip if already registered via multi-hotkeys
         if (m_characterMultiHotkeys.contains(characterName)) {
             continue;
         }
@@ -265,7 +252,6 @@ bool HotkeyManager::registerHotkeys()
         const QString& groupName = it.key();
         const CycleGroup& group = it.value();
         
-        // Register all forward hotkeys (including multiple bindings)
         if (!group.forwardBindings.isEmpty())
         {
             for (const HotkeyBinding& binding : group.forwardBindings)
@@ -282,7 +268,6 @@ bool HotkeyManager::registerHotkeys()
         }
         else if (group.forwardBinding.enabled)
         {
-            // Fallback to single binding for backward compatibility
             int hotkeyId;
             if (registerHotkey(group.forwardBinding, hotkeyId))
             {
@@ -291,7 +276,6 @@ bool HotkeyManager::registerHotkeys()
             }
         }
         
-        // Register all backward hotkeys (including multiple bindings)
         if (!group.backwardBindings.isEmpty())
         {
             for (const HotkeyBinding& binding : group.backwardBindings)
@@ -308,7 +292,6 @@ bool HotkeyManager::registerHotkeys()
         }
         else if (group.backwardBinding.enabled)
         {
-            // Fallback to single binding for backward compatibility
             int hotkeyId;
             if (registerHotkey(group.backwardBinding, hotkeyId))
             {
@@ -318,15 +301,12 @@ bool HotkeyManager::registerHotkeys()
         }
     }
     
-    // Register not-logged-in cycle hotkeys
     registerHotkeyList(m_notLoggedInForwardHotkeys, m_notLoggedInForwardHotkey, m_notLoggedInForwardHotkeyId);
     registerHotkeyList(m_notLoggedInBackwardHotkeys, m_notLoggedInBackwardHotkey, m_notLoggedInBackwardHotkeyId);
     
-    // Register non-EVE cycle hotkeys
     registerHotkeyList(m_nonEVEForwardHotkeys, m_nonEVEForwardHotkey, m_nonEVEForwardHotkeyId);
     registerHotkeyList(m_nonEVEBackwardHotkeys, m_nonEVEBackwardHotkey, m_nonEVEBackwardHotkeyId);
     
-    // Register close-all-clients hotkeys
     registerHotkeyList(m_closeAllClientsHotkeys, m_closeAllClientsHotkey, m_closeAllClientsHotkeyId);
     
     registerProfileHotkeys();
@@ -353,7 +333,6 @@ void HotkeyManager::unregisterHotkeys()
         unregisterHotkey(aliasId);
     }
     
-    // Unregister special hotkeys using helper
     unregisterAndReset(m_suspendHotkeyId);
     unregisterAndReset(m_notLoggedInForwardHotkeyId);
     unregisterAndReset(m_notLoggedInBackwardHotkeyId);
@@ -437,7 +416,7 @@ bool HotkeyManager::nativeEventFilter(void* message, long* result)
         {
             QString characterName = s_instance->m_hotkeyIdToCharacter.value(hotkeyId);
             emit s_instance->characterHotkeyPressed(characterName);
-            return false;  // Allow message to continue, preserving keyboard state
+            return false;  
         }
         
         if (s_instance->m_hotkeyIdToCycleGroup.contains(hotkeyId))
@@ -518,7 +497,6 @@ void HotkeyManager::setSuspendHotkey(const HotkeyBinding& binding)
 void HotkeyManager::setCharacterHotkey(const QString& characterName, const HotkeyBinding& binding)
 {
     m_characterHotkeys.insert(characterName, binding);
-    // Also update multi-hotkeys with single binding
     QVector<HotkeyBinding> bindings;
     bindings.append(binding);
     m_characterMultiHotkeys.insert(characterName, bindings);
@@ -528,7 +506,6 @@ void HotkeyManager::setCharacterHotkey(const QString& characterName, const Hotke
 void HotkeyManager::setCharacterHotkeys(const QString& characterName, const QVector<HotkeyBinding>& bindings)
 {
     m_characterMultiHotkeys.insert(characterName, bindings);
-    // Keep first binding for legacy compatibility
     if (!bindings.isEmpty()) {
         m_characterHotkeys.insert(characterName, bindings.first());
     } else {
@@ -541,10 +518,9 @@ void HotkeyManager::addCharacterHotkey(const QString& characterName, const Hotke
 {
     QVector<HotkeyBinding> bindings = m_characterMultiHotkeys.value(characterName);
     
-    // Check if hotkey already exists
     for (const HotkeyBinding& existing : bindings) {
         if (existing == binding) {
-            return; // Already exists
+            return; 
         }
     }
     
@@ -570,7 +546,6 @@ QVector<HotkeyBinding> HotkeyManager::getCharacterHotkeys(const QString& charact
         return m_characterMultiHotkeys.value(characterName);
     }
     
-    // Fallback to legacy single hotkey
     if (m_characterHotkeys.contains(characterName)) {
         QVector<HotkeyBinding> bindings;
         bindings.append(m_characterHotkeys.value(characterName));
@@ -676,7 +651,6 @@ void HotkeyManager::loadFromConfig()
 {
     QSettings settings(Config::instance().configFilePath(), QSettings::IniFormat);
     
-    // Clear previous hotkey data to prevent accumulation
     m_suspendHotkeys.clear();
     
     settings.beginGroup("hotkeys");
@@ -689,14 +663,12 @@ void HotkeyManager::loadFromConfig()
         suspendStr = suspendVar.toString();
     }
     
-    // Load suspend hotkeys (might be multi-hotkey with pipe separator)
     if (!suspendStr.isEmpty())
     {
         QStringList suspendBindingStrs = suspendStr.split('|', Qt::SkipEmptyParts);
         for (const QString& bindingStr : suspendBindingStrs) {
             HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
             if (binding.enabled && binding.keyCode != 0) {
-                // Only add if not already present (deduplicate)
                 if (!m_suspendHotkeys.contains(binding)) {
                     m_suspendHotkeys.append(binding);
                 }
@@ -718,7 +690,6 @@ void HotkeyManager::loadFromConfig()
     {
         QVariant value = settings.value(characterName);
         
-        // Try to load as multi-hotkey format (pipe-separated)
         QString valueStr;
         if (value.canConvert<QStringList>()) {
             valueStr = value.toStringList().join('|');
@@ -734,7 +705,6 @@ void HotkeyManager::loadFromConfig()
             HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
             if (binding.enabled)
             {
-                // Only add if not already present (deduplicate)
                 if (!bindings.contains(binding)) {
                     bindings.append(binding);
                 }
@@ -744,7 +714,6 @@ void HotkeyManager::loadFromConfig()
         if (!bindings.isEmpty())
         {
             m_characterMultiHotkeys.insert(characterName, bindings);
-            // Keep first binding for legacy compatibility
             m_characterHotkeys.insert(characterName, bindings.first());
         }
     }
@@ -778,12 +747,10 @@ void HotkeyManager::loadFromConfig()
             for (const QString& name : charNames)
                 group.characterNames.append(name);
             
-            // Parse forward hotkeys (might be multi-hotkey with semicolon separator)
             QStringList forwardBindingStrs = parts[1].split(';', Qt::SkipEmptyParts);
             for (const QString& bindingStr : forwardBindingStrs) {
                 HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
                 if (binding.enabled && binding.keyCode != 0) {
-                    // Only add if not already present (deduplicate)
                     if (!group.forwardBindings.contains(binding)) {
                         group.forwardBindings.append(binding);
                     }
@@ -791,12 +758,10 @@ void HotkeyManager::loadFromConfig()
             }
             group.forwardBinding = !group.forwardBindings.isEmpty() ? group.forwardBindings.first() : HotkeyBinding();
             
-            // Parse backward hotkeys (might be multi-hotkey with semicolon separator)
             QStringList backwardBindingStrs = parts[2].split(';', Qt::SkipEmptyParts);
             for (const QString& bindingStr : backwardBindingStrs) {
                 HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
                 if (binding.enabled && binding.keyCode != 0) {
-                    // Only add if not already present (deduplicate)
                     if (!group.backwardBindings.contains(binding)) {
                         group.backwardBindings.append(binding);
                     }
@@ -839,8 +804,6 @@ void HotkeyManager::saveToConfig()
     QSettings settings(Config::instance().configFilePath(), QSettings::IniFormat);
     
     settings.beginGroup("hotkeys");
-    // Save suspend hotkeys (multi-hotkey support)
-    // Remove the old value first to prevent appending
     settings.remove("suspendHotkey");
     if (!m_suspendHotkeys.isEmpty()) {
         QStringList suspendBindingStrs;
@@ -856,7 +819,6 @@ void HotkeyManager::saveToConfig()
     settings.beginGroup("characterHotkeys");
     settings.remove("");
     
-    // Save multi-hotkeys (prioritize this over legacy single hotkeys)
     for (auto it = m_characterMultiHotkeys.begin(); it != m_characterMultiHotkeys.end(); ++it)
     {
         QStringList bindingStrs;
@@ -867,7 +829,6 @@ void HotkeyManager::saveToConfig()
         settings.setValue(it.key(), bindingStrs.join('|'));
     }
     
-    // Also save legacy single hotkeys that aren't in multi-hotkeys (for backward compatibility)
     for (auto it = m_characterHotkeys.begin(); it != m_characterHotkeys.end(); ++it)
     {
         if (!m_characterMultiHotkeys.contains(it.key())) {
@@ -885,7 +846,6 @@ void HotkeyManager::saveToConfig()
         for (const QString& name : group.characterNames)
             charNames.append(name);
         
-        // Save multi-hotkeys if available
         QStringList forwardBindingStrs;
         QStringList backwardBindingStrs;
         
@@ -894,7 +854,6 @@ void HotkeyManager::saveToConfig()
                 forwardBindingStrs.append(binding.toString());
             }
         } else {
-            // Fallback to single binding for backward compatibility
             forwardBindingStrs.append(group.forwardBinding.toString());
         }
         
@@ -903,7 +862,6 @@ void HotkeyManager::saveToConfig()
                 backwardBindingStrs.append(binding.toString());
             }
         } else {
-            // Fallback to single binding for backward compatibility
             backwardBindingStrs.append(group.backwardBinding.toString());
         }
         

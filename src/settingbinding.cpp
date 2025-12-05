@@ -219,14 +219,11 @@ void CharacterHotkeyTableBinding::loadFromConfig()
     }
     m_table->setRowCount(0);
     
-    // Get multi-hotkeys from HotkeyManager
     HotkeyManager* mgr = HotkeyManager::instance();
     QHash<QString, QVector<HotkeyBinding>> multiHotkeys = mgr ? mgr->getAllCharacterMultiHotkeys() : QHash<QString, QVector<HotkeyBinding>>();
     
-    // Store initial multi-hotkey state for comparison
     m_initialMultiHotkeys = multiHotkeys;
     
-    // Use multi-hotkeys if available, otherwise fall back to single hotkeys
     QSet<QString> processedChars;
     
     for (auto it = multiHotkeys.constBegin(); it != multiHotkeys.constEnd(); ++it) {
@@ -254,7 +251,6 @@ void CharacterHotkeyTableBinding::loadFromConfig()
         
         HotkeyCapture *hotkeyCapture = new HotkeyCapture();
         
-        // Set multiple hotkeys
         QVector<HotkeyCombination> combinations;
         for (const HotkeyBinding& binding : it.value()) {
             combinations.append(HotkeyCombination(binding.keyCode, binding.ctrl, binding.alt, binding.shift));
@@ -338,10 +334,9 @@ void CharacterHotkeyTableBinding::loadFromConfig()
         processedChars.insert(it.key());
     }
     
-    // Add any characters that only have single hotkeys
     for (auto it = hotkeys.constBegin(); it != hotkeys.constEnd(); ++it) {
         if (processedChars.contains(it.key())) {
-            continue; // Already processed
+            continue; 
         }
         
         int row = m_table->rowCount();
@@ -452,14 +447,12 @@ void CharacterHotkeyTableBinding::saveToConfig()
     HotkeyManager* mgr = HotkeyManager::instance();
     
     if (mgr) {
-        // Clear all existing character hotkeys
         QHash<QString, HotkeyBinding> existing = mgr->getAllCharacterHotkeys();
         for (auto it = existing.constBegin(); it != existing.constEnd(); ++it) {
             mgr->removeCharacterHotkey(it.key());
         }
     }
     
-    // Build new multi-hotkey state
     QHash<QString, QVector<HotkeyBinding>> newMultiHotkeys;
     
     for (int row = 0; row < m_table->rowCount(); ++row) {
@@ -477,7 +470,6 @@ void CharacterHotkeyTableBinding::saveToConfig()
                 QVector<HotkeyCombination> combinations = hotkeyCapture->getHotkeys();
                 
                 if (!combinations.isEmpty()) {
-                    // Convert HotkeyCombinations to HotkeyBindings
                     QVector<HotkeyBinding> bindings;
                     for (const HotkeyCombination& comb : combinations) {
                         bindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, true));
@@ -487,10 +479,8 @@ void CharacterHotkeyTableBinding::saveToConfig()
                         mgr->setCharacterHotkeys(charName, bindings);
                     }
                     
-                    // Store in new multi-hotkey state
                     newMultiHotkeys[charName] = bindings;
                     
-                    // Also store first binding for legacy compatibility
                     hotkeys[charName] = bindings.first();
                 }
             }
@@ -499,7 +489,6 @@ void CharacterHotkeyTableBinding::saveToConfig()
     
     m_configSetter(hotkeys);
     
-    // Update initial state to reflect what was just saved
     m_initialMultiHotkeys = newMultiHotkeys;
 }
 
@@ -519,7 +508,6 @@ void CharacterHotkeyTableBinding::reset()
 
 bool CharacterHotkeyTableBinding::hasChanged() const
 {
-    // Get current state from UI
     QHash<QString, QVector<HotkeyBinding>> currentMulti;
     
     for (int row = 0; row < m_table->rowCount(); ++row) {
@@ -548,12 +536,10 @@ bool CharacterHotkeyTableBinding::hasChanged() const
         }
     }
     
-    // Compare counts first
     if (currentMulti.size() != m_initialMultiHotkeys.size()) {
         return true;
     }
     
-    // Compare each character's hotkeys
     for (auto it = currentMulti.constBegin(); it != currentMulti.constEnd(); ++it) {
         const QString& charName = it.key();
         const QVector<HotkeyBinding>& currentBindings = it.value();
@@ -676,7 +662,6 @@ void CycleGroupTableBinding::loadFromConfig()
         
         HotkeyCapture *forwardCapture = new HotkeyCapture();
         
-        // Set multiple forward hotkeys if available
         if (!it.value().forwardBindings.isEmpty()) {
             QVector<HotkeyCombination> combinations;
             for (const HotkeyBinding& binding : it.value().forwardBindings) {
@@ -684,7 +669,6 @@ void CycleGroupTableBinding::loadFromConfig()
             }
             forwardCapture->setHotkeys(combinations);
         } else {
-            // Fallback to single hotkey for backward compatibility
             forwardCapture->setHotkey(it.value().forwardBinding.keyCode,
                                      it.value().forwardBinding.ctrl,
                                      it.value().forwardBinding.alt,
@@ -728,7 +712,6 @@ void CycleGroupTableBinding::loadFromConfig()
         
         HotkeyCapture *backwardCapture = new HotkeyCapture();
         
-        // Set multiple backward hotkeys if available
         if (!it.value().backwardBindings.isEmpty()) {
             QVector<HotkeyCombination> combinations;
             for (const HotkeyBinding& binding : it.value().backwardBindings) {
@@ -736,7 +719,6 @@ void CycleGroupTableBinding::loadFromConfig()
             }
             backwardCapture->setHotkeys(combinations);
         } else {
-            // Fallback to single hotkey for backward compatibility
             backwardCapture->setHotkey(it.value().backwardBinding.keyCode,
                                       it.value().backwardBinding.ctrl,
                                       it.value().backwardBinding.alt,
@@ -919,21 +901,18 @@ void CycleGroupTableBinding::saveToConfig()
                 }
                 
                 if (!characters.isEmpty()) {
-                    // Get multiple hotkeys from forward capture
                     QVector<HotkeyCombination> forwardCombinations = forwardCapture->getHotkeys();
                     QVector<HotkeyBinding> forwardBindings;
                     for (const HotkeyCombination& comb : forwardCombinations) {
                         forwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
                     }
                     
-                    // Get multiple hotkeys from backward capture
                     QVector<HotkeyCombination> backwardCombinations = backwardCapture->getHotkeys();
                     QVector<HotkeyBinding> backwardBindings;
                     for (const HotkeyCombination& comb : backwardCombinations) {
                         backwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
                     }
                     
-                    // Legacy single bindings (use first hotkey for backward compatibility)
                     HotkeyBinding forwardBinding = !forwardBindings.isEmpty() 
                         ? forwardBindings.first() 
                         : HotkeyBinding(0, false, false, false, false);
@@ -1005,21 +984,18 @@ bool CycleGroupTableBinding::hasChanged() const
                 }
                 
                 if (!characters.isEmpty()) {
-                    // Get multiple hotkeys from forward capture
                     QVector<HotkeyCombination> forwardCombinations = forwardCapture->getHotkeys();
                     QVector<HotkeyBinding> forwardBindings;
                     for (const HotkeyCombination& comb : forwardCombinations) {
                         forwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
                     }
                     
-                    // Get multiple hotkeys from backward capture
                     QVector<HotkeyCombination> backwardCombinations = backwardCapture->getHotkeys();
                     QVector<HotkeyBinding> backwardBindings;
                     for (const HotkeyCombination& comb : backwardCombinations) {
                         backwardBindings.append(HotkeyBinding(comb.keyCode, comb.ctrl, comb.alt, comb.shift, comb.keyCode != 0));
                     }
                     
-                    // Legacy single bindings
                     HotkeyBinding forwardBinding = !forwardBindings.isEmpty() 
                         ? forwardBindings.first() 
                         : HotkeyBinding(0, false, false, false, false);
@@ -1060,7 +1036,6 @@ bool CycleGroupTableBinding::hasChanged() const
             return true;
         }
         
-        // Compare multi-hotkeys for forward bindings
         if (currentGroup.forwardBindings.size() != initialGroup.forwardBindings.size()) {
             return true;
         }
@@ -1070,7 +1045,6 @@ bool CycleGroupTableBinding::hasChanged() const
             }
         }
         
-        // Compare multi-hotkeys for backward bindings
         if (currentGroup.backwardBindings.size() != initialGroup.backwardBindings.size()) {
             return true;
         }
@@ -1105,22 +1079,18 @@ void HotkeyCaptureBinding::loadFromConfig()
 {
     HotkeyBinding current = m_configGetter();
     m_initialValue = current;
-    // Only set single hotkey (multi-hotkey not supported for these simple bindings yet)
     m_widget->setHotkey(current.keyCode, current.ctrl, current.alt, current.shift);
 }
 
 void HotkeyCaptureBinding::saveToConfig()
 {
-    // Get all hotkeys from the widget
     QVector<HotkeyCombination> combinations = m_widget->getHotkeys();
     
     if (!combinations.isEmpty()) {
-        // Save first hotkey as the primary binding
         const HotkeyCombination& first = combinations.first();
         HotkeyBinding current(first.keyCode, first.ctrl, first.alt, first.shift, first.keyCode != 0);
         m_configSetter(current);
     } else {
-        // No hotkeys - save disabled binding
         HotkeyBinding current(0, false, false, false, false);
         m_configSetter(current);
     }
@@ -1137,11 +1107,9 @@ bool HotkeyCaptureBinding::hasChanged() const
     QVector<HotkeyCombination> combinations = m_widget->getHotkeys();
     
     if (combinations.isEmpty()) {
-        // No hotkeys - check if initial value was also empty/disabled
         return m_initialValue.keyCode != 0 || m_initialValue.enabled;
     }
     
-    // Compare first hotkey with initial value
     const HotkeyCombination& first = combinations.first();
     HotkeyBinding current(first.keyCode, first.ctrl, first.alt, first.shift, first.keyCode != 0);
     

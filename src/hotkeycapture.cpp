@@ -49,10 +49,9 @@ void HotkeyCapture::addHotkey(const HotkeyCombination &hotkey) {
     return;
   }
 
-  // Check if this hotkey already exists
   for (const HotkeyCombination &existing : m_hotkeys) {
     if (existing == hotkey) {
-      return; // Don't add duplicates
+      return; 
     }
   }
 
@@ -223,8 +222,8 @@ bool HotkeyCapture::event(QEvent *e) {
   return QLineEdit::event(e);
 }
 
-bool HotkeyCapture::nativeEventFilter(const QByteArray & /*eventType*/,
-                                      void *message, qintptr * /*result*/) {
+bool HotkeyCapture::nativeEventFilter(const QByteArray & ,
+                                      void *message, qintptr * ) {
   return false;
 }
 
@@ -262,7 +261,6 @@ QString HotkeyCapture::keyCodeToString(int keyCode) const {
     return QString("F%1").arg(keyCode - VK_F13 + 13);
   }
 
-  // Handle numpad keys
   if (keyCode >= VK_NUMPAD0 && keyCode <= VK_NUMPAD9) {
     return QString("Numpad %1").arg(keyCode - VK_NUMPAD0);
   }
@@ -346,7 +344,6 @@ void HotkeyCapture::uninstallKeyboardHook() {
 LRESULT CALLBACK HotkeyCapture::LowLevelKeyboardProc(int nCode, WPARAM wParam,
                                                      LPARAM lParam) {
   if (nCode == HC_ACTION && s_activeInstance != nullptr) {
-    // Handle escape on key down for immediate cancellation
     if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
       KBDLLHOOKSTRUCT *pKeyboard = reinterpret_cast<KBDLLHOOKSTRUCT *>(lParam);
       int vkCode = pKeyboard->vkCode;
@@ -368,7 +365,6 @@ LRESULT CALLBACK HotkeyCapture::LowLevelKeyboardProc(int nCode, WPARAM wParam,
       }
     }
 
-    // Detect hotkey on key up
     if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
       KBDLLHOOKSTRUCT *pKeyboard = reinterpret_cast<KBDLLHOOKSTRUCT *>(lParam);
       int vkCode = pKeyboard->vkCode;

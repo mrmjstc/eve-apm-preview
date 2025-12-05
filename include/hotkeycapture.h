@@ -7,7 +7,6 @@
 #include <QVector>
 #include <Windows.h>
 
-/// Represents a single hotkey combination
 struct HotkeyCombination {
     int keyCode;
     bool ctrl;
@@ -32,7 +31,6 @@ public:
     explicit HotkeyCapture(QWidget *parent = nullptr);
     ~HotkeyCapture();
     
-    // Legacy single-hotkey interface (for compatibility)
     void setHotkey(int keyCode, bool ctrl, bool alt, bool shift);
     void clearHotkey();
     int getKeyCode() const { return m_hotkeys.isEmpty() ? 0 : m_hotkeys.first().keyCode; }
@@ -40,7 +38,6 @@ public:
     bool getAlt() const { return m_hotkeys.isEmpty() ? false : m_hotkeys.first().alt; }
     bool getShift() const { return m_hotkeys.isEmpty() ? false : m_hotkeys.first().shift; }
     
-    // Multi-hotkey interface
     void setHotkeys(const QVector<HotkeyCombination>& hotkeys);
     void addHotkey(int keyCode, bool ctrl, bool alt, bool shift);
     void addHotkey(const HotkeyCombination& hotkey);

@@ -31,7 +31,7 @@ Config::Config() {
     initializeDefaultProfile();
   }
 
-  loadCacheFromSettings(); // Initialize cache once
+  loadCacheFromSettings(); 
 
   saveGlobalSettings();
 }
@@ -45,8 +45,6 @@ Config &Config::instance() {
 
 void Config::loadCacheFromSettings() {
   qDebug() << "Config::loadCacheFromSettings() - START";
-  // Load all settings into cache
-  // Called once in constructor and when switching profiles
 
   m_cachedHighlightActive =
       m_settings->value(KEY_UI_HIGHLIGHT_ACTIVE, DEFAULT_UI_HIGHLIGHT_ACTIVE)
@@ -272,7 +270,6 @@ void Config::loadCacheFromSettings() {
           ->value(KEY_MINING_TIMEOUT_SECONDS, DEFAULT_MINING_TIMEOUT_SECONDS)
           .toInt();
 
-  // Cache character border colors
   m_cachedCharacterBorderColors.clear();
   m_settings->beginGroup("characterBorderColors");
   QStringList characterNames = m_settings->childKeys();
@@ -284,7 +281,6 @@ void Config::loadCacheFromSettings() {
   }
   m_settings->endGroup();
 
-  // Cache thumbnail positions
   m_cachedThumbnailPositions.clear();
   m_settings->beginGroup("thumbnailPositions");
   QStringList thumbnailCharNames = m_settings->childKeys();
@@ -294,7 +290,6 @@ void Config::loadCacheFromSettings() {
   }
   m_settings->endGroup();
 
-  // Cache client window rects
   m_cachedClientWindowRects.clear();
   m_settings->beginGroup("clientWindowRects");
   QStringList clientCharNames = m_settings->childKeys();
@@ -930,7 +925,7 @@ bool Config::loadProfile(const QString &profileName) {
 
   migrateLegacyCombatKeys();
 
-  loadCacheFromSettings(); // Reload cache from new profile
+  loadCacheFromSettings(); 
 
   saveGlobalSettings();
 

@@ -284,7 +284,6 @@ private:
 
   std::unique_ptr<QSettings> m_settings;
 
-  // Cache variables (always valid - updated directly in setters)
   mutable bool m_cachedHighlightActive;
   mutable bool m_cachedHideActiveThumbnail;
   mutable QColor m_cachedHighlightColor;
@@ -354,7 +353,7 @@ private:
   QString m_currentProfileName;
   std::unique_ptr<QSettings> m_globalSettings;
 
-  void loadCacheFromSettings(); // Called once in constructor
+  void loadCacheFromSettings(); 
 
   QString getProfilesDirectory() const;
   QString getProfileFilePath(const QString &profileName) const;

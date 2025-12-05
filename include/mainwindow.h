@@ -83,7 +83,7 @@ private:
   HWND m_hwndToActivate = nullptr;
   HWND m_hwndPendingRefresh = nullptr;
   HWND m_lastActiveWindow =
-      nullptr; // Track last active to avoid redundant updates
+      nullptr; 
 
   HWINEVENTHOOK m_eventHook = nullptr;
   HWINEVENTHOOK m_createHook = nullptr;
@@ -102,7 +102,7 @@ private:
   QHash<HWND, QString> m_lastKnownTitles;
   QHash<HWND, QString> m_windowProcessNames;
   QHash<HWND, bool>
-      m_windowsBeingMoved; // Track which windows are in user drag/resize
+      m_windowsBeingMoved; 
 
   QVector<ThumbnailWidget *> m_cachedThumbnailList;
   int m_lastThumbnailListSize = 0;

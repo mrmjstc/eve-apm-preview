@@ -31,7 +31,6 @@ ChatLogWorker::ChatLogWorker(QObject *parent)
 static QString normalizeLogLine(const QString &line)
 {
     static const QRegularExpression controlCharsPattern(R"([\x00-\x1F\x7F])");
-    // Unicode zero-width characters: BOM, zero-width space, zero-width non-joiner, zero-width joiner, word joiner
     static const QRegularExpression zeroWidthPattern(QString::fromUtf8("[\uFEFF\u200B\u200C\u200D\u2060]"));
     
     QString s = line;
@@ -90,12 +89,11 @@ void ChatLogWorker::refreshMonitoring()
     QMutexLocker locker(&m_mutex);
     
     if (!m_running) {
-        return;  // Not monitoring, nothing to refresh
+        return;  
     }
     
     qDebug() << "ChatLogWorker: Refreshing monitoring with updated settings (ChatLog:" << m_enableChatLogMonitoring << ", GameLog:" << m_enableGameLogMonitoring << ")";
     
-    // Add or remove directory watchers based on current settings
     if (m_enableChatLogMonitoring) {
         QDir logDir(m_logDirectory);
         if (logDir.exists() && !m_fileWatcher->directories().contains(m_logDirectory)) {
@@ -122,7 +120,6 @@ void ChatLogWorker::refreshMonitoring()
         }
     }
     
-    // Rescan logs with updated settings
     scanExistingLogs();
     
     qDebug() << "ChatLogWorker: Monitoring refresh completed";
@@ -542,19 +539,15 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString& filePath)
     
     static QRegularExpression listenerPattern(R"(Listener:\s+(.+))");
     
-    // Optimization: Chat logs (Local_*.txt) have "Listener:" on line 9
-    // Game logs have "Listener:" on line 3
     QFileInfo fileInfo(filePath);
     QString fileName = fileInfo.fileName();
     bool isChatLog = fileName.startsWith("Local_", Qt::CaseInsensitive);
     
     if (isChatLog) {
-        // Chat log: skip directly to line 9
         for (int i = 1; i <= 8 && !in.atEnd(); ++i) {
             in.readLine();
         }
         
-        // Read line 9
         if (!in.atEnd()) {
             QString line = in.readLine();
             QRegularExpressionMatch match = listenerPattern.match(line);
@@ -565,12 +558,10 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString& filePath)
             }
         }
     } else {
-        // Game log: skip directly to line 3
         for (int i = 1; i <= 2 && !in.atEnd(); ++i) {
             in.readLine();
         }
         
-        // Read line 3
         if (!in.atEnd()) {
             QString line = in.readLine();
             QRegularExpressionMatch match = listenerPattern.match(line);
@@ -829,7 +820,6 @@ void ChatLogWorker::parseLogLine(const QString& line, const QString& characterNa
         emit combatEventDetected(characterName, "fleet_invite", eventText);
     }
     
-    // Pattern for following in warp: "[ YYYY.MM.DD HH:MM:SS ] (notify) Following <name> in warp"
     static QRegularExpression followWarpPattern(
         R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Following\s+(\S+)\s+in warp)"
     );
@@ -842,7 +832,6 @@ void ChatLogWorker::parseLogLine(const QString& line, const QString& characterNa
         emit combatEventDetected(characterName, "follow_warp", eventText);
     }
     
-    // Pattern for regroup: "[ YYYY.MM.DD HH:MM:SS ] (notify) Regrouping to <name>"
     static QRegularExpression regroupPattern(
         R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Regrouping to\s+(\S+))"
     );
@@ -855,7 +844,6 @@ void ChatLogWorker::parseLogLine(const QString& line, const QString& characterNa
         emit combatEventDetected(characterName, "regroup", eventText);
     }
     
-    // Pattern for compression: "[ YYYY.MM.DD HH:MM:SS ] (notify) Successfully compressed <item> into <count> <compressed_item>"
     static QRegularExpression compressionPattern(
         R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Successfully compressed\s+(.+?)\s+into\s+(\d+)\s+(.+))"
     );
@@ -864,7 +852,6 @@ void ChatLogWorker::parseLogLine(const QString& line, const QString& characterNa
     if (compressMatch.hasMatch()) {
         QString count = compressMatch.captured(2).trimmed();
         QString compressedItem = compressMatch.captured(3).trimmed();
-        // Remove trailing period if present
         if (compressedItem.endsWith('.')) {
             compressedItem.chop(1);
         }
@@ -948,20 +935,18 @@ QString ChatLogWorker::findLastMatchingLineInFile(const QString& filePath, const
 
     qint64 fileSize = file.size();
     qint64 startPos = 0;
-    const qint64 safetyMargin = 1024; // bytes to include before tail window to avoid partial line cut
+    const qint64 safetyMargin = 1024; 
     if (fileSize > tailSize + safetyMargin) {
         startPos = fileSize - tailSize - safetyMargin;
     }
 
     if (!file.seek(startPos)) {
-        // Fallback: read everything
         file.seek(0);
     }
 
     QTextStream in(&file);
     in.setAutoDetectUnicode(true);
 
-    // If we started in the middle, skip the partial first line
     if (startPos > 0) {
         in.readLine();
     }
@@ -972,7 +957,7 @@ QString ChatLogWorker::findLastMatchingLineInFile(const QString& filePath, const
         QString normLine = normalizeLogLine(line);
         QRegularExpressionMatch match = pattern.match(normLine);
         if (match.hasMatch()) {
-            lastMatchLine = normLine; // return normalized line
+            lastMatchLine = normLine; 
         }
     }
 
@@ -1000,7 +985,6 @@ QHash<QString, QString> ChatLogWorker::buildListenerToFileMap(const QDir& dir, c
         QString character = extractCharacterFromLogFile(fi.absoluteFilePath());
         if (!character.isEmpty()) {
             QString key = character.toLower();
-            // Only set if not already present (we iterate by modification time so first is the newest)
             if (!result.contains(key)) {
                 result.insert(key, fi.absoluteFilePath());
             }
@@ -1013,14 +997,11 @@ QHash<QString, QString> ChatLogWorker::buildListenerToFileMap(const QDir& dir, c
 QString ChatLogWorker::sanitizeSystemName(const QString& system)
 {
     QString s = system;
-    // Remove any HTML or color tags
     s = s.remove(QRegularExpression("<[^>]*>"));
 
-    // Trim and collapse multiple whitespaces into single space
     s = s.trimmed();
     s = s.replace(QRegularExpression("\\s+"), " ");
 
-    // Remove trailing punctuation (common in English log lines)
     if (!s.isEmpty() && (s.endsWith('.') || s.endsWith(','))) {
         s.chop(1);
         s = s.trimmed();
@@ -1030,9 +1011,6 @@ QString ChatLogWorker::sanitizeSystemName(const QString& system)
 }
 
 
-// ============================================================================
-// ChatLogReader Implementation (Main Thread Manager)
-// ============================================================================
 
 ChatLogReader::ChatLogReader(QObject *parent)
     : QObject(parent)
@@ -1042,7 +1020,6 @@ ChatLogReader::ChatLogReader(QObject *parent)
 {
     m_worker->moveToThread(m_workerThread);
     
-    // Connect signals from worker to main thread
     connect(m_worker, &ChatLogWorker::systemChanged, 
             this, &ChatLogReader::handleSystemChanged, Qt::QueuedConnection);
     connect(m_worker, &ChatLogWorker::combatEventDetected,
@@ -1052,7 +1029,6 @@ ChatLogReader::ChatLogReader(QObject *parent)
     connect(m_worker, &ChatLogWorker::characterLoggedOut, 
             this, &ChatLogReader::characterLoggedOut, Qt::QueuedConnection);
     
-    // Thread lifecycle
     connect(m_workerThread, &QThread::started, 
         m_worker, &ChatLogWorker::startMonitoring);
     
@@ -1068,7 +1044,6 @@ ChatLogReader::~ChatLogReader()
         m_workerThread->wait();
     }
     
-    // Manual deletion required - worker has no parent (moved to separate thread)
     delete m_worker;
     m_worker = nullptr;
     
@@ -1077,7 +1052,6 @@ ChatLogReader::~ChatLogReader()
 
 void ChatLogReader::setCharacterNames(const QStringList& characters)
 {
-    // Normalize character list into a case-insensitive set and early-return if unchanged
     QSet<QString> newSet;
     newSet.reserve(characters.size());
     for (const QString& ch : characters) {
@@ -1086,16 +1060,13 @@ void ChatLogReader::setCharacterNames(const QStringList& characters)
     }
 
     if (newSet == m_lastCharacterSet) {
-        // No change in characters -> skip updating the worker and rescan
         return;
     }
 
-    // Update last seen set and forward to worker
     m_lastCharacterSet = newSet;
 
     m_worker->setCharacterNames(characters);
     
-    // Trigger rescan if already monitoring
     if (m_monitoring && m_workerThread->isRunning()) {
         QMetaObject::invokeMethod(m_worker, "checkForNewFiles", Qt::QueuedConnection);
     }
@@ -1149,7 +1120,6 @@ void ChatLogReader::start()
     if (!m_workerThread->isRunning()) {
         m_workerThread->start();
     } else {
-        // Thread already running, just start monitoring
         QMetaObject::invokeMethod(m_worker, "startMonitoring", Qt::QueuedConnection);
     }
     
@@ -1190,6 +1160,5 @@ void ChatLogReader::handleSystemChanged(const QString& characterName, const QStr
         m_characterSystems[characterName] = systemName;
     }
     
-    // Re-emit to main application
     emit systemChanged(characterName, systemName);
 }

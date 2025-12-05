@@ -11,7 +11,7 @@
 
 class HotkeyEventFilter : public QAbstractNativeEventFilter {
 public:
-  bool nativeEventFilter(const QByteArray & /*eventType*/, void *message,
+  bool nativeEventFilter(const QByteArray & , void *message,
                          qintptr *result) override {
     return HotkeyManager::nativeEventFilter(message,
                                             reinterpret_cast<long *>(result));

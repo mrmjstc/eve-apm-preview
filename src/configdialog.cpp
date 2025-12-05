@@ -73,7 +73,6 @@ ConfigDialog::ConfigDialog(QWidget *parent)
 }
 
 ConfigDialog::~ConfigDialog() {
-  // Manual deletion required - these widgets were created with nullptr parent
   if (m_testThumbnail) {
     delete m_testThumbnail;
     m_testThumbnail = nullptr;
@@ -84,9 +83,6 @@ ConfigDialog::~ConfigDialog() {
     m_notLoggedInReferenceThumbnail = nullptr;
   }
 
-  // m_networkManager is automatically deleted by Qt (created with 'this' as
-  // parent) Other heap-allocated widgets (UI elements) are also auto-deleted
-  // via parent-child ownership
 
   Config::instance().setConfigDialogOpen(false);
 }
@@ -137,8 +133,6 @@ void ConfigDialog::setupUI() {
   createAppearancePage();
   createHotkeysPage();
   createBehaviorPage();
-  // createPerformancePage();  // Removed - validation interval now hardcoded
-  // (DWM handles content)
   createDataSourcesPage();
   createLegacySettingsPage();
   createAboutPage();
@@ -197,8 +191,6 @@ void ConfigDialog::createCategoryList() {
   m_categoryList->addItem("Appearance");
   m_categoryList->addItem("Hotkeys");
   m_categoryList->addItem("Behavior");
-  // m_categoryList->addItem("Performance");  // Removed - hardcoded validation
-  // interval
   m_categoryList->addItem("Data Sources");
   m_categoryList->addItem("Legacy Settings");
   m_categoryList->addItem("About");
@@ -1495,9 +1487,7 @@ void ConfigDialog::createBehaviorPage() {
   m_stackedWidget->addWidget(page);
 }
 
-// Performance page removed - validation interval is now hardcoded at 60 seconds
 void ConfigDialog::createPerformancePage() {
-  // Empty stub - page not added to UI
 }
 
 void ConfigDialog::createDataSourcesPage() {
@@ -1777,13 +1767,10 @@ void ConfigDialog::createDataSourcesPage() {
   createEventRow("mining_stopped", "Mining stopped",
                  m_combatEventMiningStopCheck);
 
-  // Connect individual event checkboxes to enable/disable their row controls
   auto connectEventCheckbox = [this](const QString &eventType,
                                      QCheckBox *checkbox) {
     connect(checkbox, &QCheckBox::toggled, this,
             [this, eventType](bool checked) {
-              // Only enable if both the event checkbox is checked AND combat
-              // messages are enabled
               bool enable = checked && m_showCombatMessagesCheck->isChecked();
 
               if (m_eventColorButtons.contains(eventType)) {
@@ -1826,18 +1813,13 @@ void ConfigDialog::createDataSourcesPage() {
   miningTimeoutLayout->addStretch();
   combatSectionLayout->addLayout(miningTimeoutLayout);
 
-  // Connect mining_stopped checkbox to also control mining timeout
   connect(m_combatEventMiningStopCheck, &QCheckBox::toggled, this,
           [this](bool checked) {
-            // Only enable if both the mining_stopped checkbox is checked AND
-            // combat messages are enabled
             bool enable = checked && m_showCombatMessagesCheck->isChecked();
             m_miningTimeoutSpin->setEnabled(enable);
             m_miningTimeoutLabel->setEnabled(enable);
           });
 
-  // Connect show combat messages checkbox to enable/disable combat message
-  // controls
   connect(m_showCombatMessagesCheck, &QCheckBox::toggled, this,
           [this](bool checked) {
             m_combatMessagePositionCombo->setEnabled(checked);
@@ -1851,14 +1833,10 @@ void ConfigDialog::createDataSourcesPage() {
             m_combatEventMiningStartCheck->setEnabled(checked);
             m_combatEventMiningStopCheck->setEnabled(checked);
 
-            // Mining timeout depends on both combat messages AND mining_stopped
-            // being enabled
             bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
             m_miningTimeoutSpin->setEnabled(checked && miningStopChecked);
             m_miningTimeoutLabel->setEnabled(checked && miningStopChecked);
 
-            // Enable/disable event-specific controls based on both combat
-            // messages AND individual event checkbox
             QMap<QString, QCheckBox *> eventCheckboxes = {
                 {"fleet_invite", m_combatEventFleetInviteCheck},
                 {"follow_warp", m_combatEventFollowWarpCheck},
@@ -2005,7 +1983,6 @@ void ConfigDialog::createAboutPage() {
 
   layout->addSpacing(15);
 
-  // Update Check Section
   QWidget *updateSection = new QWidget();
   updateSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *updateSectionLayout = new QVBoxLayout(updateSection);
@@ -2585,7 +2562,6 @@ void ConfigDialog::loadSettings() {
   m_notLoggedInStackModeCombo->setEnabled(notLoggedInEnabled);
   m_showNotLoggedInOverlayCheck->setEnabled(notLoggedInEnabled);
 
-  // Set initial state for Data Sources tab controls
   bool chatLogEnabled = config.enableChatLogMonitoring();
   m_chatLogDirectoryLabel->setEnabled(chatLogEnabled);
   m_chatLogDirectoryEdit->setEnabled(chatLogEnabled);
@@ -2609,13 +2585,10 @@ void ConfigDialog::loadSettings() {
   m_combatEventMiningStartCheck->setEnabled(combatMessagesEnabled);
   m_combatEventMiningStopCheck->setEnabled(combatMessagesEnabled);
 
-  // Mining timeout depends on both combat messages AND mining_stopped
   bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
   m_miningTimeoutSpin->setEnabled(combatMessagesEnabled && miningStopChecked);
   m_miningTimeoutLabel->setEnabled(combatMessagesEnabled && miningStopChecked);
 
-  // Set initial state for event-specific controls based on individual event
-  // checkboxes
   QMap<QString, QCheckBox *> eventCheckboxes = {
       {"fleet_invite", m_combatEventFleetInviteCheck},
       {"follow_warp", m_combatEventFollowWarpCheck},
@@ -2773,10 +2746,8 @@ void ConfigDialog::onSetNotLoggedInPosition() {
 }
 
 void ConfigDialog::onSetClientLocations() {
-  // Emit signal to MainWindow to save current client locations
   emit saveClientLocationsRequested();
 
-  // Show feedback to user
   QMessageBox::information(
       this, "Client Locations Saved",
       "The current window positions of all open EVE clients have been saved.");
@@ -4327,27 +4298,6 @@ void ConfigDialog::onResetBehaviorDefaults() {
   }
 }
 
-// Performance reset removed - validation interval now hardcoded
-/*
-void ConfigDialog::onResetPerformanceDefaults()
-{
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Reset Performance Settings");
-    msgBox.setText("Are you sure you want to reset all performance settings to
-their default values?"); msgBox.setInformativeText("This will reset the refresh
-interval settings."); msgBox.setStandardButtons(QMessageBox::Yes |
-QMessageBox::No); msgBox.setDefaultButton(QMessageBox::No);
-    msgBox.setStyleSheet(StyleSheet::getMessageBoxStyleSheet());
-
-    if (msgBox.exec() == QMessageBox::Yes) {
-        m_refreshIntervalSpin->setValue(Config::DEFAULT_THUMBNAIL_REFRESH_INTERVAL);
-
-        QMessageBox::information(this, "Reset Complete",
-            "Performance settings have been reset to defaults.\n\n"
-            "Click Apply or OK to save the changes.");
-    }
-}
-*/
 
 void ConfigDialog::onResetCombatMessagesDefaults() {
   QMessageBox msgBox(this);
@@ -5156,8 +5106,6 @@ QWidget *ConfigDialog::createLegacyCategoryWidget(const QString &categoryName,
 
   friendlyNames["ThumbnailSize"] = "Thumbnail Size";
   friendlyNames["ThumbnailsOpacity"] = "Thumbnail Opacity";
-  // friendlyNames["ThumbnailRefreshPeriod"] = "Refresh Interval";  // Removed -
-  // hardcoded
 
   friendlyNames["ShowThumbnailsAlwaysOnTop"] = "Always On Top";
   friendlyNames["MinimizeInactiveClients"] = "Minimize Inactive Clients";
@@ -5661,7 +5609,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
               &ConfigDialog::onEditCycleGroupCharacters);
       m_cycleGroupsTable->setCellWidget(row, 1, charactersButton);
 
-      // Forward hotkey with container (needed for binding to find child)
       QWidget *forwardHotkeyWidget = new QWidget();
       QHBoxLayout *forwardLayout = new QHBoxLayout(forwardHotkeyWidget);
       forwardLayout->setContentsMargins(0, 0, 0, 0);
@@ -5702,7 +5649,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       forwardLayout->addWidget(clearForwardButton, 0);
       m_cycleGroupsTable->setCellWidget(row, 2, forwardHotkeyWidget);
 
-      // Backward hotkey with container (needed for binding to find child)
       QWidget *backwardHotkeyWidget = new QWidget();
       QHBoxLayout *backwardLayout = new QHBoxLayout(backwardHotkeyWidget);
       backwardLayout->setContentsMargins(0, 0, 0, 0);
@@ -5743,7 +5689,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       backwardLayout->addWidget(clearBackwardButton, 0);
       m_cycleGroupsTable->setCellWidget(row, 3, backwardHotkeyWidget);
 
-      // Include not-logged-in checkbox
       QWidget *checkboxContainer = new QWidget();
       checkboxContainer->setStyleSheet(
           "QWidget { background-color: transparent; }");
@@ -5761,7 +5706,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       checkboxLayout->addWidget(includeNotLoggedInCheck);
       m_cycleGroupsTable->setCellWidget(row, 4, checkboxContainer);
 
-      // No-loop checkbox
       QWidget *noLoopContainer = new QWidget();
       noLoopContainer->setStyleSheet(
           "QWidget { background-color: transparent; }");
@@ -5812,7 +5756,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
             nameEdit->setStyleSheet(cellStyle);
             m_characterHotkeysTable->setCellWidget(row, 0, nameEdit);
 
-            // Hotkey with container (needed for binding to find child)
             QWidget *hotkeyWidget = new QWidget();
             QHBoxLayout *hotkeyLayout = new QHBoxLayout(hotkeyWidget);
             hotkeyLayout->setContentsMargins(0, 0, 4, 0);
@@ -5848,7 +5791,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
             hotkeyLayout->addWidget(clearButton, 0);
             m_characterHotkeysTable->setCellWidget(row, 1, hotkeyWidget);
 
-            // Delete button
             QWidget *deleteContainer = new QWidget();
             deleteContainer->setStyleSheet(
                 "QWidget { background-color: transparent; }");
@@ -6499,7 +6441,6 @@ void ConfigDialog::onCheckForUpdates() {
     m_networkManager = new QNetworkAccessManager(this);
   }
 
-  // Check if SSL is supported
   if (!QSslSocket::supportsSsl()) {
     m_updateStatusLabel->setText(
         QString("❌ SSL not available. OpenSSL libraries required."));
@@ -6526,7 +6467,6 @@ void ConfigDialog::onCheckForUpdates() {
 
   QNetworkReply *reply = m_networkManager->get(request);
 
-  // Handle SSL errors
   connect(reply,
           QOverload<const QList<QSslError> &>::of(&QNetworkReply::sslErrors),
           this, [this, reply](const QList<QSslError> &errors) {
@@ -6568,7 +6508,6 @@ void ConfigDialog::onCheckForUpdates() {
       return;
     }
 
-    // Remove 'v' prefix if present
     QString cleanLatestVersion = latestVersion;
     if (cleanLatestVersion.startsWith('v')) {
       cleanLatestVersion = cleanLatestVersion.mid(1);
@@ -6576,7 +6515,6 @@ void ConfigDialog::onCheckForUpdates() {
 
     QString currentVersion = APP_VERSION;
 
-    // Compare versions
     if (compareVersions(currentVersion, cleanLatestVersion) < 0) {
       m_updateStatusLabel->setText(
           QString("🎉 New version available: %1 (you have %2)")

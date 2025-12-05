@@ -53,11 +53,9 @@ MainWindow::MainWindow(QObject *parent)
   connect(hotkeyManager.get(), &HotkeyManager::closeAllClientsRequested, this,
           &MainWindow::closeAllEVEClients);
 
-  // Validation timer - DWM handles thumbnail content updates automatically!
-  // This timer only validates window state and catches rare missed events
   refreshTimer = new QTimer(this);
   connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshWindows);
-  refreshTimer->start(60000); // 60 seconds - hardcoded, validation only!
+  refreshTimer->start(60000); 
 
   minimizeTimer = new QTimer(this);
   minimizeTimer->setSingleShot(true);
@@ -164,7 +162,6 @@ MainWindow::MainWindow(QObject *parent)
 
   m_chatLogReader = std::make_unique<ChatLogReader>();
 
-  // Cache config reference to avoid multiple instance() calls in constructor
   const Config &cfgChatLog = Config::instance();
   QString chatLogDirectory = cfgChatLog.chatLogDirectory();
   QString gameLogDirectory = cfgChatLog.gameLogDirectory();
@@ -254,21 +251,21 @@ MainWindow::~MainWindow() {
   thumbnails.clear();
 }
 
-void CALLBACK MainWindow::WinEventProc(HWINEVENTHOOK /*hWinEventHook*/,
-                                       DWORD /*event*/, HWND /*hwnd*/,
-                                       LONG /*idObject*/, LONG /*idChild*/,
-                                       DWORD /*dwEventThread*/,
-                                       DWORD /*dwmsEventTime*/) {
+void CALLBACK MainWindow::WinEventProc(HWINEVENTHOOK ,
+                                       DWORD , HWND ,
+                                       LONG , LONG ,
+                                       DWORD ,
+                                       DWORD ) {
   if (!s_instance.isNull()) {
     QMetaObject::invokeMethod(s_instance, "updateActiveWindow",
                               Qt::QueuedConnection);
   }
 }
 
-void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
+void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK ,
                                           DWORD event, HWND hwnd, LONG idObject,
-                                          LONG idChild, DWORD /*dwEventThread*/,
-                                          DWORD /*dwmsEventTime*/) {
+                                          LONG idChild, DWORD ,
+                                          DWORD ) {
   if (idObject != OBJID_WINDOW) {
     return;
   }
@@ -276,11 +273,9 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
   if (!s_instance.isNull()) {
     if (event == EVENT_OBJECT_CREATE || event == EVENT_OBJECT_DESTROY) {
       s_instance->m_needsEnumeration = true;
-      // Trigger immediate enumeration for new windows
       QMetaObject::invokeMethod(s_instance.data(), "refreshWindows",
                                 Qt::QueuedConnection);
     } else if (event == EVENT_OBJECT_NAMECHANGE) {
-      // Only process if this is a tracked window
       if (s_instance->thumbnails.contains(hwnd)) {
         QMetaObject::invokeMethod(
             s_instance.data(),
@@ -304,15 +299,12 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
             Qt::QueuedConnection);
       }
     } else if (event == EVENT_OBJECT_LOCATIONCHANGE) {
-      // Only process if this is a tracked window and not being moved by user
       if (s_instance->thumbnails.contains(hwnd)) {
         QMetaObject::invokeMethod(
             s_instance.data(),
             [hwnd]() {
               if (!s_instance.isNull()) {
-                // Skip if this window is being moved/resized by user
                 if (!s_instance->m_windowsBeingMoved.value(hwnd, false)) {
-                  // Debounce: only refresh after movement stops
                   s_instance->scheduleLocationRefresh(hwnd);
                 }
               }
@@ -320,7 +312,6 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
             Qt::QueuedConnection);
       }
     } else if (event == EVENT_SYSTEM_MOVESIZESTART) {
-      // Track that this window is being moved/resized by user
       if (s_instance->thumbnails.contains(hwnd)) {
         QMetaObject::invokeMethod(
             s_instance.data(),
@@ -332,7 +323,6 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
             Qt::QueuedConnection);
       }
     } else if (event == EVENT_SYSTEM_MOVESIZEEND) {
-      // User finished moving/resizing - refresh once
       if (s_instance->thumbnails.contains(hwnd)) {
         QMetaObject::invokeMethod(
             s_instance.data(),
@@ -346,7 +336,6 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
       }
     } else if (event == EVENT_SYSTEM_MINIMIZESTART ||
                event == EVENT_SYSTEM_MINIMIZEEND) {
-      // Handle minimize/restore state changes
       if (s_instance->thumbnails.contains(hwnd)) {
         QMetaObject::invokeMethod(
             s_instance.data(),
@@ -387,10 +376,8 @@ void MainWindow::refreshWindows() {
         break;
       }
 
-      // Use cached title instead of retrieving every time
       QString title = m_lastKnownTitles.value(hwnd, "");
 
-      // Only retrieve title if we don't have it cached
       if (title.isEmpty()) {
         title = windowCapture->getWindowTitle(hwnd);
         m_lastKnownTitles.insert(hwnd, title);
@@ -613,7 +600,6 @@ void MainWindow::refreshWindows() {
               thumbWidget->setSystemName(QString());
             }
 
-            // Try to restore client window location
             tryRestoreClientLocation(window.handle, characterName);
 
             if (rememberPos) {
@@ -738,7 +724,6 @@ void MainWindow::updateCharacterMappings() {
 
   hotkeyManager->updateCharacterWindows(m_characterToWindow);
 
-  // Cache config reference to avoid multiple instance() calls
   const Config &cfgLog = Config::instance();
   if (m_chatLogReader &&
       (cfgLog.enableChatLogMonitoring() || cfgLog.enableGameLogMonitoring())) {
@@ -766,21 +751,18 @@ void MainWindow::handleWindowTitleChange(HWND hwnd) {
   QString lastTitle = m_lastKnownTitles.value(hwnd, "");
 
   if (lastTitle == newTitle) {
-    return; // No actual change
+    return; 
   }
 
   m_lastKnownTitles.insert(hwnd, newTitle);
   ThumbnailWidget *thumbWidget = thumbnails[hwnd];
   thumbWidget->setTitle(newTitle);
 
-  // Check if this is an EVE client
   QString processName = m_windowProcessNames.value(hwnd, "");
   bool isEVEClient =
       processName.compare("exefile.exe", Qt::CaseInsensitive) == 0;
 
   if (!isEVEClient) {
-    // Update non-EVE overlay if needed
-    // Cache config reference
     const Config &cfgOverlay = Config::instance();
     if (cfgOverlay.showNonEVEOverlay()) {
       thumbWidget->setCharacterName(newTitle);
@@ -788,7 +770,6 @@ void MainWindow::handleWindowTitleChange(HWND hwnd) {
     return;
   }
 
-  // Handle EVE client login/logout state changes
   QString lastCharacterName = OverlayInfo::extractCharacterName(lastTitle);
   QString newCharacterName = OverlayInfo::extractCharacterName(newTitle);
 
@@ -800,7 +781,6 @@ void MainWindow::handleWindowTitleChange(HWND hwnd) {
   const Config &cfg = Config::instance();
 
   if (wasNotLoggedIn && isNowLoggedIn) {
-    // Character just logged in
     thumbWidget->setCharacterName(newCharacterName);
 
     QString cachedSystem = m_characterSystems.value(newCharacterName);
@@ -834,14 +814,12 @@ void MainWindow::handleWindowTitleChange(HWND hwnd) {
     updateCharacterMappings();
 
   } else if (wasLoggedIn && isNowNotLoggedIn) {
-    // Character logged out
     QString displayName =
         cfg.showNotLoggedInOverlay() ? NOT_LOGGED_IN_TEXT : "";
     thumbWidget->setCharacterName(displayName);
     thumbWidget->setSystemName(QString());
 
     if (!cfg.preserveLogoutPositions()) {
-      // Move to "not logged in" position
       int notLoggedInIndex = m_notLoggedInWindows.size();
       QPoint pos = calculateNotLoggedInPosition(notLoggedInIndex);
       thumbWidget->move(pos);
@@ -860,7 +838,6 @@ QPoint MainWindow::calculateNotLoggedInPosition(int index) {
   int thumbHeight = cfg.thumbnailHeight();
   int spacing = 10;
 
-  // Use the custom reference position
   QPoint refPos = cfg.notLoggedInReferencePosition();
   int baseX = refPos.x();
   int baseY = refPos.y();
@@ -889,8 +866,6 @@ void MainWindow::updateActiveWindow() {
   bool hideActive = cfg.hideActiveClientThumbnail();
   bool highlightActive = cfg.highlightActiveWindow();
 
-  // Early return if active window hasn't changed and no visibility update
-  // needed
   if (activeWindow == m_lastActiveWindow && !hideActive) {
     return;
   }
@@ -898,9 +873,7 @@ void MainWindow::updateActiveWindow() {
   HWND previousActiveWindow = m_lastActiveWindow;
   m_lastActiveWindow = activeWindow;
 
-  // If the active window is not in thumbnails, it's not an EVE client
   if (activeWindow != nullptr && !thumbnails.contains(activeWindow)) {
-    // Clear highlight from previously active EVE window
     if (previousActiveWindow != nullptr &&
         thumbnails.contains(previousActiveWindow)) {
       auto it = thumbnails.find(previousActiveWindow);
@@ -912,13 +885,11 @@ void MainWindow::updateActiveWindow() {
       }
     }
 
-    // Check if this might be a newly created EVE window
     m_needsEnumeration = true;
     refreshWindows();
-    return; // refreshWindows() will call updateActiveWindow() again
+    return; 
   }
 
-  // Update only the windows that changed state (previous and current active)
   auto updateWindow = [&](HWND hwnd) {
     auto it = thumbnails.find(hwnd);
     if (it == thumbnails.end()) {
@@ -949,12 +920,10 @@ void MainWindow::updateActiveWindow() {
     }
   };
 
-  // Update the previous active window (if it exists and changed)
   if (previousActiveWindow != nullptr && previousActiveWindow != activeWindow) {
     updateWindow(previousActiveWindow);
   }
 
-  // Update the current active window
   if (activeWindow != nullptr) {
     updateWindow(activeWindow);
   }
@@ -1209,7 +1178,6 @@ void MainWindow::activateWindow(HWND hwnd) {
     WindowCapture::activateWindow(hwnd);
   }
 
-  // Update active window immediately instead of waiting for event hook
   updateActiveWindow();
 }
 
@@ -1280,7 +1248,7 @@ void MainWindow::onGroupDragMoved(quintptr windowId, QPoint delta) {
   }
 }
 
-void MainWindow::onGroupDragEnded(quintptr /*windowId*/) {
+void MainWindow::onGroupDragEnded(quintptr ) {
   Config &cfg = Config::instance();
   if (!cfg.rememberPositions()) {
     m_groupDragInitialPositions.clear();
@@ -1344,15 +1312,12 @@ void MainWindow::showSettings() {
   connect(this, &MainWindow::profileSwitchedExternally, m_configDialog,
           &ConfigDialog::onExternalProfileSwitch);
 
-  // Update all thumbnails to show their highlight borders when config dialog
-  // opens
   for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
     it.value()->forceOverlayRender();
   }
 
   connect(m_configDialog, &QObject::destroyed, this, [this]() {
     m_configDialog = nullptr;
-    // Update all thumbnails to restore normal state when config dialog closes
     for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
       it.value()->forceOverlayRender();
     }
@@ -1410,7 +1375,6 @@ void MainWindow::applySettings() {
     }
   }
 
-  // Prepare default layout parameters in case we need to re-layout thumbnails
   QScreen *primaryScreen = QGuiApplication::primaryScreen();
   QRect screenGeometry = primaryScreen->geometry();
   int screenWidth = screenGeometry.width();
@@ -1479,12 +1443,10 @@ void MainWindow::applySettings() {
       if (targetScreen) {
         thumb->move(savedPos);
       } else {
-        // Saved position is off-screen, use default layout
         hasSavedPosition = false;
       }
     }
 
-    // If no saved position or rememberPositions is disabled, use default layout
     if (!hasSavedPosition) {
       QString characterName = m_windowToCharacter.value(hwnd);
       bool isNotLoggedIn = isEVEClient && characterName.isEmpty();
@@ -1514,8 +1476,6 @@ void MainWindow::applySettings() {
     thumb->QWidget::update();
   }
 
-  // Validation interval is now hardcoded at 60 seconds
-  // refreshTimer->setInterval(cfg.refreshInterval());
 
   if (m_chatLogReader) {
     QString chatLogDirectory = cfg.chatLogDirectory();
@@ -1530,7 +1490,6 @@ void MainWindow::applySettings() {
 
     bool shouldMonitor = enableChatLog || enableGameLog;
 
-    // Update character names before starting/refreshing monitoring
     if (shouldMonitor) {
       QStringList characterNames = m_characterToWindow.keys();
       m_chatLogReader->setCharacterNames(characterNames);
@@ -1544,8 +1503,6 @@ void MainWindow::applySettings() {
       m_chatLogReader->stop();
       qDebug() << "ChatLog: Monitoring stopped via settings";
     } else if (shouldMonitor && m_chatLogReader->isMonitoring()) {
-      // Monitoring is active and should remain active, but settings may have
-      // changed
       m_chatLogReader->refreshMonitoring();
       qDebug() << "ChatLog: Monitoring refreshed via settings (ChatLog:"
                << enableChatLog << ", GameLog:" << enableGameLog << ")";
@@ -1687,7 +1644,6 @@ void MainWindow::saveCurrentClientLocations() {
   Config &cfg = Config::instance();
   int savedCount = 0;
 
-  // Iterate through all known windows
   for (auto it = m_windowToCharacter.constBegin();
        it != m_windowToCharacter.constEnd(); ++it) {
     HWND hwnd = it.key();
@@ -1697,7 +1653,6 @@ void MainWindow::saveCurrentClientLocations() {
       continue;
     }
 
-    // Get window rectangle
     RECT rect;
     if (GetWindowRect(hwnd, &rect)) {
       QRect qRect(rect.left, rect.top, rect.right - rect.left,
@@ -1717,7 +1672,6 @@ bool MainWindow::isWindowRectValid(const QRect &rect) {
     return false;
   }
 
-  // Check if any part of the window is on a valid monitor
   RECT winRect = {rect.left(), rect.top(), rect.right(), rect.bottom()};
   HMONITOR hMonitor = MonitorFromRect(&winRect, MONITOR_DEFAULTTONULL);
 
@@ -1725,14 +1679,13 @@ bool MainWindow::isWindowRectValid(const QRect &rect) {
 }
 
 void MainWindow::scheduleLocationRefresh(HWND hwnd) {
-  // Use static hash to maintain debounce timers per window
   static QHash<HWND, QTimer *> debounceTimers;
 
   auto &timer = debounceTimers[hwnd];
   if (!timer) {
     timer = new QTimer(this);
     timer->setSingleShot(true);
-    timer->setInterval(100); // 100ms debounce - wait for movement to stop
+    timer->setInterval(100); 
     connect(timer, &QTimer::timeout, this, [this, hwnd]() {
       if (thumbnails.contains(hwnd)) {
         refreshSingleThumbnail(hwnd);
@@ -1740,7 +1693,6 @@ void MainWindow::scheduleLocationRefresh(HWND hwnd) {
     });
   }
 
-  // Restart timer - only fires 100ms after last location change
   timer->start();
 }
 
@@ -1752,12 +1704,10 @@ bool MainWindow::tryRestoreClientLocation(HWND hwnd,
     return false;
   }
 
-  // Check if we've already attempted to move this window
   if (m_clientLocationMoveAttempted.value(hwnd, false)) {
     return false;
   }
 
-  // Get saved window rect
   QRect savedRect = cfg.getClientWindowRect(characterName);
 
   if (!isWindowRectValid(savedRect)) {
@@ -1767,7 +1717,6 @@ bool MainWindow::tryRestoreClientLocation(HWND hwnd,
     return false;
   }
 
-  // Attempt to move the window
   BOOL result = SetWindowPos(hwnd, nullptr, savedRect.x(), savedRect.y(),
                              savedRect.width(), savedRect.height(),
                              SWP_NOZORDER | SWP_NOACTIVATE);

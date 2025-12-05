@@ -29,9 +29,7 @@ ThumbnailWidget::ThumbnailWidget(quintptr windowId, const QString &title,
   connect(m_updateTimer, &QTimer::timeout, this,
           &ThumbnailWidget::updateDwmThumbnail);
 
-  // DWM handles content updates automatically - this is just for
-  // fallback/safety
-  m_updateTimer->start(60000); // 60 seconds
+  m_updateTimer->start(60000); 
 
   m_combatMessageTimer = new QTimer(this);
   m_combatMessageTimer->setSingleShot(true);
@@ -97,7 +95,6 @@ void ThumbnailWidget::setCombatMessage(const QString &message,
   }
 
   if (!message.isEmpty()) {
-    // Cache config reference to avoid repeated instance() calls
     const Config &cfg = Config::instance();
     int duration = cfg.combatEventDuration(eventType);
     m_combatMessageTimer->start(duration);
@@ -317,7 +314,7 @@ QPoint ThumbnailWidget::snapPosition(
   return snappedPos;
 }
 
-void ThumbnailWidget::paintEvent(QPaintEvent * /*event*/) {
+void ThumbnailWidget::paintEvent(QPaintEvent * ) {
   if (m_windowId == 0) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -477,7 +474,7 @@ void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
       emit positionChanged(m_windowId, pos());
 
       if (!m_updateTimer->isActive()) {
-        m_updateTimer->start(60000); // 60 seconds - hardcoded
+        m_updateTimer->start(60000); 
         updateDwmThumbnail();
       }
 
@@ -494,7 +491,7 @@ void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
       emit positionChanged(m_windowId, pos());
 
       if (!m_updateTimer->isActive()) {
-        m_updateTimer->start(60000); // 60 seconds - hardcoded
+        m_updateTimer->start(60000); 
         updateDwmThumbnail();
       }
 
@@ -682,7 +679,7 @@ void OverlayWidget::setOverlays(const QVector<OverlayElement> &overlays) {
 
 void OverlayWidget::setActiveState(bool active) {
   if (m_isActive == active) {
-    return; // Skip update if state unchanged
+    return; 
   }
   m_isActive = active;
   update();
@@ -712,7 +709,6 @@ void OverlayWidget::setCombatEventState(bool hasCombatEvent,
   m_hasCombatEvent = hasCombatEvent;
   m_combatEventType = eventType;
 
-  // Cache config reference to avoid repeated instance() calls
   if (hasCombatEvent) {
     const Config &cfg = Config::instance();
     if (cfg.combatEventBorderHighlight(eventType)) {
@@ -745,7 +741,7 @@ void OverlayWidget::invalidateCache() {
   update();
 }
 
-void OverlayWidget::paintEvent(QPaintEvent * /*event*/) {
+void OverlayWidget::paintEvent(QPaintEvent * ) {
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);

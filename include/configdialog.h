@@ -51,7 +51,6 @@ private slots:
   void onResetAppearanceDefaults();
   void onResetHotkeysDefaults();
   void onResetBehaviorDefaults();
-  // void onResetPerformanceDefaults();  // Removed - performance page removed
   void onResetCombatMessagesDefaults();
   void onAspectRatio16_9();
   void onAspectRatio21_9();
@@ -263,7 +262,6 @@ private:
   QCheckBox *m_wildcardHotkeysCheck;
   QCheckBox *m_hotkeysOnlyWhenEVEFocusedCheck;
 
-  // Update check UI
   QLabel *m_updateStatusLabel;
   QPushButton *m_checkUpdateButton;
   QPushButton *m_downloadUpdateButton;
