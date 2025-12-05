@@ -55,7 +55,7 @@ MainWindow::MainWindow(QObject *parent)
 
   refreshTimer = new QTimer(this);
   connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshWindows);
-  refreshTimer->start(60000); 
+  refreshTimer->start(60000);
 
   minimizeTimer = new QTimer(this);
   minimizeTimer->setSingleShot(true);
@@ -251,21 +251,17 @@ MainWindow::~MainWindow() {
   thumbnails.clear();
 }
 
-void CALLBACK MainWindow::WinEventProc(HWINEVENTHOOK ,
-                                       DWORD , HWND ,
-                                       LONG , LONG ,
-                                       DWORD ,
-                                       DWORD ) {
+void CALLBACK MainWindow::WinEventProc(HWINEVENTHOOK, DWORD, HWND, LONG, LONG,
+                                       DWORD, DWORD) {
   if (!s_instance.isNull()) {
     QMetaObject::invokeMethod(s_instance, "updateActiveWindow",
                               Qt::QueuedConnection);
   }
 }
 
-void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK ,
-                                          DWORD event, HWND hwnd, LONG idObject,
-                                          LONG idChild, DWORD ,
-                                          DWORD ) {
+void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK, DWORD event, HWND hwnd,
+                                          LONG idObject, LONG idChild, DWORD,
+                                          DWORD) {
   if (idObject != OBJID_WINDOW) {
     return;
   }
@@ -753,7 +749,7 @@ void MainWindow::handleWindowTitleChange(HWND hwnd) {
   QString lastTitle = m_lastKnownTitles.value(hwnd, "");
 
   if (lastTitle == newTitle) {
-    return; 
+    return;
   }
 
   m_lastKnownTitles.insert(hwnd, newTitle);
@@ -889,7 +885,7 @@ void MainWindow::updateActiveWindow() {
 
     m_needsEnumeration = true;
     refreshWindows();
-    return; 
+    return;
   }
 
   auto updateWindow = [&](HWND hwnd) {
@@ -1293,7 +1289,7 @@ void MainWindow::onGroupDragMoved(quintptr windowId, QPoint delta) {
   }
 }
 
-void MainWindow::onGroupDragEnded(quintptr ) {
+void MainWindow::onGroupDragEnded(quintptr) {
   Config &cfg = Config::instance();
   if (!cfg.rememberPositions()) {
     m_groupDragInitialPositions.clear();
@@ -1521,7 +1517,6 @@ void MainWindow::applySettings() {
     thumb->QWidget::update();
   }
 
-
   if (m_chatLogReader) {
     QString chatLogDirectory = cfg.chatLogDirectory();
     QString gameLogDirectory = cfg.gameLogDirectory();
@@ -1730,7 +1725,7 @@ void MainWindow::scheduleLocationRefresh(HWND hwnd) {
   if (!timer) {
     timer = new QTimer(this);
     timer->setSingleShot(true);
-    timer->setInterval(100); 
+    timer->setInterval(100);
     connect(timer, &QTimer::timeout, this, [this, hwnd]() {
       if (thumbnails.contains(hwnd)) {
         refreshSingleThumbnail(hwnd);
