@@ -2120,7 +2120,7 @@ void ConfigDialog::createAboutPage() {
       "The Aggressor",  "Exie",       "Hyperion Iwaira",  "Zintage Enaka",
       "snipereagle1",   "degeva",     "Killer 641",       "Aulis",
       "Cyanide",        "Oebrun",     "Kondo Rio Sotken", "Zack Power",
-      "Langanmyer Nor", "ham Norris", "Groot Brustir"};
+      "Langanmyer Nor", "ham Norris", "Groot Brustir",    "The Llama"};
 
   int row = 0;
   int col = 0;
