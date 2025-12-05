@@ -1270,14 +1270,16 @@ void MainWindow::showSettings()
     
     connect(this, &MainWindow::profileSwitchedExternally, m_configDialog, &ConfigDialog::onExternalProfileSwitch);
     
+    // Update all thumbnails to show their highlight borders when config dialog opens
     for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
-        it.value()->update();
+        it.value()->forceOverlayRender();
     }
     
     connect(m_configDialog, &QObject::destroyed, this, [this]() {
         m_configDialog = nullptr;
+        // Update all thumbnails to restore normal state when config dialog closes
         for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
-            it.value()->update();
+            it.value()->forceOverlayRender();
         }
         updateProfilesMenu();
     });

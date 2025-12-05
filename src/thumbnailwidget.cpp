@@ -800,7 +800,7 @@ void OverlayWidget::paintEvent(QPaintEvent *event)
     
     bool highlightEnabled = cfg.highlightActiveWindow();
     bool configDialogOpen = cfg.isConfigDialogOpen();
-    bool shouldDrawActiveBorder = highlightEnabled && (m_isActive || configDialogOpen);
+    bool shouldDrawActiveBorder = (highlightEnabled && m_isActive) || configDialogOpen;
     
     bool shouldDrawCombatBorder = m_hasCombatEvent && 
                                    cfg.combatEventBorderHighlight(m_combatEventType);
