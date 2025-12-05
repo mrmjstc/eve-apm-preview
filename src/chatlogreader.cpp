@@ -539,13 +539,17 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString& filePath)
     QTextStream in(&file);
     in.setAutoDetectUnicode(true);
     
+    // Character name is always on line 9 with format "Listener: <character_name>"
     static QRegularExpression listenerPattern(R"(Listener:\s+(.+))");
     
-    int linesRead = 0;
-    while (!in.atEnd() && linesRead < 20) {
+    // Skip to line 9 (read and discard lines 1-8)
+    for (int i = 1; i <= 8 && !in.atEnd(); ++i) {
+        in.readLine();
+    }
+    
+    // Read line 9
+    if (!in.atEnd()) {
         QString line = in.readLine();
-        linesRead++;
-        
         QRegularExpressionMatch match = listenerPattern.match(line);
         if (match.hasMatch()) {
             QString characterName = match.captured(1).trimmed();
