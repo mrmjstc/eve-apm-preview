@@ -260,6 +260,8 @@ void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK hWinEventHook, DWORD eve
     if (!s_instance.isNull()) {
         if (event == EVENT_OBJECT_CREATE || event == EVENT_OBJECT_DESTROY) {
             s_instance->m_needsEnumeration = true;
+            // Trigger immediate enumeration for new windows
+            QMetaObject::invokeMethod(s_instance.data(), "refreshWindows", Qt::QueuedConnection);
         }
         else if (event == EVENT_OBJECT_NAMECHANGE) {
             // Only process if this is a tracked window
@@ -807,6 +809,25 @@ void MainWindow::updateActiveWindow()
     HWND previousActiveWindow = m_lastActiveWindow;
     m_lastActiveWindow = activeWindow;
     
+    // If the active window is not in thumbnails, it's not an EVE client
+    if (activeWindow != nullptr && !thumbnails.contains(activeWindow)) {
+        // Clear highlight from previously active EVE window
+        if (previousActiveWindow != nullptr && thumbnails.contains(previousActiveWindow)) {
+            auto it = thumbnails.find(previousActiveWindow);
+            if (it != thumbnails.end()) {
+                it.value()->setActive(false);
+                if (hideActive) {
+                    it.value()->show();
+                }
+            }
+        }
+        
+        // Check if this might be a newly created EVE window
+        m_needsEnumeration = true;
+        refreshWindows();
+        return;  // refreshWindows() will call updateActiveWindow() again
+    }
+    
     // Update only the windows that changed state (previous and current active)
     auto updateWindow = [&](HWND hwnd) {
         auto it = thumbnails.find(hwnd);
@@ -1112,6 +1133,9 @@ void MainWindow::activateWindow(HWND hwnd)
     } else {
         WindowCapture::activateWindow(hwnd);
     }
+    
+    // Update active window immediately instead of waiting for event hook
+    updateActiveWindow();
 }
 
 void MainWindow::minimizeInactiveWindows()
