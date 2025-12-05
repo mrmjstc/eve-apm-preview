@@ -149,8 +149,6 @@ private:
   QPushButton *m_aspectRatio16_9Button;
   QPushButton *m_aspectRatio21_9Button;
   QPushButton *m_aspectRatio4_3Button;
-  // QSpinBox *m_refreshIntervalSpin;  // Removed - hardcoded validation
-  // interval
   QSpinBox *m_opacitySpin;
   QCheckBox *m_showNotLoggedInClientsCheck;
   QLabel *m_notLoggedInPositionLabel;

@@ -2135,14 +2135,6 @@ void ConfigDialog::setupBindings() {
       m_thumbnailHeightSpin, [&config]() { return config.thumbnailHeight(); },
       [&config](int value) { config.setThumbnailHeight(value); }, 300));
 
-  // Removed refresh interval binding - now hardcoded
-  // m_bindingManager.addBinding(BindingHelpers::bindSpinBox(
-  //     m_refreshIntervalSpin,
-  //     [&config]() { return config.refreshInterval(); },
-  //     [&config](int value) { config.setRefreshInterval(value); },
-  //     100
-  // ));
-
   m_bindingManager.addBinding(BindingHelpers::bindSpinBox(
       m_opacitySpin, [&config]() { return config.thumbnailOpacity(); },
       [&config](int value) { config.setThumbnailOpacity(value); }, 95));
@@ -5420,11 +5412,6 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       double opacity = settings["ThumbnailsOpacity"].toDouble();
       m_opacitySpin->setValue(static_cast<int>(opacity * 100));
     }
-
-    // Removed refresh interval import - now hardcoded
-    // if (settings.contains("ThumbnailRefreshPeriod")) {
-    //     m_refreshIntervalSpin->setValue(settings["ThumbnailRefreshPeriod"].toInt());
-    // }
   } else if (category == "Window Behavior") {
     if (settings.contains("ShowThumbnailsAlwaysOnTop")) {
       m_alwaysOnTopCheck->setChecked(

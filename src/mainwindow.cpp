@@ -254,32 +254,21 @@ MainWindow::~MainWindow() {
   thumbnails.clear();
 }
 
-void CALLBACK MainWindow::WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event,
-                                       HWND hwnd, LONG idObject, LONG idChild,
-                                       DWORD dwEventThread,
-                                       DWORD dwmsEventTime) {
-  Q_UNUSED(hWinEventHook);
-  Q_UNUSED(event);
-  Q_UNUSED(hwnd);
-  Q_UNUSED(idObject);
-  Q_UNUSED(idChild);
-  Q_UNUSED(dwEventThread);
-  Q_UNUSED(dwmsEventTime);
-
+void CALLBACK MainWindow::WinEventProc(HWINEVENTHOOK /*hWinEventHook*/,
+                                       DWORD /*event*/, HWND /*hwnd*/,
+                                       LONG /*idObject*/, LONG /*idChild*/,
+                                       DWORD /*dwEventThread*/,
+                                       DWORD /*dwmsEventTime*/) {
   if (!s_instance.isNull()) {
     QMetaObject::invokeMethod(s_instance, "updateActiveWindow",
                               Qt::QueuedConnection);
   }
 }
 
-void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK hWinEventHook,
+void CALLBACK MainWindow::WindowEventProc(HWINEVENTHOOK /*hWinEventHook*/,
                                           DWORD event, HWND hwnd, LONG idObject,
-                                          LONG idChild, DWORD dwEventThread,
-                                          DWORD dwmsEventTime) {
-  Q_UNUSED(hWinEventHook);
-  Q_UNUSED(dwEventThread);
-  Q_UNUSED(dwmsEventTime);
-
+                                          LONG idChild, DWORD /*dwEventThread*/,
+                                          DWORD /*dwmsEventTime*/) {
   if (idObject != OBJID_WINDOW) {
     return;
   }
@@ -1206,7 +1195,6 @@ void MainWindow::activateWindow(HWND hwnd) {
 
     if (wasMinimized) {
       ShowWindowAsync(hwnd, SW_RESTORE);
-      m_hwndJustRestored = hwnd;
 
       m_hwndPendingRefresh = hwnd;
     }
@@ -1292,9 +1280,7 @@ void MainWindow::onGroupDragMoved(quintptr windowId, QPoint delta) {
   }
 }
 
-void MainWindow::onGroupDragEnded(quintptr windowId) {
-  Q_UNUSED(windowId);
-
+void MainWindow::onGroupDragEnded(quintptr /*windowId*/) {
   Config &cfg = Config::instance();
   if (!cfg.rememberPositions()) {
     m_groupDragInitialPositions.clear();

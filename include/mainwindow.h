@@ -81,7 +81,6 @@ private:
   int m_nonEVECycleIndex;
 
   HWND m_hwndToActivate = nullptr;
-  HWND m_hwndJustRestored = nullptr;
   HWND m_hwndPendingRefresh = nullptr;
   HWND m_lastActiveWindow =
       nullptr; // Track last active to avoid redundant updates

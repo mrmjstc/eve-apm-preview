@@ -317,9 +317,7 @@ QPoint ThumbnailWidget::snapPosition(
   return snappedPos;
 }
 
-void ThumbnailWidget::paintEvent(QPaintEvent *event) {
-  Q_UNUSED(event);
-
+void ThumbnailWidget::paintEvent(QPaintEvent * /*event*/) {
   if (m_windowId == 0) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
@@ -747,8 +745,7 @@ void OverlayWidget::invalidateCache() {
   update();
 }
 
-void OverlayWidget::paintEvent(QPaintEvent *event) {
-  Q_UNUSED(event);
+void OverlayWidget::paintEvent(QPaintEvent * /*event*/) {
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
