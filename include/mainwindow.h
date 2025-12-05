@@ -138,6 +138,7 @@ private:
   void saveCurrentClientLocations();
   bool tryRestoreClientLocation(HWND hwnd, const QString &characterName);
   bool isWindowRectValid(const QRect &rect);
+  void invalidateCycleIndicesForWindow(HWND hwnd);
 };
 
 #endif
