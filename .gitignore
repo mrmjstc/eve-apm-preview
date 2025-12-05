@@ -9,6 +9,7 @@ x64/
 out/
 dist/
 tools/
+build.ps1
 
 # IDE files
 .vscode/
