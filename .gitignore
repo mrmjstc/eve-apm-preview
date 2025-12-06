@@ -10,6 +10,12 @@ out/
 dist/
 tools/
 build.ps1
+build_static_app.ps1
+build_qt_static.ps1
+build_mingw/
+build_static/
+dist_static/
+docs/
 
 # IDE files
 .vscode/

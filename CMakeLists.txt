@@ -94,7 +94,8 @@ if(WIN32)
     get_filename_component(_qt_bin_dir "${_qmake_executable}" DIRECTORY)
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
     
-    if(WINDEPLOYQT_EXECUTABLE)
+    # Only run windeployqt for dynamic builds (not static)
+    if(WINDEPLOYQT_EXECUTABLE AND BUILD_SHARED_LIBS)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND "${WINDEPLOYQT_EXECUTABLE}" 
                 --no-translations
