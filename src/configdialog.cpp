@@ -2876,6 +2876,10 @@ void ConfigDialog::onTestOverlays() {
     m_testThumbnail->updateOverlays();
     m_testThumbnail->show();
     m_testThumbnail->raise();
+  } else if (m_testThumbnail->isVisible()) {
+    m_testThumbnail->hide();
+    delete m_testThumbnail;
+    m_testThumbnail = nullptr;
   } else {
     const Config &cfg = Config::instance();
 
@@ -2895,6 +2899,7 @@ void ConfigDialog::onTestOverlays() {
     m_testThumbnail->forceUpdate();
     m_testThumbnail->forceOverlayRender();
 
+    m_testThumbnail->show();
     m_testThumbnail->raise();
     m_testThumbnail->activateWindow();
   }
