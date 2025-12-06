@@ -12,7 +12,7 @@
 ThumbnailWidget::ThumbnailWidget(quintptr windowId, const QString &title,
                                  QWidget *parent)
     : QWidget(parent), m_windowId(windowId), m_title(title) {
-  setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
+  setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
   setAttribute(Qt::WA_TranslucentBackground, false);
   setAttribute(Qt::WA_NoSystemBackground, false);
 
@@ -628,7 +628,7 @@ bool ThumbnailWidget::nativeEvent(const QByteArray &eventType, void *message,
     }
   }
 
-  return false; 
+  return false;
 }
 
 void ThumbnailWidget::showEvent(QShowEvent *event) {
@@ -649,8 +649,7 @@ void ThumbnailWidget::hideEvent(QHideEvent *event) {
 }
 
 OverlayWidget::OverlayWidget(QWidget *parent)
-    : QWidget(parent,
-              Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint) {
+    : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint) {
   setAttribute(Qt::WA_TransparentForMouseEvents, true);
   setAttribute(Qt::WA_TranslucentBackground, true);
   setAttribute(Qt::WA_ShowWithoutActivating, true);

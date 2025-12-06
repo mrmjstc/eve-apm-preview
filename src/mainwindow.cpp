@@ -497,6 +497,7 @@ void MainWindow::refreshWindows() {
 
       thumbWidget->setCharacterName(displayName);
       thumbWidget->setWindowOpacity(thumbnailOpacity);
+      thumbWidget->updateWindowFlags(cfg.alwaysOnTop());
 
       if (isEVEClient && !characterName.isEmpty()) {
         QString cachedSystem = m_characterSystems.value(characterName);
@@ -1019,7 +1020,7 @@ void MainWindow::handleNamedCycleForward(const QString &groupName) {
     if (storedIndex >= 0 && storedIndex < windowsToCycle.size()) {
       currentIndex = storedIndex;
     } else {
-      currentIndex = -1; 
+      currentIndex = -1;
     }
   }
 
@@ -1059,7 +1060,7 @@ void MainWindow::handleNamedCycleBackward(const QString &groupName) {
     if (storedIndex >= 0 && storedIndex < windowsToCycle.size()) {
       currentIndex = storedIndex;
     } else {
-      currentIndex = 0; 
+      currentIndex = 0;
     }
   }
 
