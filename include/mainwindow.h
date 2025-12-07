@@ -72,6 +72,10 @@ private:
   QHash<QString, HWND> m_lastActivatedWindowByGroup;
   QHash<HWND, qint64> m_windowCreationTimes;
 
+  // For multi-character hotkey cycling - key is concatenated character names
+  QHash<QString, int> m_characterHotkeyCycleIndex;
+  QHash<QString, HWND> m_lastActivatedCharacterHotkeyWindow;
+
   QHash<HWND, bool> m_clientLocationMoveAttempted;
 
   QVector<HWND> m_notLoggedInWindows;
@@ -118,11 +122,14 @@ private:
 
   void handleNamedCycleForward(const QString &groupName);
   void handleNamedCycleBackward(const QString &groupName);
+  void handleCharacterHotkeyCycle(const QVector<QString> &characterNames);
   void handleNotLoggedInCycleForward();
   void handleNotLoggedInCycleBackward();
   void handleNonEVECycleForward();
   void handleNonEVECycleBackward();
   void handleProfileSwitch(const QString &profileName);
+  void updateAllCycleIndices(HWND hwnd);
+  void updateCharacterHotkeyCycleIndices(HWND hwnd);
   void activateWindow(HWND hwnd);
   void activateCharacter(const QString &characterName);
   void updateCharacterMappings();

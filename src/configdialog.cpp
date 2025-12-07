@@ -870,8 +870,10 @@ void ConfigDialog::createHotkeysPage() {
   charHotkeysHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
   charHotkeysSectionLayout->addWidget(charHotkeysHeader);
 
-  QLabel *charInfoLabel = new QLabel(
-      "Assign hotkeys to instantly switch to specific character windows.");
+  QLabel *charInfoLabel =
+      new QLabel("Assign hotkeys to instantly switch to specific character "
+                 "windows. Two characters can share the same hotkey, but will "
+                 "cycle in window opening order.");
   charInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
   charHotkeysSectionLayout->addWidget(charInfoLabel);
 
@@ -2124,10 +2126,11 @@ void ConfigDialog::createAboutPage() {
   thanksGridLayout->setSpacing(10);
 
   QStringList thanksList = {
-      "The Aggressor",  "Exie",       "Hyperion Iwaira",  "Zintage Enaka",
-      "snipereagle1",   "degeva",     "Killer 641",       "Aulis",
-      "Cyanide",        "Oebrun",     "Kondo Rio Sotken", "Zack Power",
-      "Langanmyer Nor", "ham Norris", "Groot Brustir",    "The Llama"};
+      "The Aggressor",   "Exie",       "Hyperion Iwaira",  "Zintage Enaka",
+      "snipereagle1",    "degeva",     "Killer 641",       "Aulis",
+      "Cyanide",         "Oebrun",     "Kondo Rio Sotken", "Zack Power",
+      "Langanmyer Nor",  "ham Norris", "Groot Brustir",    "The Llama",
+      "Rhazien Shardani"};
 
   int row = 0;
   int col = 0;

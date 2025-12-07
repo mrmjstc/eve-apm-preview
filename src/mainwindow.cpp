@@ -34,6 +34,8 @@ MainWindow::MainWindow(QObject *parent)
 
   connect(hotkeyManager.get(), &HotkeyManager::characterHotkeyPressed, this,
           &MainWindow::activateCharacter);
+  connect(hotkeyManager.get(), &HotkeyManager::characterHotkeyCyclePressed,
+          this, &MainWindow::handleCharacterHotkeyCycle);
   connect(hotkeyManager.get(), &HotkeyManager::namedCycleForwardPressed, this,
           &MainWindow::handleNamedCycleForward);
   connect(hotkeyManager.get(), &HotkeyManager::namedCycleBackwardPressed, this,
@@ -949,29 +951,7 @@ void MainWindow::updateActiveWindow() {
     updateWindow(activeWindow);
 
     if (thumbnails.contains(activeWindow)) {
-      QHash<QString, CycleGroup> allGroups = hotkeyManager->getAllCycleGroups();
-      for (auto it = allGroups.begin(); it != allGroups.end(); ++it) {
-        const QString &groupName = it.key();
-        const CycleGroup &group = it.value();
-
-        QVector<HWND> windowsToCycle = buildCycleWindowList(group);
-
-        int index = windowsToCycle.indexOf(activeWindow);
-        if (index != -1) {
-          m_cycleIndexByGroup[groupName] = index;
-          m_lastActivatedWindowByGroup[groupName] = activeWindow;
-        }
-      }
-
-      int notLoggedInIndex = m_notLoggedInWindows.indexOf(activeWindow);
-      if (notLoggedInIndex != -1) {
-        m_notLoggedInCycleIndex = notLoggedInIndex;
-      }
-
-      int nonEVEIndex = m_nonEVEWindows.indexOf(activeWindow);
-      if (nonEVEIndex != -1) {
-        m_nonEVECycleIndex = nonEVEIndex;
-      }
+      updateAllCycleIndices(activeWindow);
     }
   }
 }
@@ -980,6 +960,11 @@ void MainWindow::onThumbnailClicked(quintptr windowId) {
   HWND hwnd = reinterpret_cast<HWND>(windowId);
   activateWindow(hwnd);
 
+  updateAllCycleIndices(hwnd);
+}
+
+void MainWindow::updateAllCycleIndices(HWND hwnd) {
+  // Update cycle group indices
   QHash<QString, CycleGroup> allGroups = hotkeyManager->getAllCycleGroups();
   for (auto it = allGroups.begin(); it != allGroups.end(); ++it) {
     const QString &groupName = it.key();
@@ -994,14 +979,94 @@ void MainWindow::onThumbnailClicked(quintptr windowId) {
     }
   }
 
+  // Update multi-character hotkey cycle indices
+  updateCharacterHotkeyCycleIndices(hwnd);
+
+  // Update not-logged-in cycle index
   int notLoggedInIndex = m_notLoggedInWindows.indexOf(hwnd);
   if (notLoggedInIndex != -1) {
     m_notLoggedInCycleIndex = notLoggedInIndex;
   }
 
+  // Update non-EVE cycle index
   int nonEVEIndex = m_nonEVEWindows.indexOf(hwnd);
   if (nonEVEIndex != -1) {
     m_nonEVECycleIndex = nonEVEIndex;
+  }
+}
+
+void MainWindow::updateCharacterHotkeyCycleIndices(HWND hwnd) {
+  QString activatedCharacter = m_windowToCharacter.value(hwnd);
+  if (activatedCharacter.isEmpty()) {
+    return;
+  }
+
+  // Find all hotkey groups that contain this character
+  QHash<QString, QVector<HotkeyBinding>> allCharacterMultiHotkeys =
+      hotkeyManager->getAllCharacterMultiHotkeys();
+  QHash<QString, HotkeyBinding> allCharacterHotkeys =
+      hotkeyManager->getAllCharacterHotkeys();
+
+  // Build groups of characters that share hotkeys
+  QHash<HotkeyBinding, QVector<QString>> bindingToCharacters;
+
+  for (auto it = allCharacterMultiHotkeys.begin();
+       it != allCharacterMultiHotkeys.end(); ++it) {
+    const QString &characterName = it.key();
+    const QVector<HotkeyBinding> &bindings = it.value();
+
+    for (const HotkeyBinding &binding : bindings) {
+      if (binding.enabled) {
+        bindingToCharacters[binding].append(characterName);
+      }
+    }
+  }
+
+  for (auto it = allCharacterHotkeys.begin(); it != allCharacterHotkeys.end();
+       ++it) {
+    const QString &characterName = it.key();
+    const HotkeyBinding &binding = it.value();
+
+    if (!allCharacterMultiHotkeys.contains(characterName) && binding.enabled) {
+      bindingToCharacters[binding].append(characterName);
+    }
+  }
+
+  // Update indices for any groups containing this character
+  for (auto it = bindingToCharacters.begin(); it != bindingToCharacters.end();
+       ++it) {
+    const QVector<QString> &characterNames = it.value();
+
+    if (characterNames.size() > 1 &&
+        characterNames.contains(activatedCharacter)) {
+      // Build the window list for this group
+      QVector<HWND> windowsToCycle;
+      for (const QString &charName : characterNames) {
+        HWND characterHwnd = hotkeyManager->getWindowForCharacter(charName);
+        if (characterHwnd && IsWindow(characterHwnd)) {
+          windowsToCycle.append(characterHwnd);
+        }
+      }
+
+      // Sort by creation time
+      std::sort(windowsToCycle.begin(), windowsToCycle.end(),
+                [this](HWND a, HWND b) {
+                  return m_windowCreationTimes.value(a, 0) <
+                         m_windowCreationTimes.value(b, 0);
+                });
+
+      // Create group key
+      QVector<QString> sortedNames = characterNames;
+      std::sort(sortedNames.begin(), sortedNames.end());
+      QString groupKey = sortedNames.join("|");
+
+      // Update the index
+      int index = windowsToCycle.indexOf(hwnd);
+      if (index != -1) {
+        m_characterHotkeyCycleIndex[groupKey] = index;
+        m_lastActivatedCharacterHotkeyWindow[groupKey] = hwnd;
+      }
+    }
   }
 }
 
@@ -1211,6 +1276,63 @@ void MainWindow::handleNonEVECycleBackward() {
   }
 
   HWND hwnd = m_nonEVEWindows[m_nonEVECycleIndex];
+  activateWindow(hwnd);
+}
+
+void MainWindow::handleCharacterHotkeyCycle(
+    const QVector<QString> &characterNames) {
+  // Build list of windows for these characters, sorted by creation time
+  QVector<HWND> windowsToCycle;
+
+  for (const QString &characterName : characterNames) {
+    HWND hwnd = hotkeyManager->getWindowForCharacter(characterName);
+    if (hwnd && IsWindow(hwnd)) {
+      windowsToCycle.append(hwnd);
+    }
+  }
+
+  if (windowsToCycle.isEmpty()) {
+    return;
+  }
+
+  // Sort by window creation time (client open order)
+  std::sort(windowsToCycle.begin(), windowsToCycle.end(),
+            [this](HWND a, HWND b) {
+              return m_windowCreationTimes.value(a, 0) <
+                     m_windowCreationTimes.value(b, 0);
+            });
+
+  // Create a unique key for this hotkey group (sorted character names)
+  QVector<QString> sortedNames = characterNames;
+  std::sort(sortedNames.begin(), sortedNames.end());
+  QString groupKey = sortedNames.join("|");
+
+  // Find current index
+  int currentIndex = -1;
+  HWND lastActivatedWindow =
+      m_lastActivatedCharacterHotkeyWindow.value(groupKey, nullptr);
+  if (lastActivatedWindow) {
+    currentIndex = windowsToCycle.indexOf(lastActivatedWindow);
+  }
+
+  if (currentIndex == -1) {
+    int storedIndex = m_characterHotkeyCycleIndex.value(groupKey, -1);
+    if (storedIndex >= 0 && storedIndex < windowsToCycle.size()) {
+      currentIndex = storedIndex;
+    } else {
+      currentIndex = -1;
+    }
+  }
+
+  // Move to next window
+  currentIndex++;
+  if (currentIndex >= windowsToCycle.size()) {
+    currentIndex = 0;
+  }
+
+  HWND hwnd = windowsToCycle[currentIndex];
+  m_characterHotkeyCycleIndex[groupKey] = currentIndex;
+  m_lastActivatedCharacterHotkeyWindow[groupKey] = hwnd;
   activateWindow(hwnd);
 }
 
