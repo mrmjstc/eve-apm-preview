@@ -1,13 +1,14 @@
 #include "hotkeycapture.h"
 #include "stylesheet.h"
 #include <QApplication>
+#include <QStyle>
 #include <Windows.h>
 
 HotkeyCapture *HotkeyCapture::s_activeInstance = nullptr;
 HHOOK HotkeyCapture::s_keyboardHook = nullptr;
 
 HotkeyCapture::HotkeyCapture(QWidget *parent)
-    : QLineEdit(parent), m_capturing(false) {
+    : QLineEdit(parent), m_capturing(false), m_hasConflict(false) {
   setReadOnly(true);
   setPlaceholderText("Click to set hotkey...");
   setAlignment(Qt::AlignCenter);
@@ -51,7 +52,7 @@ void HotkeyCapture::addHotkey(const HotkeyCombination &hotkey) {
 
   for (const HotkeyCombination &existing : m_hotkeys) {
     if (existing == hotkey) {
-      return; 
+      return;
     }
   }
 
@@ -222,8 +223,8 @@ bool HotkeyCapture::event(QEvent *e) {
   return QLineEdit::event(e);
 }
 
-bool HotkeyCapture::nativeEventFilter(const QByteArray & ,
-                                      void *message, qintptr * ) {
+bool HotkeyCapture::nativeEventFilter(const QByteArray &, void *message,
+                                      qintptr *) {
   return false;
 }
 
@@ -392,4 +393,28 @@ LRESULT CALLBACK HotkeyCapture::LowLevelKeyboardProc(int nCode, WPARAM wParam,
   }
 
   return CallNextHookEx(s_keyboardHook, nCode, wParam, lParam);
+}
+
+void HotkeyCapture::setHasConflict(bool hasConflict) {
+  qDebug() << "HotkeyCapture::setHasConflict() - this:" << this
+           << "hasConflict:" << hasConflict;
+
+  if (m_hasConflict == hasConflict) {
+    qDebug() << "  No change needed";
+    return;
+  }
+
+  m_hasConflict = hasConflict;
+
+  qDebug() << "  Updating border style";
+
+  // Use property to add visual indicator while preserving base style
+  setProperty("hasConflict", hasConflict);
+
+  // Force style refresh
+  style()->unpolish(this);
+  style()->polish(this);
+
+  qDebug() << (hasConflict ? "  Applied RED border"
+                           : "  Applied NORMAL border");
 }

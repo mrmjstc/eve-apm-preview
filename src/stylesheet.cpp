@@ -556,6 +556,9 @@ QString StyleSheet::getHotkeyCaptureStyleSheet() {
                  "}"
                  "QLineEdit:hover {"
                  "   background-color: %2;"
+                 "}"
+                 "QLineEdit[hasConflict=\"true\"] {"
+                 "   border: 1px solid #e74c3c !important;"
                  "}")
       .arg(colorTextPrimary())
       .arg(colorBackgroundDark());
@@ -575,6 +578,9 @@ QString StyleSheet::getHotkeyCaptureStandaloneStyleSheet() {
                  "}"
                  "QLineEdit:hover {"
                  "   background-color: %5;"
+                 "}"
+                 "QLineEdit[hasConflict=\"true\"] {"
+                 "   border: 1px solid #e74c3c !important;"
                  "}")
       .arg(colorBackgroundLight())
       .arg(colorTextPrimary())

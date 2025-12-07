@@ -11,6 +11,7 @@
 #include <QListWidget>
 #include <QMap>
 #include <QPushButton>
+#include <QSet>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QTableWidget>
@@ -83,6 +84,8 @@ private slots:
   void onRenameProfile();
   void onDeleteProfile();
   void onTestOverlays();
+  void onHotkeyChanged();
+  void validateAllHotkeys();
 
 private:
   void setupUI();
@@ -119,6 +122,21 @@ private:
   void switchProfile(const QString &profileName);
   bool confirmProfileSwitch();
   int compareVersions(const QString &version1, const QString &version2);
+
+  struct HotkeyConflict {
+    QString existingName;
+    QString conflictingName;
+    HotkeyBinding binding;
+  };
+
+  QVector<HotkeyConflict> checkHotkeyConflicts();
+  void updateHotkeyConflictVisuals();
+  void clearHotkeyConflictVisuals();
+  QString getHotkeyDescription(HotkeyCapture *capture, const QString &baseName);
+  void showConflictDialog(const QVector<HotkeyConflict> &conflicts);
+  void setConflictBorder(HotkeyCapture *capture, bool hasConflict);
+
+  QSet<HotkeyBinding> m_conflictingHotkeys;
 
   QListWidget *m_categoryList;
   QStackedWidget *m_stackedWidget;
