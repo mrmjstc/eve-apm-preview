@@ -947,6 +947,32 @@ void MainWindow::updateActiveWindow() {
 
   if (activeWindow != nullptr) {
     updateWindow(activeWindow);
+
+    if (thumbnails.contains(activeWindow)) {
+      QHash<QString, CycleGroup> allGroups = hotkeyManager->getAllCycleGroups();
+      for (auto it = allGroups.begin(); it != allGroups.end(); ++it) {
+        const QString &groupName = it.key();
+        const CycleGroup &group = it.value();
+
+        QVector<HWND> windowsToCycle = buildCycleWindowList(group);
+
+        int index = windowsToCycle.indexOf(activeWindow);
+        if (index != -1) {
+          m_cycleIndexByGroup[groupName] = index;
+          m_lastActivatedWindowByGroup[groupName] = activeWindow;
+        }
+      }
+
+      int notLoggedInIndex = m_notLoggedInWindows.indexOf(activeWindow);
+      if (notLoggedInIndex != -1) {
+        m_notLoggedInCycleIndex = notLoggedInIndex;
+      }
+
+      int nonEVEIndex = m_nonEVEWindows.indexOf(activeWindow);
+      if (nonEVEIndex != -1) {
+        m_nonEVECycleIndex = nonEVEIndex;
+      }
+    }
   }
 }
 
