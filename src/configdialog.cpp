@@ -2776,6 +2776,13 @@ void ConfigDialog::loadSettings() {
     m_thumbnailSizesLayout->insertWidget(count - 1, formRow);
   }
 
+  // Add one empty row if no thumbnail sizes exist
+  if (customSizes.isEmpty()) {
+    QWidget *formRow = createThumbnailSizeFormRow();
+    int count = m_thumbnailSizesLayout->count();
+    m_thumbnailSizesLayout->insertWidget(count - 1, formRow);
+  }
+
   // Update scroll area height after loading
   updateThumbnailSizesScrollHeight();
 
@@ -2788,6 +2795,13 @@ void ConfigDialog::loadSettings() {
          it != characterHotkeys.constEnd(); ++it) {
       QWidget *formRow = createCharacterHotkeyFormRow(
           it.key(), it.value().keyCode, it.value().getModifiers());
+      int count = m_characterHotkeysLayout->count();
+      m_characterHotkeysLayout->insertWidget(count - 1, formRow);
+    }
+
+    // Add one empty row if no character hotkeys exist
+    if (characterHotkeys.isEmpty()) {
+      QWidget *formRow = createCharacterHotkeyFormRow();
       int count = m_characterHotkeysLayout->count();
       m_characterHotkeysLayout->insertWidget(count - 1, formRow);
     }
@@ -2814,6 +2828,13 @@ void ConfigDialog::loadSettings() {
       m_cycleGroupsLayout->insertWidget(count - 1, formRow);
     }
 
+    // Add one empty row if no cycle groups exist
+    if (cycleGroups.isEmpty()) {
+      QWidget *formRow = createCycleGroupFormRow();
+      int count = m_cycleGroupsLayout->count();
+      m_cycleGroupsLayout->insertWidget(count - 1, formRow);
+    }
+
     // Update scroll area height after loading
     updateCycleGroupsScrollHeight();
   }
@@ -2830,12 +2851,26 @@ void ConfigDialog::loadSettings() {
     m_characterColorsLayout->insertWidget(count - 1, formRow);
   }
 
+  // Add one empty row if no character colors exist
+  if (characterColors.isEmpty()) {
+    QWidget *formRow = createCharacterColorFormRow();
+    int count = m_characterColorsLayout->count();
+    m_characterColorsLayout->insertWidget(count - 1, formRow);
+  }
+
   updateCharacterColorsScrollHeight();
 
   // Load never minimize characters from config
   QStringList neverMinimize = config.neverMinimizeCharacters();
   for (const QString &charName : neverMinimize) {
     QWidget *formRow = createNeverMinimizeFormRow(charName);
+    int count = m_neverMinimizeLayout->count();
+    m_neverMinimizeLayout->insertWidget(count - 1, formRow);
+  }
+
+  // Add one empty row if no never minimize characters exist
+  if (neverMinimize.isEmpty()) {
+    QWidget *formRow = createNeverMinimizeFormRow();
     int count = m_neverMinimizeLayout->count();
     m_neverMinimizeLayout->insertWidget(count - 1, formRow);
   }
@@ -2850,12 +2885,26 @@ void ConfigDialog::loadSettings() {
     m_hiddenCharactersLayout->insertWidget(count - 1, formRow);
   }
 
+  // Add one empty row if no hidden characters exist
+  if (hiddenChars.isEmpty()) {
+    QWidget *formRow = createHiddenCharactersFormRow();
+    int count = m_hiddenCharactersLayout->count();
+    m_hiddenCharactersLayout->insertWidget(count - 1, formRow);
+  }
+
   updateHiddenCharactersScrollHeight();
 
   // Load process names from config
   QStringList processNames = config.processNames();
   for (const QString &processName : processNames) {
     QWidget *formRow = createProcessNamesFormRow(processName);
+    int count = m_processNamesLayout->count();
+    m_processNamesLayout->insertWidget(count - 1, formRow);
+  }
+
+  // Add one empty row if no process names exist
+  if (processNames.isEmpty()) {
+    QWidget *formRow = createProcessNamesFormRow();
     int count = m_processNamesLayout->count();
     m_processNamesLayout->insertWidget(count - 1, formRow);
   }
