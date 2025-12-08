@@ -1540,12 +1540,20 @@ void MainWindow::showSettings() {
   connect(this, &MainWindow::profileSwitchedExternally, m_configDialog,
           &ConfigDialog::onExternalProfileSwitch);
 
+  // Suspend hotkeys while the configuration dialog is open to prevent
+  // accidental character switches when rebinding hotkeys
+  hotkeyManager->setSuspended(true);
+
   for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
     it.value()->forceOverlayRender();
   }
 
   connect(m_configDialog, &QObject::destroyed, this, [this]() {
     m_configDialog = nullptr;
+
+    // Resume hotkeys when configuration dialog is closed
+    hotkeyManager->setSuspended(false);
+
     for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
       it.value()->forceOverlayRender();
     }
