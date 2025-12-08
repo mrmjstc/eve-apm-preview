@@ -52,13 +52,20 @@ void HotkeyCapture::addHotkey(const HotkeyCombination &hotkey) {
     return;
   }
 
+  bool alreadyExists = false;
   for (const HotkeyCombination &existing : m_hotkeys) {
     if (existing == hotkey) {
-      return;
+      alreadyExists = true;
+      break;
     }
   }
 
-  m_hotkeys.append(hotkey);
+  if (!alreadyExists) {
+    m_hotkeys.append(hotkey);
+  }
+
+  // Always update display and emit signal, even if it's a duplicate
+  // This ensures capture mode ends properly when re-setting the same key
   updateDisplay();
   emit hotkeyChanged();
 }
