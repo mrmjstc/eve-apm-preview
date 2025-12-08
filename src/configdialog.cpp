@@ -3407,13 +3407,22 @@ void ConfigDialog::onAddCycleGroup() {
   nameEdit->setStyleSheet(cellStyle);
   m_cycleGroupsTable->setCellWidget(row, 0, nameEdit);
 
+  QWidget *charactersButtonContainer = new QWidget();
+  QHBoxLayout *charactersButtonLayout =
+      new QHBoxLayout(charactersButtonContainer);
+  charactersButtonLayout->setContentsMargins(0, 0, 0, 0);
+  charactersButtonLayout->setAlignment(Qt::AlignCenter);
+
   QPushButton *charactersButton = new QPushButton("No characters");
   charactersButton->setStyleSheet(StyleSheet::getTableCellButtonStyleSheet());
+  charactersButton->setFixedHeight(32);
   charactersButton->setCursor(Qt::PointingHandCursor);
   charactersButton->setProperty("characterList", QStringList());
   connect(charactersButton, &QPushButton::clicked, this,
           &ConfigDialog::onEditCycleGroupCharacters);
-  m_cycleGroupsTable->setCellWidget(row, 1, charactersButton);
+
+  charactersButtonLayout->addWidget(charactersButton);
+  m_cycleGroupsTable->setCellWidget(row, 1, charactersButtonContainer);
 
   QWidget *backwardHotkeyWidget = new QWidget();
   QHBoxLayout *backwardLayout = new QHBoxLayout(backwardHotkeyWidget);
@@ -6887,16 +6896,25 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       nameEdit->setStyleSheet(cellStyle);
       m_cycleGroupsTable->setCellWidget(row, 0, nameEdit);
 
+      QWidget *charactersButtonContainer = new QWidget();
+      QHBoxLayout *charactersButtonLayout =
+          new QHBoxLayout(charactersButtonContainer);
+      charactersButtonLayout->setContentsMargins(0, 0, 0, 0);
+      charactersButtonLayout->setAlignment(Qt::AlignCenter);
+
       QPushButton *charactersButton =
           new QPushButton(QString("(%1 characters)").arg(characterList.size()));
       charactersButton->setStyleSheet(
           StyleSheet::getTableCellButtonStyleSheet());
+      charactersButton->setFixedHeight(32);
       charactersButton->setCursor(Qt::PointingHandCursor);
       charactersButton->setProperty("characterList", characterList);
       charactersButton->setToolTip(characterList.join(", "));
       connect(charactersButton, &QPushButton::clicked, this,
               &ConfigDialog::onEditCycleGroupCharacters);
-      m_cycleGroupsTable->setCellWidget(row, 1, charactersButton);
+
+      charactersButtonLayout->addWidget(charactersButton);
+      m_cycleGroupsTable->setCellWidget(row, 1, charactersButtonContainer);
 
       QWidget *forwardHotkeyWidget = new QWidget();
       QHBoxLayout *forwardLayout = new QHBoxLayout(forwardHotkeyWidget);

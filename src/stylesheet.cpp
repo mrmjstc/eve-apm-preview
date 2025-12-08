@@ -488,7 +488,19 @@ QString StyleSheet::getComboBoxStyleSheet() {
 QString StyleSheet::getTableStyleSheet() {
   return QString("QHeaderView::section {"
                  "   font-weight: bold;"
-                 "}");
+                 "   border: 1px solid %1;"
+                 "   border-top: none;"
+                 "   border-left: none;"
+                 "}"
+                 "QTableWidget {"
+                 "   outline: none;"
+                 "   gridline-color: %1;"
+                 "}"
+                 "QTableWidget::item:focus {"
+                 "   outline: none;"
+                 "   border: none;"
+                 "}")
+      .arg(colorBorder());
 }
 
 QString StyleSheet::getHotkeyCaptureStyleSheet() {
