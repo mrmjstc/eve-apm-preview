@@ -64,8 +64,6 @@ void HotkeyCapture::addHotkey(const HotkeyCombination &hotkey) {
     m_hotkeys.append(hotkey);
   }
 
-  // Always update display and emit signal, even if it's a duplicate
-  // This ensures capture mode ends properly when re-setting the same key
   updateDisplay();
   emit hotkeyChanged();
 }

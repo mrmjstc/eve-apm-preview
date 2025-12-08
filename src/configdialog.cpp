@@ -3405,6 +3405,7 @@ void ConfigDialog::onAddCycleGroup() {
   QLineEdit *nameEdit = new QLineEdit();
   nameEdit->setText(QString("Group %1").arg(row + 1));
   nameEdit->setStyleSheet(cellStyle);
+  nameEdit->setFocusPolicy(Qt::NoFocus);
   m_cycleGroupsTable->setCellWidget(row, 0, nameEdit);
 
   QWidget *charactersButtonContainer = new QWidget();
@@ -3416,6 +3417,7 @@ void ConfigDialog::onAddCycleGroup() {
   QPushButton *charactersButton = new QPushButton("No characters");
   charactersButton->setStyleSheet(StyleSheet::getTableCellButtonStyleSheet());
   charactersButton->setFixedHeight(32);
+  charactersButton->setFocusPolicy(Qt::NoFocus);
   charactersButton->setCursor(Qt::PointingHandCursor);
   charactersButton->setProperty("characterList", QStringList());
   connect(charactersButton, &QPushButton::clicked, this,
@@ -3426,16 +3428,18 @@ void ConfigDialog::onAddCycleGroup() {
 
   QWidget *backwardHotkeyWidget = new QWidget();
   QHBoxLayout *backwardLayout = new QHBoxLayout(backwardHotkeyWidget);
-  backwardLayout->setContentsMargins(0, 0, 0, 0);
+  backwardLayout->setContentsMargins(0, 0, 8, 0);
   backwardLayout->setSpacing(4);
 
   HotkeyCapture *backwardCapture = new HotkeyCapture();
+  backwardCapture->setFocusPolicy(Qt::NoFocus);
 
   connect(backwardCapture, &HotkeyCapture::hotkeyChanged, this,
           &ConfigDialog::onHotkeyChanged);
 
   QPushButton *clearBackwardButton = new QPushButton("×");
   clearBackwardButton->setFixedSize(24, 24);
+  clearBackwardButton->setFocusPolicy(Qt::NoFocus);
   clearBackwardButton->setStyleSheet("QPushButton {"
                                      "    background-color: #3a3a3a;"
                                      "    color: #a0a0a0;"
@@ -3463,16 +3467,18 @@ void ConfigDialog::onAddCycleGroup() {
 
   QWidget *forwardHotkeyWidget = new QWidget();
   QHBoxLayout *forwardLayout = new QHBoxLayout(forwardHotkeyWidget);
-  forwardLayout->setContentsMargins(0, 0, 0, 0);
+  forwardLayout->setContentsMargins(0, 0, 8, 0);
   forwardLayout->setSpacing(4);
 
   HotkeyCapture *forwardCapture = new HotkeyCapture();
+  forwardCapture->setFocusPolicy(Qt::NoFocus);
 
   connect(forwardCapture, &HotkeyCapture::hotkeyChanged, this,
           &ConfigDialog::onHotkeyChanged);
 
   QPushButton *clearForwardButton = new QPushButton("×");
   clearForwardButton->setFixedSize(24, 24);
+  clearForwardButton->setFocusPolicy(Qt::NoFocus);
   clearForwardButton->setStyleSheet("QPushButton {"
                                     "    background-color: #3a3a3a;"
                                     "    color: #a0a0a0;"
@@ -3507,6 +3513,7 @@ void ConfigDialog::onAddCycleGroup() {
 
   QCheckBox *includeNotLoggedInCheck = new QCheckBox();
   includeNotLoggedInCheck->setChecked(false);
+  includeNotLoggedInCheck->setFocusPolicy(Qt::NoFocus);
   includeNotLoggedInCheck->setToolTip(
       "Include not-logged-in EVE clients in this cycle group");
 
@@ -3563,6 +3570,7 @@ void ConfigDialog::onAddCycleGroup() {
 
   QCheckBox *noLoopCheck = new QCheckBox();
   noLoopCheck->setChecked(false);
+  noLoopCheck->setFocusPolicy(Qt::NoFocus);
   noLoopCheck->setToolTip("Don't loop when reaching the end of the list");
   noLoopCheck->setStyleSheet(checkboxStyle);
 
@@ -3577,6 +3585,7 @@ void ConfigDialog::onAddCycleGroup() {
 
   QPushButton *deleteButton = new QPushButton("×");
   deleteButton->setFixedSize(24, 24);
+  deleteButton->setFocusPolicy(Qt::NoFocus);
   deleteButton->setStyleSheet("QPushButton {"
                               "    background-color: #3a3a3a;"
                               "    color: #e74c3c;"
@@ -4810,6 +4819,8 @@ void ConfigDialog::onPopulateProcessNames() {
   tableWidget->horizontalHeader()->setSectionResizeMode(
       0, QHeaderView::ResizeToContents);
   tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  tableWidget->setFocusPolicy(Qt::NoFocus);
+  tableWidget->setStyleSheet(StyleSheet::getTableStyleSheet());
 
   for (auto it = processToTitle.constBegin(); it != processToTitle.constEnd();
        ++it) {
@@ -6894,6 +6905,7 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       QLineEdit *nameEdit = new QLineEdit();
       nameEdit->setText(QString("Cycle Group %1").arg(i));
       nameEdit->setStyleSheet(cellStyle);
+      nameEdit->setFocusPolicy(Qt::NoFocus);
       m_cycleGroupsTable->setCellWidget(row, 0, nameEdit);
 
       QWidget *charactersButtonContainer = new QWidget();
@@ -6907,6 +6919,7 @@ void ConfigDialog::copyLegacySettings(const QString &category,
       charactersButton->setStyleSheet(
           StyleSheet::getTableCellButtonStyleSheet());
       charactersButton->setFixedHeight(32);
+      charactersButton->setFocusPolicy(Qt::NoFocus);
       charactersButton->setCursor(Qt::PointingHandCursor);
       charactersButton->setProperty("characterList", characterList);
       charactersButton->setToolTip(characterList.join(", "));
@@ -6918,10 +6931,11 @@ void ConfigDialog::copyLegacySettings(const QString &category,
 
       QWidget *forwardHotkeyWidget = new QWidget();
       QHBoxLayout *forwardLayout = new QHBoxLayout(forwardHotkeyWidget);
-      forwardLayout->setContentsMargins(0, 0, 0, 0);
+      forwardLayout->setContentsMargins(0, 0, 8, 0);
       forwardLayout->setSpacing(4);
 
       HotkeyCapture *forwardCapture = new HotkeyCapture();
+      forwardCapture->setFocusPolicy(Qt::NoFocus);
       if (!forwardHotkey.isEmpty() && forwardHotkey != "") {
         int vkCode = legacyKeyToVirtualKey(forwardHotkey);
         if (vkCode != 0) {
@@ -6931,6 +6945,7 @@ void ConfigDialog::copyLegacySettings(const QString &category,
 
       QPushButton *clearForwardButton = new QPushButton("×");
       clearForwardButton->setFixedSize(24, 24);
+      clearForwardButton->setFocusPolicy(Qt::NoFocus);
       clearForwardButton->setStyleSheet("QPushButton {"
                                         "    background-color: #3a3a3a;"
                                         "    color: #a0a0a0;"
@@ -6958,10 +6973,11 @@ void ConfigDialog::copyLegacySettings(const QString &category,
 
       QWidget *backwardHotkeyWidget = new QWidget();
       QHBoxLayout *backwardLayout = new QHBoxLayout(backwardHotkeyWidget);
-      backwardLayout->setContentsMargins(0, 0, 0, 0);
+      backwardLayout->setContentsMargins(0, 0, 8, 0);
       backwardLayout->setSpacing(4);
 
       HotkeyCapture *backwardCapture = new HotkeyCapture();
+      backwardCapture->setFocusPolicy(Qt::NoFocus);
       if (!backwardHotkey.isEmpty() && backwardHotkey != "") {
         int vkCode = legacyKeyToVirtualKey(backwardHotkey);
         if (vkCode != 0) {
@@ -6971,6 +6987,7 @@ void ConfigDialog::copyLegacySettings(const QString &category,
 
       QPushButton *clearBackwardButton = new QPushButton("×");
       clearBackwardButton->setFixedSize(24, 24);
+      clearBackwardButton->setFocusPolicy(Qt::NoFocus);
       clearBackwardButton->setStyleSheet("QPushButton {"
                                          "    background-color: #3a3a3a;"
                                          "    color: #a0a0a0;"
@@ -7005,6 +7022,7 @@ void ConfigDialog::copyLegacySettings(const QString &category,
 
       QCheckBox *includeNotLoggedInCheck = new QCheckBox();
       includeNotLoggedInCheck->setChecked(false);
+      includeNotLoggedInCheck->setFocusPolicy(Qt::NoFocus);
       includeNotLoggedInCheck->setToolTip(
           "Include not-logged-in EVE clients in this cycle group");
       includeNotLoggedInCheck->setStyleSheet(
@@ -7022,6 +7040,7 @@ void ConfigDialog::copyLegacySettings(const QString &category,
 
       QCheckBox *noLoopCheck = new QCheckBox();
       noLoopCheck->setChecked(false);
+      noLoopCheck->setFocusPolicy(Qt::NoFocus);
       noLoopCheck->setToolTip(
           "Do not loop back to the first character when reaching the end");
       noLoopCheck->setStyleSheet(StyleSheet::getDialogCheckBoxStyleSheet());
@@ -8214,6 +8233,8 @@ void ConfigDialog::showConflictDialog(
   conflictTable->setSelectionMode(QAbstractItemView::NoSelection);
   conflictTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
   conflictTable->setMaximumHeight(300);
+  conflictTable->setFocusPolicy(Qt::NoFocus);
+  conflictTable->setStyleSheet(StyleSheet::getTableStyleSheet());
 
   for (int i = 0; i < conflicts.size(); ++i) {
     const HotkeyConflict &conflict = conflicts[i];
