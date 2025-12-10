@@ -255,6 +255,16 @@ MainWindow::~MainWindow() {
     UnhookWinEvent(m_moveSizeEndHook);
   }
 
+  // Clean up location refresh timers
+  for (auto it = m_locationRefreshTimers.begin();
+       it != m_locationRefreshTimers.end(); ++it) {
+    if (it.value()) {
+      it.value()->stop();
+      it.value()->deleteLater();
+    }
+  }
+  m_locationRefreshTimers.clear();
+
   for (ThumbnailWidget *thumbnail : thumbnails) {
     if (thumbnail) {
       thumbnail->closeImmediately();
@@ -422,6 +432,7 @@ void MainWindow::refreshWindows() {
       HWND removedWindow = it.key();
       m_lastKnownTitles.remove(removedWindow);
       invalidateCycleIndicesForWindow(removedWindow);
+      cleanupLocationRefreshTimer(removedWindow);
       it.value()->deleteLater();
       it = thumbnails.erase(it);
     } else {
@@ -2023,9 +2034,7 @@ bool MainWindow::isWindowRectValid(const QRect &rect) {
 }
 
 void MainWindow::scheduleLocationRefresh(HWND hwnd) {
-  static QHash<HWND, QTimer *> debounceTimers;
-
-  auto &timer = debounceTimers[hwnd];
+  QTimer *&timer = m_locationRefreshTimers[hwnd];
   if (!timer) {
     timer = new QTimer(this);
     timer->setSingleShot(true);
@@ -2038,6 +2047,15 @@ void MainWindow::scheduleLocationRefresh(HWND hwnd) {
   }
 
   timer->start();
+}
+
+void MainWindow::cleanupLocationRefreshTimer(HWND hwnd) {
+  QTimer *timer = m_locationRefreshTimers.value(hwnd, nullptr);
+  if (timer) {
+    timer->stop();
+    timer->deleteLater();
+    m_locationRefreshTimers.remove(hwnd);
+  }
 }
 
 void MainWindow::invalidateCycleIndicesForWindow(HWND hwnd) {

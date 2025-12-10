@@ -194,6 +194,15 @@ void ChatLogWorker::startMonitoring() {
            << "characters";
 }
 
+void ChatLogWorker::cleanupDebounceTimer(const QString &filePath) {
+  QTimer *timer = m_debounceTimers.value(filePath, nullptr);
+  if (timer) {
+    timer->stop();
+    timer->deleteLater();
+    m_debounceTimers.remove(filePath);
+  }
+}
+
 void ChatLogWorker::stopMonitoring() {
   QMutexLocker locker(&m_mutex);
 
@@ -310,6 +319,7 @@ void ChatLogWorker::scanExistingLogs() {
               m_fileWatcher->files().contains(currentFile)) {
             m_fileWatcher->removePath(currentFile);
             m_fileToKeyMap.remove(currentFile);
+            cleanupDebounceTimer(currentFile);
           }
 
           bool shouldMonitorChatlog = !m_enableGameLogMonitoring;
@@ -434,6 +444,7 @@ void ChatLogWorker::scanExistingLogs() {
               m_fileWatcher->files().contains(currentFile)) {
             m_fileWatcher->removePath(currentFile);
             m_fileToKeyMap.remove(currentFile);
+            cleanupDebounceTimer(currentFile);
           }
 
           m_characterToLogFile[key] = gameLogFile;
@@ -480,6 +491,7 @@ void ChatLogWorker::scanExistingLogs() {
         m_filePositions.remove(w);
         m_fileLastSize.remove(w);
         m_fileLastModified.remove(w);
+        cleanupDebounceTimer(w);
       }
     }
   }
@@ -720,6 +732,7 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     m_fileWatcher->removePath(filePath);
     m_characterToLogFile.remove(characterName);
     m_filePositions.remove(filePath);
+    cleanupDebounceTimer(filePath);
     return;
   }
 
@@ -790,7 +803,7 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
   if (!debounceTimer) {
     debounceTimer = new QTimer(this);
     debounceTimer->setSingleShot(true);
-    debounceTimer->setInterval(30); 
+    debounceTimer->setInterval(30);
 
     connect(debounceTimer, &QTimer::timeout, this, [this, filePath]() {
       QMutexLocker innerLocker(&m_mutex);
@@ -853,7 +866,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
         emit systemChanged(characterName, newSystem);
       }
     }
-    return; 
+    return;
   }
 
   if (normalizedLine.contains("(question)")) {
@@ -869,7 +882,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
                << "from" << inviter;
       emit combatEventDetected(characterName, "fleet_invite", eventText);
     }
-    return; 
+    return;
   }
 
   if (normalizedLine.contains("(notify)")) {
@@ -925,7 +938,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
         return;
       }
     }
-    return; 
+    return;
   }
 
   if (normalizedLine.contains("(mining)")) {

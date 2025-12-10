@@ -68,6 +68,7 @@ private:
   void scanExistingLogs();
   void handleMiningEvent(const QString &characterName, const QString &ore);
   void onMiningTimeout(const QString &characterName);
+  void cleanupDebounceTimer(const QString &filePath);
 
   QString m_logDirectory;
   QString m_gameLogDirectory;

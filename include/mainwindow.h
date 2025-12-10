@@ -107,6 +107,7 @@ private:
   QHash<HWND, QString> m_lastKnownTitles;
   QHash<HWND, QString> m_windowProcessNames;
   QHash<HWND, bool> m_windowsBeingMoved;
+  QHash<HWND, QTimer *> m_locationRefreshTimers;
 
   QVector<ThumbnailWidget *> m_cachedThumbnailList;
   int m_lastThumbnailListSize = 0;
@@ -139,6 +140,7 @@ private:
   void refreshSingleThumbnail(HWND hwnd);
   void handleWindowTitleChange(HWND hwnd);
   void scheduleLocationRefresh(HWND hwnd);
+  void cleanupLocationRefreshTimer(HWND hwnd);
   QPoint calculateNotLoggedInPosition(int index);
   void updateProfilesMenu();
   QVector<HWND> buildCycleWindowList(const CycleGroup &group);
