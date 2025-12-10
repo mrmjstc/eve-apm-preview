@@ -342,9 +342,9 @@ void ConfigDialog::createAppearancePage() {
   m_thumbnailSizesScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
   m_thumbnailSizesScrollArea->setSizePolicy(QSizePolicy::Preferred,
                                             QSizePolicy::Preferred);
-  m_thumbnailSizesScrollArea->setMinimumHeight(10); 
-  m_thumbnailSizesScrollArea->setMaximumHeight(240); 
-  m_thumbnailSizesScrollArea->setFixedHeight(10); 
+  m_thumbnailSizesScrollArea->setMinimumHeight(10);
+  m_thumbnailSizesScrollArea->setMaximumHeight(240);
+  m_thumbnailSizesScrollArea->setFixedHeight(10);
   m_thumbnailSizesScrollArea->setStyleSheet(
       "QScrollArea { background-color: transparent; border: none; }");
 
@@ -2422,14 +2422,8 @@ void ConfigDialog::setupBindings() {
       [&config]() { return config.overlayBackgroundOpacity(); },
       [&config](int value) { config.setOverlayBackgroundOpacity(value); }, 70));
 
-
-
-
-
   HotkeyManager *hotkeyMgr = HotkeyManager::instance();
   if (hotkeyMgr) {
-
-
   }
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
@@ -5197,8 +5191,7 @@ void ConfigDialog::onPopulateThumbnailSizes() {
   QMessageBox::information(this, "Populate Complete", resultMsg);
 }
 
-void ConfigDialog::onRemoveThumbnailSize() {
-}
+void ConfigDialog::onRemoveThumbnailSize() {}
 
 void ConfigDialog::onResetThumbnailSizesToDefault() {
   int rowCount = m_thumbnailSizesLayout->count() - 1;
@@ -8410,8 +8403,8 @@ void ConfigDialog::updateHotkeyConflictVisuals() {
     QList<HotkeyCapture *> hotkeyCaptures =
         rowWidget->findChildren<HotkeyCapture *>();
     if (hotkeyCaptures.size() >= 2) {
-      markIfConflicting(hotkeyCaptures[0]); 
-      markIfConflicting(hotkeyCaptures[1]); 
+      markIfConflicting(hotkeyCaptures[0]);
+      markIfConflicting(hotkeyCaptures[1]);
     }
   }
 
@@ -8463,8 +8456,8 @@ void ConfigDialog::clearHotkeyConflictVisuals() {
     QList<HotkeyCapture *> hotkeyCaptures =
         rowWidget->findChildren<HotkeyCapture *>();
     if (hotkeyCaptures.size() >= 2) {
-      clearConflict(hotkeyCaptures[0]); 
-      clearConflict(hotkeyCaptures[1]); 
+      clearConflict(hotkeyCaptures[0]);
+      clearConflict(hotkeyCaptures[1]);
     }
   }
 
