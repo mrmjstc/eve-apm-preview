@@ -559,9 +559,6 @@ void ThumbnailWidget::setupDwmThumbnail() {
   HWND sourceWindow = reinterpret_cast<HWND>(m_windowId);
   HWND destWindow = reinterpret_cast<HWND>(winId());
 
-  BOOL enabled = TRUE;
-  DwmEnableBlurBehindWindow(destWindow, nullptr);
-
   HRESULT hr = DwmRegisterThumbnail(destWindow, sourceWindow, &m_dwmThumbnail);
   if (SUCCEEDED(hr)) {
     updateDwmThumbnail();

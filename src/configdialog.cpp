@@ -8060,8 +8060,6 @@ void ConfigDialog::onDeleteProfile() {
   });
 }
 
-void ConfigDialog::onCopyLegacyCategory(const QString &category) {}
-
 void ConfigDialog::onCheckForUpdates() {
   if (!m_networkManager) {
     m_networkManager = new QNetworkAccessManager(this);

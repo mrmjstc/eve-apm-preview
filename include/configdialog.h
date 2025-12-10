@@ -70,7 +70,6 @@ private slots:
   void onBrowseLegacySettings();
   void onCopyAllLegacySettings();
   void onImportEVEXAsProfile();
-  void onCopyLegacyCategory(const QString &category);
   void onAddProcessName();
   void onPopulateProcessNames();
   void onBrowseChatLogDirectory();
