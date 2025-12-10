@@ -374,10 +374,6 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
         m_updateTimer->stop();
       }
 
-      if (m_overlayWidget) {
-        m_overlayWidget->hide();
-      }
-
       emit groupDragStarted(m_windowId);
       event->accept();
       return;
@@ -424,10 +420,6 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
       if (newPos != pos()) {
         move(newPos);
         emit groupDragMoved(m_windowId, delta);
-
-        if (m_overlayWidget && m_overlayWidget->isVisible()) {
-          m_overlayWidget->hide();
-        }
       }
       event->accept();
       return;
@@ -443,7 +435,7 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
         m_updateTimer->stop();
       }
 
-      if (m_overlayWidget && m_overlayWidget->isVisible()) {
+      if (m_overlayWidget) {
         m_overlayWidget->hide();
       }
     }
@@ -455,7 +447,7 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
       if (newPos != pos()) {
         move(newPos);
 
-        if (m_overlayWidget && m_overlayWidget->isVisible()) {
+        if (m_overlayWidget) {
           m_overlayWidget->hide();
         }
       }
@@ -469,7 +461,7 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
     if (newPos != pos()) {
       move(newPos);
 
-      if (m_overlayWidget && m_overlayWidget->isVisible()) {
+      if (m_overlayWidget) {
         m_overlayWidget->hide();
       }
     }
@@ -530,6 +522,20 @@ void ThumbnailWidget::enterEvent(QEnterEvent *event) {
 }
 
 void ThumbnailWidget::leaveEvent(QEvent *event) { QWidget::leaveEvent(event); }
+
+void ThumbnailWidget::hideOverlay() {
+  if (m_overlayWidget) {
+    m_overlayWidget->hide();
+  }
+}
+
+void ThumbnailWidget::showOverlay() {
+  if (m_overlayWidget) {
+    m_overlayWidget->move(pos());
+    m_overlayWidget->show();
+    m_overlayWidget->raise();
+  }
+}
 
 void ThumbnailWidget::forceUpdate() { updateDwmThumbnail(); }
 
@@ -614,7 +620,7 @@ void ThumbnailWidget::updateDwmThumbnail() {
 void ThumbnailWidget::resizeEvent(QResizeEvent *event) {
   QWidget::resizeEvent(event);
 
-  if (m_overlayWidget && m_overlayWidget->isVisible()) {
+  if (m_overlayWidget) {
     m_overlayWidget->resize(size());
   }
   updateDwmThumbnail();
@@ -623,7 +629,7 @@ void ThumbnailWidget::resizeEvent(QResizeEvent *event) {
 void ThumbnailWidget::moveEvent(QMoveEvent *event) {
   QWidget::moveEvent(event);
 
-  if (m_overlayWidget && !m_isDragging && m_overlayWidget->isVisible()) {
+  if (m_overlayWidget && !m_isDragging) {
     m_overlayWidget->move(pos());
   }
 }
@@ -658,7 +664,7 @@ void ThumbnailWidget::showEvent(QShowEvent *event) {
 
 void ThumbnailWidget::hideEvent(QHideEvent *event) {
   QWidget::hideEvent(event);
-  if (m_overlayWidget && m_overlayWidget->isVisible()) {
+  if (m_overlayWidget) {
     m_overlayWidget->hide();
   }
 }

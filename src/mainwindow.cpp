@@ -1464,6 +1464,9 @@ void MainWindow::onGroupDragStarted(quintptr windowId) {
   for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
     ThumbnailWidget *thumb = it.value();
     m_groupDragInitialPositions.insert(thumb->getWindowId(), thumb->pos());
+
+    // Hide overlays for all thumbnails during group drag
+    thumb->hideOverlay();
   }
 }
 
@@ -1509,6 +1512,9 @@ void MainWindow::onGroupDragEnded(quintptr) {
         cfg.setThumbnailPosition(uniqueId, thumb->pos());
       }
     }
+
+    // Show overlays again after group drag ends
+    thumb->showOverlay();
   }
 
   m_groupDragInitialPositions.clear();

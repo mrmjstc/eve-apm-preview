@@ -42,6 +42,8 @@ public:
   void forceUpdate();
   void updateWindowFlags(bool alwaysOnTop);
   void forceOverlayRender();
+  void hideOverlay();
+  void showOverlay();
 
   void setOtherThumbnails(const QVector<ThumbnailWidget *> &others) {
     m_otherThumbnails = others;
