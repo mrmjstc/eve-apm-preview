@@ -9,14 +9,17 @@ QPointer<HotkeyManager> HotkeyManager::s_instance;
 HHOOK HotkeyManager::s_mouseHook = nullptr;
 
 HotkeyManager::HotkeyManager(QObject *parent)
-    : QObject(parent), m_nextHotkeyId(1000), m_suspended(false) {
+    : QObject(parent), m_nextHotkeyId(1000), m_suspended(false),
+      m_messageWindow(nullptr) {
   s_instance = this;
+  createMessageWindow();
   loadFromConfig();
 }
 
 HotkeyManager::~HotkeyManager() {
   unregisterHotkeys();
   uninstallMouseHook();
+  destroyMessageWindow();
   s_instance.clear();
 }
 
@@ -43,7 +46,7 @@ bool HotkeyManager::registerHotkey(const HotkeyBinding &binding,
   const Config &cfg = Config::instance();
   bool wildcardMode = cfg.wildcardHotkeys();
 
-  if (RegisterHotKey(nullptr, hotkeyId, modifiers, binding.keyCode)) {
+  if (RegisterHotKey(m_messageWindow, hotkeyId, modifiers, binding.keyCode)) {
     outHotkeyId = hotkeyId;
 
     if (wildcardMode) {
@@ -76,7 +79,8 @@ bool HotkeyManager::registerHotkey(const HotkeyBinding &binding,
 
       for (UINT extraMod : additionalMods) {
         int extraHotkeyId = m_nextHotkeyId++;
-        if (RegisterHotKey(nullptr, extraHotkeyId, extraMod, binding.keyCode)) {
+        if (RegisterHotKey(m_messageWindow, extraHotkeyId, extraMod,
+                           binding.keyCode)) {
           m_wildcardAliases.insert(extraHotkeyId, hotkeyId);
         }
       }
@@ -89,7 +93,7 @@ bool HotkeyManager::registerHotkey(const HotkeyBinding &binding,
 }
 
 void HotkeyManager::unregisterHotkey(int hotkeyId) {
-  UnregisterHotKey(nullptr, hotkeyId);
+  UnregisterHotKey(m_messageWindow, hotkeyId);
 }
 
 void HotkeyManager::registerHotkeyList(
@@ -883,6 +887,150 @@ bool HotkeyBinding::operator<(const HotkeyBinding &other) const {
 bool HotkeyBinding::operator==(const HotkeyBinding &other) const {
   return enabled == other.enabled && keyCode == other.keyCode &&
          ctrl == other.ctrl && alt == other.alt && shift == other.shift;
+}
+
+/// Creates a hidden message-only window to receive WM_HOTKEY messages.
+/// This ensures hotkeys work reliably even when all visible windows are
+/// Qt::Tool windows.
+void HotkeyManager::createMessageWindow() {
+  // Register a window class for our message-only window
+  WNDCLASSEXW wc = {};
+  wc.cbSize = sizeof(WNDCLASSEXW);
+  wc.lpfnWndProc = MessageWindowProc;
+  wc.hInstance = GetModuleHandle(nullptr);
+  wc.lpszClassName = L"EVEAPMPreviewHotkeyWindow";
+
+  // Ignore error if class already registered
+  RegisterClassExW(&wc);
+
+  // Create a message-only window (HWND_MESSAGE parent)
+  m_messageWindow = CreateWindowExW(
+      0,                                // Extended styles
+      L"EVEAPMPreviewHotkeyWindow",     // Class name
+      L"EVE APM Preview Hotkey Window", // Window name
+      0,                                // Style
+      0, 0, 0, 0,               // Position and size (ignored for message-only)
+      HWND_MESSAGE,             // Parent: message-only window
+      nullptr,                  // Menu
+      GetModuleHandle(nullptr), // Instance
+      nullptr                   // Creation params
+  );
+
+  if (m_messageWindow) {
+    // Store the HotkeyManager instance pointer in the window's user data
+    SetWindowLongPtrW(m_messageWindow, GWLP_USERDATA,
+                      reinterpret_cast<LONG_PTR>(this));
+  }
+}
+
+/// Destroys the hidden message-only window.
+void HotkeyManager::destroyMessageWindow() {
+  if (m_messageWindow) {
+    DestroyWindow(m_messageWindow);
+    m_messageWindow = nullptr;
+  }
+}
+
+/// Window procedure for the hidden message-only window.
+/// Processes WM_HOTKEY messages and forwards them to the HotkeyManager
+/// instance.
+LRESULT CALLBACK HotkeyManager::MessageWindowProc(HWND hwnd, UINT msg,
+                                                  WPARAM wParam,
+                                                  LPARAM lParam) {
+  if (msg == WM_HOTKEY) {
+    // Retrieve the HotkeyManager instance from window user data
+    HotkeyManager *manager = reinterpret_cast<HotkeyManager *>(
+        GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+    if (manager && !s_instance.isNull()) {
+      int hotkeyId = static_cast<int>(wParam);
+
+      // Resolve wildcard aliases
+      if (manager->m_wildcardAliases.contains(hotkeyId)) {
+        hotkeyId = manager->m_wildcardAliases.value(hotkeyId);
+      }
+
+      // Handle suspend hotkeys
+      if (manager->m_suspendHotkeyIds.contains(hotkeyId)) {
+        manager->toggleSuspended();
+        return 0;
+      }
+
+      if (manager->m_suspended) {
+        return 0;
+      }
+
+      // Check if only EVE-focused hotkeys are allowed
+      bool onlyWhenEVEFocused = Config::instance().hotkeysOnlyWhenEVEFocused();
+      if (onlyWhenEVEFocused && !isForegroundWindowEVEClient()) {
+        return 0;
+      }
+
+      // Handle character hotkeys
+      if (manager->m_hotkeyIdToCharacter.contains(hotkeyId)) {
+        QString characterName = manager->m_hotkeyIdToCharacter.value(hotkeyId);
+        emit manager->characterHotkeyPressed(characterName);
+        return 0;
+      }
+
+      if (manager->m_hotkeyIdToCharacters.contains(hotkeyId)) {
+        QVector<QString> characterNames =
+            manager->m_hotkeyIdToCharacters.value(hotkeyId);
+        emit manager->characterHotkeyCyclePressed(characterNames);
+        return 0;
+      }
+
+      // Handle cycle group hotkeys
+      if (manager->m_hotkeyIdToCycleGroup.contains(hotkeyId)) {
+        QString groupName = manager->m_hotkeyIdToCycleGroup.value(hotkeyId);
+        bool isForward = manager->m_hotkeyIdIsForward.value(hotkeyId, true);
+
+        if (isForward) {
+          emit manager->namedCycleForwardPressed(groupName);
+        } else {
+          emit manager->namedCycleBackwardPressed(groupName);
+        }
+        return 0;
+      }
+
+      // Handle not-logged-in cycle hotkeys
+      if (manager->m_notLoggedInForwardHotkeyIds.contains(hotkeyId)) {
+        emit manager->notLoggedInCycleForwardPressed();
+        return 0;
+      }
+
+      if (manager->m_notLoggedInBackwardHotkeyIds.contains(hotkeyId)) {
+        emit manager->notLoggedInCycleBackwardPressed();
+        return 0;
+      }
+
+      // Handle non-EVE cycle hotkeys
+      if (manager->m_nonEVEForwardHotkeyIds.contains(hotkeyId)) {
+        emit manager->nonEVECycleForwardPressed();
+        return 0;
+      }
+
+      if (manager->m_nonEVEBackwardHotkeyIds.contains(hotkeyId)) {
+        emit manager->nonEVECycleBackwardPressed();
+        return 0;
+      }
+
+      // Handle close all clients hotkeys
+      if (manager->m_closeAllClientsHotkeyIds.contains(hotkeyId)) {
+        emit manager->closeAllClientsRequested();
+        return 0;
+      }
+
+      // Handle profile switch hotkeys
+      if (manager->m_hotkeyIdToProfile.contains(hotkeyId)) {
+        QString profileName = manager->m_hotkeyIdToProfile.value(hotkeyId);
+        emit manager->profileSwitchRequested(profileName);
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
 QString HotkeyBinding::toString() const {

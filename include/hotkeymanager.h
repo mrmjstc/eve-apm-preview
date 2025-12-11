@@ -209,6 +209,12 @@ private:
   static QPointer<HotkeyManager> s_instance;
   static HHOOK s_mouseHook;
 
+  HWND m_messageWindow;
+  void createMessageWindow();
+  void destroyMessageWindow();
+  static LRESULT CALLBACK MessageWindowProc(HWND hwnd, UINT msg, WPARAM wParam,
+                                            LPARAM lParam);
+
   int generateHotkeyId();
 
   bool registerHotkey(const HotkeyBinding &binding, int &outHotkeyId);
