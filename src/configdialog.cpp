@@ -3128,13 +3128,21 @@ void ConfigDialog::loadSettings() {
   }
 
   QStringList processNames = config.processNames();
+  // Filter out exefile.exe - it's hardcoded and shouldn't be shown in UI
+  QStringList displayProcessNames;
   for (const QString &processName : processNames) {
+    if (processName.compare("exefile.exe", Qt::CaseInsensitive) != 0) {
+      displayProcessNames.append(processName);
+    }
+  }
+
+  for (const QString &processName : displayProcessNames) {
     QWidget *formRow = createProcessNamesFormRow(processName);
     int count = m_processNamesLayout->count();
     m_processNamesLayout->insertWidget(count - 1, formRow);
   }
 
-  if (processNames.isEmpty()) {
+  if (displayProcessNames.isEmpty()) {
     QWidget *formRow = createProcessNamesFormRow();
     int count = m_processNamesLayout->count();
     m_processNamesLayout->insertWidget(count - 1, formRow);
@@ -3455,6 +3463,9 @@ void ConfigDialog::saveSettings() {
   config.setHiddenCharacters(hiddenChars);
 
   QStringList processNames;
+  // Always include exefile.exe (hardcoded, not shown in UI)
+  processNames.append("exefile.exe");
+
   for (int i = 0; i < m_processNamesLayout->count() - 1; ++i) {
     QWidget *rowWidget =
         qobject_cast<QWidget *>(m_processNamesLayout->itemAt(i)->widget());
@@ -3466,7 +3477,8 @@ void ConfigDialog::saveSettings() {
       continue;
 
     QString processName = nameEdit->text().trimmed();
-    if (!processName.isEmpty()) {
+    if (!processName.isEmpty() &&
+        processName.compare("exefile.exe", Qt::CaseInsensitive) != 0) {
       processNames.append(processName);
     }
   }
@@ -5731,6 +5743,21 @@ void ConfigDialog::onResetBehaviorDefaults() {
       delete item;
     }
     updateNeverMinimizeScrollHeight();
+
+    // Reset process names to default (only exefile.exe, which is hidden from
+    // UI)
+    while (m_processNamesLayout->count() > 1) {
+      QLayoutItem *item = m_processNamesLayout->takeAt(0);
+      if (item->widget()) {
+        item->widget()->deleteLater();
+      }
+      delete item;
+    }
+    // Add one empty row since default only contains exefile.exe which is hidden
+    QWidget *formRow = createProcessNamesFormRow();
+    int count = m_processNamesLayout->count();
+    m_processNamesLayout->insertWidget(count - 1, formRow);
+    updateProcessNamesScrollHeight();
 
     m_rememberPositionsCheck->setChecked(Config::DEFAULT_POSITION_REMEMBER);
     m_enableSnappingCheck->setChecked(Config::DEFAULT_POSITION_ENABLE_SNAPPING);
