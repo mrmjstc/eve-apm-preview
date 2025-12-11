@@ -2900,7 +2900,9 @@ void ConfigDialog::loadSettings() {
   while (m_thumbnailSizesLayout->count() > 1) {
     QLayoutItem *item = m_thumbnailSizesLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
@@ -2924,7 +2926,9 @@ void ConfigDialog::loadSettings() {
   while (m_characterHotkeysLayout->count() > 1) {
     QLayoutItem *item = m_characterHotkeysLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
@@ -2975,7 +2979,9 @@ void ConfigDialog::loadSettings() {
   while (m_cycleGroupsLayout->count() > 1) {
     QLayoutItem *item = m_cycleGroupsLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
@@ -3049,7 +3055,9 @@ void ConfigDialog::loadSettings() {
   while (m_characterColorsLayout->count() > 1) {
     QLayoutItem *item = m_characterColorsLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
@@ -3076,7 +3084,9 @@ void ConfigDialog::loadSettings() {
   while (m_neverMinimizeLayout->count() > 1) {
     QLayoutItem *item = m_neverMinimizeLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
@@ -3099,7 +3109,9 @@ void ConfigDialog::loadSettings() {
   while (m_hiddenCharactersLayout->count() > 1) {
     QLayoutItem *item = m_hiddenCharactersLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
@@ -3122,7 +3134,9 @@ void ConfigDialog::loadSettings() {
   while (m_processNamesLayout->count() > 1) {
     QLayoutItem *item = m_processNamesLayout->takeAt(0);
     if (item->widget()) {
-      item->widget()->deleteLater();
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
     }
     delete item;
   }
