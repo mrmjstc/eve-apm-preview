@@ -215,7 +215,8 @@ private:
 
   int generateHotkeyId();
 
-  bool registerHotkey(const HotkeyBinding &binding, int &outHotkeyId);
+  bool registerHotkey(const HotkeyBinding &binding, int &outHotkeyId,
+                      bool allowWildcard = true);
   void unregisterHotkey(int hotkeyId);
 
   void installMouseHook();
@@ -228,6 +229,8 @@ private:
   void registerHotkeyList(const QVector<HotkeyBinding> &multiHotkeys);
   void registerHotkeyList(const QVector<HotkeyBinding> &multiHotkeys,
                           QSet<int> &outHotkeyIds);
+  void registerHotkeyList(const QVector<HotkeyBinding> &multiHotkeys,
+                          QSet<int> &outHotkeyIds, bool allowWildcard);
   void unregisterAndReset(int &hotkeyId);
   void saveHotkeyList(QSettings &settings, const QString &key,
                       const QVector<HotkeyBinding> &multiHotkeys);

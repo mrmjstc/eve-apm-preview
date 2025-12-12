@@ -24,7 +24,7 @@ HotkeyManager::~HotkeyManager() {
 }
 
 bool HotkeyManager::registerHotkey(const HotkeyBinding &binding,
-                                   int &outHotkeyId) {
+                                   int &outHotkeyId, bool allowWildcard) {
   if (!binding.enabled)
     return false;
 
@@ -44,7 +44,7 @@ bool HotkeyManager::registerHotkey(const HotkeyBinding &binding,
   int hotkeyId = m_nextHotkeyId++;
 
   const Config &cfg = Config::instance();
-  bool wildcardMode = cfg.wildcardHotkeys();
+  bool wildcardMode = cfg.wildcardHotkeys() && allowWildcard;
 
   if (RegisterHotKey(m_messageWindow, hotkeyId, modifiers, binding.keyCode)) {
     outHotkeyId = hotkeyId;
@@ -114,6 +114,20 @@ void HotkeyManager::registerHotkeyList(
       continue;
     int hotkeyId;
     if (registerHotkey(binding, hotkeyId)) {
+      outHotkeyIds.insert(hotkeyId);
+    }
+  }
+}
+
+void HotkeyManager::registerHotkeyList(
+    const QVector<HotkeyBinding> &multiHotkeys, QSet<int> &outHotkeyIds,
+    bool allowWildcard) {
+  outHotkeyIds.clear();
+  for (const HotkeyBinding &binding : multiHotkeys) {
+    if (!binding.enabled)
+      continue;
+    int hotkeyId;
+    if (registerHotkey(binding, hotkeyId, allowWildcard)) {
       outHotkeyIds.insert(hotkeyId);
     }
   }
@@ -270,7 +284,8 @@ bool HotkeyManager::registerHotkeys() {
   registerHotkeyList(m_nonEVEForwardHotkeys, m_nonEVEForwardHotkeyIds);
   registerHotkeyList(m_nonEVEBackwardHotkeys, m_nonEVEBackwardHotkeyIds);
 
-  registerHotkeyList(m_closeAllClientsHotkeys, m_closeAllClientsHotkeyIds);
+  registerHotkeyList(m_closeAllClientsHotkeys, m_closeAllClientsHotkeyIds,
+                     false);
 
   registerProfileHotkeys();
 
