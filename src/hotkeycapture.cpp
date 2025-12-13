@@ -339,12 +339,76 @@ QString HotkeyCapture::keyCodeToString(int keyCode) const {
     return "Numpad .";
   case VK_DIVIDE:
     return "Numpad /";
+  case VK_SNAPSHOT:
+    return "Print Screen";
+  case VK_CAPITAL:
+    return "Caps Lock";
+  case VK_NUMLOCK:
+    return "Num Lock";
+  case VK_CLEAR:
+    return "Clear";
+  case VK_APPS:
+    return "Menu";
+  case VK_SLEEP:
+    return "Sleep";
+  case VK_BROWSER_BACK:
+    return "Browser Back";
+  case VK_BROWSER_FORWARD:
+    return "Browser Forward";
+  case VK_BROWSER_REFRESH:
+    return "Browser Refresh";
+  case VK_BROWSER_STOP:
+    return "Browser Stop";
+  case VK_BROWSER_SEARCH:
+    return "Browser Search";
+  case VK_BROWSER_FAVORITES:
+    return "Browser Favorites";
+  case VK_BROWSER_HOME:
+    return "Browser Home";
+  case VK_VOLUME_MUTE:
+    return "Mute";
+  case VK_VOLUME_DOWN:
+    return "Volume Down";
+  case VK_VOLUME_UP:
+    return "Volume Up";
+  case VK_MEDIA_NEXT_TRACK:
+    return "Next Track";
+  case VK_MEDIA_PREV_TRACK:
+    return "Prev Track";
+  case VK_MEDIA_STOP:
+    return "Media Stop";
+  case VK_MEDIA_PLAY_PAUSE:
+    return "Play/Pause";
   case VK_MBUTTON:
     return "Mouse3";
   case VK_XBUTTON1:
     return "Mouse4";
   case VK_XBUTTON2:
     return "Mouse5";
+  case VK_OEM_3:
+    return "~";
+  case VK_OEM_MINUS:
+    return "-";
+  case VK_OEM_PLUS:
+    return "=";
+  case VK_OEM_4:
+    return "[";
+  case VK_OEM_6:
+    return "]";
+  case VK_OEM_5:
+    return "\\";
+  case VK_OEM_1:
+    return ";";
+  case VK_OEM_7:
+    return "'";
+  case VK_OEM_COMMA:
+    return ",";
+  case VK_OEM_PERIOD:
+    return ".";
+  case VK_OEM_2:
+    return "/";
+  case VK_OEM_8:
+    return "OEM8";
   default:
     return QString("Key %1").arg(keyCode);
   }
