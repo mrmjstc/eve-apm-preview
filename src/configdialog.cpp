@@ -3051,7 +3051,7 @@ void ConfigDialog::loadSettings() {
     }
 
     if (cycleGroups.isEmpty()) {
-      QWidget *formRow = createCycleGroupFormRow();
+      QWidget *formRow = createCycleGroupFormRow("Group 1");
       int count = m_cycleGroupsLayout->count();
       m_cycleGroupsLayout->insertWidget(count - 1, formRow);
     }
