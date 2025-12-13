@@ -250,7 +250,7 @@ void ConfigDialog::createAppearancePage() {
   QLabel *widthLabel = new QLabel("Width:");
   widthLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_thumbnailWidthSpin = new QSpinBox();
-  m_thumbnailWidthSpin->setRange(50, 800);
+  m_thumbnailWidthSpin->setRange(50, 2000);
   m_thumbnailWidthSpin->setSuffix(" px");
   m_thumbnailWidthSpin->setFixedWidth(150);
 
@@ -288,7 +288,7 @@ void ConfigDialog::createAppearancePage() {
   QLabel *heightLabel = new QLabel("Height:");
   heightLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_thumbnailHeightSpin = new QSpinBox();
-  m_thumbnailHeightSpin->setRange(50, 600);
+  m_thumbnailHeightSpin->setRange(50, 2000);
   m_thumbnailHeightSpin->setSuffix(" px");
   m_thumbnailHeightSpin->setFixedWidth(150);
 
@@ -3745,7 +3745,7 @@ QWidget *ConfigDialog::createThumbnailSizeFormRow(const QString &characterName,
   rowLayout->addWidget(widthLabel);
 
   QSpinBox *widthSpin = new QSpinBox();
-  widthSpin->setRange(50, 800);
+  widthSpin->setRange(50, 2000);
   widthSpin->setSuffix(" px");
   widthSpin->setValue(width > 0 ? width : Config::instance().thumbnailWidth());
   widthSpin->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
@@ -3758,7 +3758,7 @@ QWidget *ConfigDialog::createThumbnailSizeFormRow(const QString &characterName,
   rowLayout->addWidget(heightLabel);
 
   QSpinBox *heightSpin = new QSpinBox();
-  heightSpin->setRange(50, 600);
+  heightSpin->setRange(50, 2000);
   heightSpin->setSuffix(" px");
   heightSpin->setValue(height > 0 ? height
                                   : Config::instance().thumbnailHeight());
