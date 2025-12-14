@@ -379,7 +379,6 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
         m_updateTimer->stop();
       }
 
-      // Pause overlay animations during drag to improve performance
       if (m_overlayWidget) {
         m_overlayWidget->pauseAnimations();
       }
@@ -404,7 +403,6 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
 
     if (m_overlayWidget) {
       m_overlayWidget->hide();
-      // Pause overlay animations during drag to improve performance
       m_overlayWidget->pauseAnimations();
     }
 
@@ -449,7 +447,6 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
 
       if (m_overlayWidget) {
         m_overlayWidget->hide();
-        // Pause overlay animations during drag to improve performance
         m_overlayWidget->pauseAnimations();
       }
     }
@@ -506,7 +503,6 @@ void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
         m_overlayWidget->move(pos());
         m_overlayWidget->show();
         m_overlayWidget->raise();
-        // Resume overlay animations after drag completes
         m_overlayWidget->resumeAnimations();
       }
     }
@@ -525,7 +521,6 @@ void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
         m_overlayWidget->move(pos());
         m_overlayWidget->show();
         m_overlayWidget->raise();
-        // Resume overlay animations after drag completes
         m_overlayWidget->resumeAnimations();
       }
     }
@@ -822,7 +817,6 @@ void OverlayWidget::resumeAnimations() {
   if (m_animationsPaused) {
     m_animationsPaused = false;
 
-    // Determine if animations should be running based on current state
     const Config &cfg = Config::instance();
 
     bool needsAnimation = false;

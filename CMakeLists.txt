@@ -30,6 +30,7 @@ set(SOURCES
     src/config.cpp
     src/overlayinfo.cpp
     src/hotkeymanager.cpp
+    src/hookthread.cpp
     src/configdialog.cpp
     src/hotkeycapture.cpp
     src/settingbinding.cpp
@@ -48,6 +49,7 @@ set(HEADERS
     include/config.h
     include/overlayinfo.h
     include/hotkeymanager.h
+    include/hookthread.h
     include/configdialog.h
     include/hotkeycapture.h
     include/settingbinding.h

@@ -3149,7 +3149,6 @@ void ConfigDialog::loadSettings() {
   }
 
   QStringList processNames = config.processNames();
-  // Filter out exefile.exe - it's hardcoded and shouldn't be shown in UI
   QStringList displayProcessNames;
   for (const QString &processName : processNames) {
     if (processName.compare("exefile.exe", Qt::CaseInsensitive) != 0) {
@@ -3496,7 +3495,6 @@ void ConfigDialog::saveSettings() {
   config.setHiddenCharacters(hiddenChars);
 
   QStringList processNames;
-  // Always include exefile.exe (hardcoded, not shown in UI)
   processNames.append("exefile.exe");
 
   for (int i = 0; i < m_processNamesLayout->count() - 1; ++i) {
@@ -5777,8 +5775,6 @@ void ConfigDialog::onResetBehaviorDefaults() {
     }
     updateNeverMinimizeScrollHeight();
 
-    // Reset process names to default (only exefile.exe, which is hidden from
-    // UI)
     while (m_processNamesLayout->count() > 1) {
       QLayoutItem *item = m_processNamesLayout->takeAt(0);
       if (item->widget()) {
@@ -5786,7 +5782,6 @@ void ConfigDialog::onResetBehaviorDefaults() {
       }
       delete item;
     }
-    // Add one empty row since default only contains exefile.exe which is hidden
     QWidget *formRow = createProcessNamesFormRow();
     int count = m_processNamesLayout->count();
     m_processNamesLayout->insertWidget(count - 1, formRow);

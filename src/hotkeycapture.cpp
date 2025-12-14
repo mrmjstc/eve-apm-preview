@@ -1,4 +1,5 @@
 #include "hotkeycapture.h"
+#include "hookthread.h"
 #include "stylesheet.h"
 #include <QApplication>
 #include <QStyle>
@@ -415,38 +416,31 @@ QString HotkeyCapture::keyCodeToString(int keyCode) const {
 }
 
 void HotkeyCapture::installKeyboardHook() {
-  if (s_keyboardHook == nullptr) {
-    s_activeInstance = this;
-    s_keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc,
-                                      GetModuleHandle(nullptr), 0);
-  }
+  s_activeInstance = this;
+  HookThread::instance().installKeyboardHook(
+      HotkeyCapture::LowLevelKeyboardProc);
+  s_keyboardHook = reinterpret_cast<HHOOK>(1);
 }
 
 void HotkeyCapture::uninstallKeyboardHook() {
-  if (s_keyboardHook != nullptr) {
-    UnhookWindowsHookEx(s_keyboardHook);
-    s_keyboardHook = nullptr;
-    if (s_mouseHook == nullptr) {
-      s_activeInstance = nullptr;
-    }
+  HookThread::instance().uninstallKeyboardHook();
+  s_keyboardHook = nullptr;
+  if (s_mouseHook == nullptr) {
+    s_activeInstance = nullptr;
   }
 }
 
 void HotkeyCapture::installMouseHook() {
-  if (s_mouseHook == nullptr) {
-    s_activeInstance = this;
-    s_mouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc,
-                                   GetModuleHandle(nullptr), 0);
-  }
+  s_activeInstance = this;
+  HookThread::instance().installMouseHook(HotkeyCapture::LowLevelMouseProc);
+  s_mouseHook = reinterpret_cast<HHOOK>(1);
 }
 
 void HotkeyCapture::uninstallMouseHook() {
-  if (s_mouseHook != nullptr) {
-    UnhookWindowsHookEx(s_mouseHook);
-    s_mouseHook = nullptr;
-    if (s_keyboardHook == nullptr) {
-      s_activeInstance = nullptr;
-    }
+  HookThread::instance().uninstallMouseHook();
+  s_mouseHook = nullptr;
+  if (s_keyboardHook == nullptr) {
+    s_activeInstance = nullptr;
   }
 }
 
@@ -497,7 +491,6 @@ LRESULT CALLBACK HotkeyCapture::LowLevelKeyboardProc(int nCode, WPARAM wParam,
         return 1;
       }
 
-      // Filter out all modifier keys (both generic and left/right specific)
       if (vkCode != VK_CONTROL && vkCode != VK_MENU && vkCode != VK_SHIFT &&
           vkCode != VK_LWIN && vkCode != VK_RWIN && vkCode != VK_LSHIFT &&
           vkCode != VK_RSHIFT && vkCode != VK_LCONTROL &&
@@ -565,7 +558,7 @@ LRESULT CALLBACK HotkeyCapture::LowLevelMouseProc(int nCode, WPARAM wParam,
     }
   }
 
-  return CallNextHookEx(s_mouseHook, nCode, wParam, lParam);
+  return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
 
 void HotkeyCapture::setHasConflict(bool hasConflict) {

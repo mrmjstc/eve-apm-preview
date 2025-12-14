@@ -553,8 +553,6 @@ void MainWindow::refreshWindows() {
 
       m_needsMappingUpdate = true;
 
-      // Update snapping list immediately after inserting new thumbnail
-      // to ensure smooth dragging performance from the start
       updateSnappingLists();
 
       QPoint savedPos(-1, -1);
@@ -576,8 +574,6 @@ void MainWindow::refreshWindows() {
         shouldHide = cfg.isCharacterHidden(characterName);
       }
 
-      // Position the thumbnail BEFORE showing it to avoid overlay flicker
-      // and unnecessary redraws at incorrect positions
       if (hasSavedPosition) {
         QRect thumbRect(savedPos, QSize(actualThumbWidth, actualThumbHeight));
         QScreen *targetScreen = nullptr;
@@ -627,7 +623,6 @@ void MainWindow::refreshWindows() {
         xOffset += thumbWidth + margin;
       }
 
-      // Show/hide the thumbnail AFTER positioning to avoid flicker
       if (shouldHide) {
         thumbWidget->hide();
       } else {
@@ -958,9 +953,6 @@ void MainWindow::updateActiveWindow() {
   bool hideActive = cfg.hideActiveClientThumbnail();
   bool highlightActive = cfg.highlightActiveWindow();
 
-  // Only skip update if nothing has changed (same active window and hideActive
-  // setting) We need to update if hideActive changed even if the active window
-  // is the same
   static bool lastHideActive = false;
   bool hideActiveChanged = (lastHideActive != hideActive);
   lastHideActive = hideActive;
@@ -1437,6 +1429,29 @@ void MainWindow::activateWindow(HWND hwnd) {
     SetForegroundWindow(hwnd);
     SetFocus(hwnd);
 
+    if (GetForegroundWindow() != hwnd) {
+      HWND currentForeground = GetForegroundWindow();
+      DWORD foregroundThread = 0;
+      if (currentForeground) {
+        foregroundThread = GetWindowThreadProcessId(currentForeground, nullptr);
+      }
+
+      DWORD thisThread = GetCurrentThreadId();
+      BOOL attached = FALSE;
+      if (foregroundThread != 0 && foregroundThread != thisThread) {
+        attached = AttachThreadInput(foregroundThread, thisThread, TRUE);
+      }
+
+      BringWindowToTop(hwnd);
+      ShowWindowAsync(hwnd, SW_RESTORE);
+      SetForegroundWindow(hwnd);
+      SetFocus(hwnd);
+
+      if (attached) {
+        AttachThreadInput(foregroundThread, thisThread, FALSE);
+      }
+    }
+
     m_hwndToActivate = hwnd;
 
     minimizeTimer->start(cfg.minimizeDelay());
@@ -1500,12 +1515,9 @@ void MainWindow::onGroupDragStarted(quintptr windowId) {
     thumb->hideOverlay();
   }
 
-  // Pause all overlay animations during group drag to improve performance
   for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
     ThumbnailWidget *thumb = it.value();
     if (thumb->getWindowId() != windowId) {
-      // The dragged thumbnail's overlay is already paused in mousePressEvent
-      // Only pause the other thumbnails' overlays here
       thumb->hideOverlay();
     }
   }
@@ -1529,7 +1541,6 @@ void MainWindow::onGroupDragMoved(quintptr windowId, QPoint delta) {
 void MainWindow::onGroupDragEnded(quintptr) {
   Config &cfg = Config::instance();
 
-  // Resume all overlay animations after group drag completes
   for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
     ThumbnailWidget *thumb = it.value();
     thumb->showOverlay();
@@ -2131,7 +2142,6 @@ bool MainWindow::tryRestoreClientLocation(HWND hwnd,
     return false;
   }
 
-  // Get current position to compare
   RECT currentRect;
   if (GetWindowRect(hwnd, &currentRect)) {
     qDebug() << "tryRestoreClientLocation: current position is"
@@ -2155,10 +2165,9 @@ bool MainWindow::tryRestoreClientLocation(HWND hwnd,
   qDebug() << "tryRestoreClientLocation: SetWindowPos succeeded for"
            << characterName;
 
-  // Schedule a verification check after a short delay
   QTimer *verifyTimer = new QTimer(this);
   verifyTimer->setSingleShot(true);
-  verifyTimer->setInterval(500); // Check after 500ms
+  verifyTimer->setInterval(500); 
 
   connect(verifyTimer, &QTimer::timeout, this,
           [this, hwnd, characterName, savedRect]() {
@@ -2178,7 +2187,6 @@ bool MainWindow::tryRestoreClientLocation(HWND hwnd,
               qDebug() << "Verification: Position after 500ms:" << actual
                        << "Delta from target:" << deltaX << deltaY;
 
-              // If window moved from target position at all, retry
               if (deltaX > 0 || deltaY > 0) {
                 int retryCount = m_clientLocationRetryCount.value(hwnd, 0);
                 if (retryCount < 3) {
