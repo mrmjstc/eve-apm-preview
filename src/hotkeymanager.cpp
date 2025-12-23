@@ -386,6 +386,11 @@ static bool isForegroundWindowEVEClient() {
   return false;
 }
 
+/// DEAD CODE: This function is no longer used after fixing the mouse hotkey
+/// focus check to match keyboard hotkey behavior. Preserved for reference.
+/// Previously checked if mouse cursor was over EVE client or thumbnail.
+/// Replaced by isForegroundWindowEVEClient() for consistency.
+#if 0
 static bool isMouseOverEVEClientOrThumbnail() {
   POINT pt;
   if (!GetCursorPos(&pt)) {
@@ -435,6 +440,7 @@ static bool isMouseOverEVEClientOrThumbnail() {
 
   return false;
 }
+#endif
 
 void HotkeyManager::setSuspended(bool suspended) {
   if (m_suspended == suspended)
@@ -879,16 +885,8 @@ void HotkeyManager::createMessageWindow() {
   RegisterClassExW(&wc);
 
   m_messageWindow = CreateWindowExW(
-      0,                                
-      L"EVEAPMPreviewHotkeyWindow",     
-      L"EVE APM Preview Hotkey Window", 
-      0,                                
-      0, 0, 0, 0,               
-      HWND_MESSAGE,             
-      nullptr,                  
-      GetModuleHandle(nullptr), 
-      nullptr                   
-  );
+      0, L"EVEAPMPreviewHotkeyWindow", L"EVE APM Preview Hotkey Window", 0, 0,
+      0, 0, 0, HWND_MESSAGE, nullptr, GetModuleHandle(nullptr), nullptr);
 
   if (m_messageWindow) {
     SetWindowLongPtrW(m_messageWindow, GWLP_USERDATA,
@@ -1201,7 +1199,7 @@ void HotkeyManager::checkMouseButtonBindings(int vkCode, bool ctrl, bool alt,
   }
 
   bool onlyWhenEVEFocused = Config::instance().hotkeysOnlyWhenEVEFocused();
-  if (onlyWhenEVEFocused && !isMouseOverEVEClientOrThumbnail()) {
+  if (onlyWhenEVEFocused && !isForegroundWindowEVEClient()) {
     return;
   }
 
