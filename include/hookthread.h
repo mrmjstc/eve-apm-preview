@@ -30,7 +30,7 @@ private:
 
   int m_mouseHookRefCount;
   int m_keyboardHookRefCount;
-  
+
   HANDLE m_installCompleteEvent;
 };
 

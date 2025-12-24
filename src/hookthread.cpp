@@ -59,13 +59,13 @@ void HookThread::installMouseHook(HOOKPROC proc) {
     return;
 
   m_mouseHookRefCount++;
-  
+
   // Reset the event before posting the message
   ResetEvent(m_installCompleteEvent);
-  
+
   PostThreadMessage(m_threadId, MSG_INSTALL_MOUSE,
                     reinterpret_cast<WPARAM>(proc), 0);
-  
+
   // Wait for the hook to be installed (with timeout to prevent hanging)
   WaitForSingleObject(m_installCompleteEvent, 100);
 }
@@ -89,13 +89,13 @@ void HookThread::installKeyboardHook(HOOKPROC proc) {
     return;
 
   m_keyboardHookRefCount++;
-  
+
   // Reset the event before posting the message
   ResetEvent(m_installCompleteEvent);
-  
+
   PostThreadMessage(m_threadId, MSG_INSTALL_KEYBOARD,
                     reinterpret_cast<WPARAM>(proc), 0);
-  
+
   // Wait for the hook to be installed (with timeout to prevent hanging)
   WaitForSingleObject(m_installCompleteEvent, 100);
 }
