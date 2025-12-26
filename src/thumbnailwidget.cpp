@@ -69,7 +69,23 @@ void ThumbnailWidget::setCharacterName(const QString &characterName) {
   m_characterName = characterName;
   updateOverlays();
   if (m_overlayWidget) {
-    m_overlayWidget->setCharacterName(characterName);
+    QString displayName =
+        m_customName.isEmpty() ? m_characterName : m_customName;
+    m_overlayWidget->setCharacterName(displayName);
+  }
+}
+
+void ThumbnailWidget::setCustomName(const QString &customName) {
+  if (m_customName == customName) {
+    return;
+  }
+
+  m_customName = customName;
+  updateOverlays();
+  if (m_overlayWidget) {
+    QString displayName =
+        m_customName.isEmpty() ? m_characterName : m_customName;
+    m_overlayWidget->setCharacterName(displayName);
   }
 }
 
@@ -138,12 +154,14 @@ void ThumbnailWidget::updateOverlays() {
   m_overlays.clear();
 
   if (cfg.showCharacterName()) {
-    if (!m_characterName.isEmpty()) {
+    QString displayName =
+        m_customName.isEmpty() ? m_characterName : m_customName;
+    if (!displayName.isEmpty()) {
       OverlayPosition pos =
           static_cast<OverlayPosition>(cfg.characterNamePosition());
       QFont characterFont = cfg.characterNameFont();
       characterFont.setBold(true);
-      OverlayElement charElement(m_characterName, cfg.characterNameColor(), pos,
+      OverlayElement charElement(displayName, cfg.characterNameColor(), pos,
                                  true, characterFont);
       m_overlays.append(charElement);
     }

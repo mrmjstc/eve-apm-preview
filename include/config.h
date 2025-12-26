@@ -113,6 +113,13 @@ public:
   bool hasCustomThumbnailSize(const QString &characterName) const;
   QHash<QString, QSize> getAllCustomThumbnailSizes() const;
 
+  QString getCustomThumbnailName(const QString &characterName) const;
+  void setCustomThumbnailName(const QString &characterName,
+                              const QString &customName);
+  void removeCustomThumbnailName(const QString &characterName);
+  bool hasCustomThumbnailName(const QString &characterName) const;
+  QHash<QString, QString> getAllCustomThumbnailNames() const;
+
   bool enableSnapping() const;
   void setEnableSnapping(bool enabled);
 
@@ -371,6 +378,7 @@ private:
   mutable QHash<QString, QColor> m_cachedCharacterBorderColors;
   mutable QHash<QString, QPoint> m_cachedThumbnailPositions;
   mutable QHash<QString, QSize> m_cachedThumbnailSizes;
+  mutable QHash<QString, QString> m_cachedCustomThumbnailNames;
   mutable QHash<QString, QRect> m_cachedClientWindowRects;
 
   bool m_configDialogOpen = false;

@@ -532,6 +532,11 @@ void MainWindow::refreshWindows() {
       thumbWidget->updateWindowFlags(cfg.alwaysOnTop());
 
       if (isEVEClient && !characterName.isEmpty()) {
+        QString customName = cfg.getCustomThumbnailName(characterName);
+        if (!customName.isEmpty()) {
+          thumbWidget->setCustomName(customName);
+        }
+
         QString cachedSystem = m_characterSystems.value(characterName);
         if (!cachedSystem.isEmpty()) {
           thumbWidget->setSystemName(cachedSystem);
@@ -645,6 +650,11 @@ void MainWindow::refreshWindows() {
 
           if (wasNotLoggedIn && isNowLoggedIn) {
             thumbWidget->setCharacterName(characterName);
+
+            QString customName = cfg.getCustomThumbnailName(characterName);
+            if (!customName.isEmpty()) {
+              thumbWidget->setCustomName(customName);
+            }
 
             m_characterToWindow[characterName] = window.handle;
             m_windowToCharacter[window.handle] = characterName;
@@ -1721,9 +1731,18 @@ void MainWindow::applySettings() {
     QSize newSize(thumbWidth, thumbHeight);
     if (isEVEClient) {
       QString characterName = m_windowToCharacter.value(hwnd);
-      if (!characterName.isEmpty() &&
-          cfg.hasCustomThumbnailSize(characterName)) {
-        newSize = cfg.getThumbnailSize(characterName);
+      if (!characterName.isEmpty()) {
+        if (cfg.hasCustomThumbnailSize(characterName)) {
+          newSize = cfg.getThumbnailSize(characterName);
+        }
+
+        // Apply custom name if available
+        QString customName = cfg.getCustomThumbnailName(characterName);
+        if (!customName.isEmpty()) {
+          thumb->setCustomName(customName);
+        } else {
+          thumb->setCustomName(QString()); // Clear custom name if removed
+        }
       }
     }
 

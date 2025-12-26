@@ -31,6 +31,9 @@ public:
   void setCharacterName(const QString &characterName);
   QString getCharacterName() const { return m_characterName; }
 
+  void setCustomName(const QString &customName);
+  QString getCustomName() const { return m_customName; }
+
   void setSystemName(const QString &systemName);
   QString getSystemName() const { return m_systemName; }
 
@@ -75,6 +78,7 @@ private:
   quintptr m_windowId;
   QString m_title;
   QString m_characterName;
+  QString m_customName;
   QString m_systemName;
   QString m_combatMessage;
   QString m_combatEventType;

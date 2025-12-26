@@ -309,6 +309,17 @@ void Config::loadCacheFromSettings() {
   }
   m_settings->endGroup();
 
+  m_cachedCustomThumbnailNames.clear();
+  m_settings->beginGroup("thumbnailCustomNames");
+  QStringList customNameCharNames = m_settings->childKeys();
+  for (const QString &characterName : customNameCharNames) {
+    QString customName = m_settings->value(characterName).toString();
+    if (!customName.isEmpty()) {
+      m_cachedCustomThumbnailNames[characterName] = customName;
+    }
+  }
+  m_settings->endGroup();
+
   m_cachedClientWindowRects.clear();
   m_settings->beginGroup("clientWindowRects");
   QStringList clientCharNames = m_settings->childKeys();
@@ -621,6 +632,32 @@ bool Config::hasCustomThumbnailSize(const QString &characterName) const {
 
 QHash<QString, QSize> Config::getAllCustomThumbnailSizes() const {
   return m_cachedThumbnailSizes;
+}
+
+QString Config::getCustomThumbnailName(const QString &characterName) const {
+  return m_cachedCustomThumbnailNames.value(characterName, QString());
+}
+
+void Config::setCustomThumbnailName(const QString &characterName,
+                                    const QString &customName) {
+  QString key = QString("thumbnailCustomNames/%1").arg(characterName);
+  m_settings->setValue(key, customName);
+  m_cachedCustomThumbnailNames[characterName] = customName;
+}
+
+void Config::removeCustomThumbnailName(const QString &characterName) {
+  QString key = QString("thumbnailCustomNames/%1").arg(characterName);
+  m_settings->remove(key);
+  m_cachedCustomThumbnailNames.remove(characterName);
+}
+
+bool Config::hasCustomThumbnailName(const QString &characterName) const {
+  return m_cachedCustomThumbnailNames.contains(characterName) &&
+         !m_cachedCustomThumbnailNames[characterName].isEmpty();
+}
+
+QHash<QString, QString> Config::getAllCustomThumbnailNames() const {
+  return m_cachedCustomThumbnailNames;
 }
 
 bool Config::enableSnapping() const { return m_cachedEnableSnapping; }

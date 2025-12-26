@@ -67,6 +67,8 @@ private slots:
   void onPopulateThumbnailSizes();
   void onRemoveThumbnailSize();
   void onResetThumbnailSizesToDefault();
+  void onAddCustomName();
+  void onPopulateCustomNames();
   void onBrowseLegacySettings();
   void onCopyAllLegacySettings();
   void onImportEVEXAsProfile();
@@ -111,6 +113,9 @@ private:
   QWidget *createThumbnailSizeFormRow(const QString &characterName = "",
                                       int width = 0, int height = 0);
   void updateThumbnailSizesScrollHeight();
+  QWidget *createCustomNameFormRow(const QString &characterName = "",
+                                   const QString &customName = "");
+  void updateCustomNamesScrollHeight();
   QWidget *createCharacterHotkeyFormRow(const QString &characterName = "",
                                         int vkCode = 0, int modifiers = 0);
   void updateCharacterHotkeysScrollHeight();
@@ -254,6 +259,12 @@ private:
   QPushButton *m_addThumbnailSizeButton;
   QPushButton *m_populateThumbnailSizesButton;
   QPushButton *m_resetThumbnailSizesButton;
+
+  QScrollArea *m_customNamesScrollArea;
+  QWidget *m_customNamesContainer;
+  QVBoxLayout *m_customNamesLayout;
+  QPushButton *m_addCustomNameButton;
+  QPushButton *m_populateCustomNamesButton;
 
   QCheckBox *m_showCharacterNameCheck;
   QPushButton *m_characterNameColorButton;

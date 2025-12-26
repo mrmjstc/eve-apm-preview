@@ -390,6 +390,78 @@ void ConfigDialog::createAppearancePage() {
 
   layout->addWidget(thumbnailSizesSection);
 
+  QWidget *customNamesSection = new QWidget();
+  customNamesSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *customNamesSectionLayout = new QVBoxLayout(customNamesSection);
+  customNamesSectionLayout->setContentsMargins(16, 12, 16, 12);
+  customNamesSectionLayout->setSpacing(10);
+
+  tagWidget(customNamesSection,
+            {"custom", "name", "label", "character", "thumbnail", "display"});
+
+  QLabel *customNamesHeader = new QLabel("Custom Thumbnail Names");
+  customNamesHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
+  customNamesSectionLayout->addWidget(customNamesHeader);
+
+  QLabel *customNamesInfoLabel =
+      new QLabel("Set custom display names for character thumbnails. "
+                 "These names will appear instead of the character name.");
+  customNamesInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
+  customNamesSectionLayout->addWidget(customNamesInfoLabel);
+
+  m_customNamesScrollArea = new QScrollArea();
+  m_customNamesScrollArea->setWidgetResizable(true);
+  m_customNamesScrollArea->setFrameShape(QFrame::NoFrame);
+  m_customNamesScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  m_customNamesScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+  m_customNamesScrollArea->setSizePolicy(QSizePolicy::Preferred,
+                                         QSizePolicy::Expanding);
+  m_customNamesScrollArea->setMinimumHeight(10);
+  m_customNamesScrollArea->setMaximumHeight(240);
+  m_customNamesScrollArea->setFixedHeight(10);
+  m_customNamesScrollArea->setStyleSheet("QScrollArea { "
+                                         "  background-color: #1e1e1e; "
+                                         "  border: 1px solid #3e3e42; "
+                                         "  border-radius: 4px; "
+                                         "} "
+                                         "QScrollBar:vertical { "
+                                         "  background: #252526; "
+                                         "  width: 10px; "
+                                         "}");
+
+  m_customNamesContainer = new QWidget();
+  m_customNamesLayout = new QVBoxLayout(m_customNamesContainer);
+  m_customNamesLayout->setContentsMargins(8, 8, 8, 8);
+  m_customNamesLayout->setSpacing(8);
+  m_customNamesLayout->addStretch();
+
+  m_customNamesScrollArea->setWidget(m_customNamesContainer);
+  customNamesSectionLayout->addWidget(m_customNamesScrollArea);
+
+  customNamesSectionLayout->addSpacing(-8);
+
+  QHBoxLayout *customNamesButtonLayout = new QHBoxLayout();
+  m_addCustomNameButton = new QPushButton("Add Character");
+  m_populateCustomNamesButton = new QPushButton("Populate from Open Clients");
+
+  QString customNamesButtonStyle = StyleSheet::getSecondaryButtonStyleSheet();
+
+  m_addCustomNameButton->setStyleSheet(customNamesButtonStyle);
+  m_populateCustomNamesButton->setStyleSheet(customNamesButtonStyle);
+
+  connect(m_addCustomNameButton, &QPushButton::clicked, this,
+          &ConfigDialog::onAddCustomName);
+  connect(m_populateCustomNamesButton, &QPushButton::clicked, this,
+          &ConfigDialog::onPopulateCustomNames);
+
+  customNamesButtonLayout->addWidget(m_addCustomNameButton);
+  customNamesButtonLayout->addWidget(m_populateCustomNamesButton);
+  customNamesButtonLayout->addStretch();
+
+  customNamesSectionLayout->addLayout(customNamesButtonLayout);
+
+  layout->addWidget(customNamesSection);
+
   QWidget *highlightSection = new QWidget();
   highlightSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *highlightSectionLayout = new QVBoxLayout(highlightSection);
@@ -2923,6 +2995,31 @@ void ConfigDialog::loadSettings() {
 
   updateThumbnailSizesScrollHeight();
 
+  while (m_customNamesLayout->count() > 1) {
+    QLayoutItem *item = m_customNamesLayout->takeAt(0);
+    if (item->widget()) {
+      QWidget *widget = item->widget();
+      widget->setParent(nullptr);
+      delete widget;
+    }
+    delete item;
+  }
+
+  QHash<QString, QString> customNames = config.getAllCustomThumbnailNames();
+  for (auto it = customNames.constBegin(); it != customNames.constEnd(); ++it) {
+    QWidget *formRow = createCustomNameFormRow(it.key(), it.value());
+    int count = m_customNamesLayout->count();
+    m_customNamesLayout->insertWidget(count - 1, formRow);
+  }
+
+  if (customNames.isEmpty()) {
+    QWidget *formRow = createCustomNameFormRow();
+    int count = m_customNamesLayout->count();
+    m_customNamesLayout->insertWidget(count - 1, formRow);
+  }
+
+  updateCustomNamesScrollHeight();
+
   while (m_characterHotkeysLayout->count() > 1) {
     QLayoutItem *item = m_characterHotkeysLayout->takeAt(0);
     if (item->widget()) {
@@ -3262,6 +3359,32 @@ void ConfigDialog::saveSettings() {
 
     QSize size(widthSpin->value(), heightSpin->value());
     cfg.setThumbnailSize(charName, size);
+  }
+
+  QHash<QString, QString> existingCustomNames =
+      cfg.getAllCustomThumbnailNames();
+  for (const QString &charName : existingCustomNames.keys()) {
+    cfg.removeCustomThumbnailName(charName);
+  }
+
+  for (int i = 0; i < m_customNamesLayout->count() - 1; ++i) {
+    QWidget *rowWidget =
+        qobject_cast<QWidget *>(m_customNamesLayout->itemAt(i)->widget());
+    if (!rowWidget) {
+      continue;
+    }
+
+    QList<QLineEdit *> lineEdits = rowWidget->findChildren<QLineEdit *>();
+    if (lineEdits.size() < 2) {
+      continue;
+    }
+
+    QString charName = lineEdits[0]->text().trimmed();
+    QString customName = lineEdits[1]->text().trimmed();
+
+    if (!charName.isEmpty() && !customName.isEmpty()) {
+      cfg.setCustomThumbnailName(charName, customName);
+    }
   }
 
   if (hotkeyMgr) {
@@ -3767,6 +3890,81 @@ void ConfigDialog::updateThumbnailSizesScrollHeight() {
 
     int finalHeight = qMin(240, qMax(50, calculatedHeight));
     m_thumbnailSizesScrollArea->setFixedHeight(finalHeight);
+  }
+}
+
+QWidget *ConfigDialog::createCustomNameFormRow(const QString &characterName,
+                                               const QString &customName) {
+  QWidget *rowWidget = new QWidget();
+  rowWidget->setStyleSheet(
+      "QWidget { background-color: #2a2a2a; border: 1px solid #3a3a3a; "
+      "border-radius: 4px; padding: 4px; }");
+
+  QHBoxLayout *rowLayout = new QHBoxLayout(rowWidget);
+  rowLayout->setContentsMargins(8, 4, 8, 4);
+  rowLayout->setSpacing(8);
+
+  QLineEdit *nameEdit = new QLineEdit();
+  nameEdit->setText(characterName);
+  nameEdit->setPlaceholderText("Character Name");
+  nameEdit->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+  nameEdit->setMinimumWidth(150);
+  rowLayout->addWidget(nameEdit, 1);
+
+  QLabel *arrowLabel = new QLabel("→");
+  arrowLabel->setStyleSheet("QLabel { color: #888888; background-color: "
+                            "transparent; border: none; font-size: 16px; }");
+  rowLayout->addWidget(arrowLabel);
+
+  QLineEdit *customNameEdit = new QLineEdit();
+  customNameEdit->setText(customName);
+  customNameEdit->setPlaceholderText("Custom Display Name");
+  customNameEdit->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
+  customNameEdit->setMinimumWidth(150);
+  rowLayout->addWidget(customNameEdit, 1);
+
+  QPushButton *deleteButton = new QPushButton("×");
+  deleteButton->setFixedSize(32, 32);
+  deleteButton->setStyleSheet("QPushButton {"
+                              "    background-color: #3a3a3a;"
+                              "    color: #ffffff;"
+                              "    border: 1px solid #555555;"
+                              "    border-radius: 4px;"
+                              "    font-size: 18px;"
+                              "    font-weight: bold;"
+                              "    padding: 0px;"
+                              "}"
+                              "QPushButton:hover {"
+                              "    background-color: #e74c3c;"
+                              "    border: 1px solid #c0392b;"
+                              "}"
+                              "QPushButton:pressed {"
+                              "    background-color: #c0392b;"
+                              "}");
+  deleteButton->setToolTip("Remove this custom name");
+  deleteButton->setCursor(Qt::PointingHandCursor);
+
+  connect(deleteButton, &QPushButton::clicked, this, [this, rowWidget]() {
+    m_customNamesLayout->removeWidget(rowWidget);
+    rowWidget->deleteLater();
+    QTimer::singleShot(0, this, &ConfigDialog::updateCustomNamesScrollHeight);
+  });
+
+  rowLayout->addWidget(deleteButton);
+
+  return rowWidget;
+}
+
+void ConfigDialog::updateCustomNamesScrollHeight() {
+  int rowCount = m_customNamesLayout->count() - 1;
+
+  if (rowCount <= 0) {
+    m_customNamesScrollArea->setFixedHeight(10);
+  } else {
+    int calculatedHeight = (rowCount * 48) + 10;
+
+    int finalHeight = qMin(240, qMax(50, calculatedHeight));
+    m_customNamesScrollArea->setFixedHeight(finalHeight);
   }
 }
 
@@ -5320,6 +5518,140 @@ void ConfigDialog::onResetThumbnailSizesToDefault() {
 
     updateThumbnailSizesScrollHeight();
   }
+}
+
+void ConfigDialog::onAddCustomName() {
+  QWidget *formRow = createCustomNameFormRow();
+
+  int count = m_customNamesLayout->count();
+  m_customNamesLayout->insertWidget(count - 1, formRow);
+
+  m_customNamesContainer->updateGeometry();
+  m_customNamesLayout->activate();
+
+  QList<QLineEdit *> lineEdits = formRow->findChildren<QLineEdit *>();
+  if (!lineEdits.isEmpty()) {
+    lineEdits[0]->setFocus();
+    lineEdits[0]->selectAll();
+  }
+
+  updateCustomNamesScrollHeight();
+
+  QTimer::singleShot(10, this, [this, formRow]() {
+    m_customNamesScrollArea->ensureWidgetVisible(formRow, 10, 10);
+
+    QScrollBar *scrollBar = m_customNamesScrollArea->verticalScrollBar();
+    if (scrollBar) {
+      scrollBar->setValue(scrollBar->maximum());
+    }
+  });
+}
+
+void ConfigDialog::onPopulateCustomNames() {
+  WindowCapture capture;
+  QVector<WindowInfo> windows = capture.getEVEWindows();
+
+  if (windows.isEmpty()) {
+    QMessageBox::information(this, "No Windows Found",
+                             "No EVE Online windows are currently open.");
+    return;
+  }
+
+  QStringList characterNames;
+  for (const auto &window : windows) {
+    QString characterName = window.title;
+    if (characterName.startsWith("EVE - ")) {
+      characterName = characterName.mid(6);
+    }
+
+    if (characterName == "EVE" || characterName.trimmed().isEmpty()) {
+      continue;
+    }
+
+    if (!characterNames.contains(characterName)) {
+      characterNames.append(characterName);
+    }
+  }
+
+  if (characterNames.isEmpty()) {
+    QMessageBox::information(this, "No Characters Found",
+                             "No logged-in EVE characters detected.");
+    return;
+  }
+
+  QMessageBox msgBox(this);
+  msgBox.setWindowTitle("Populate Custom Names");
+  msgBox.setText(QString("Found %1 logged-in character%2.")
+                     .arg(characterNames.count())
+                     .arg(characterNames.count() == 1 ? "" : "s"));
+  msgBox.setInformativeText(
+      "Do you want to clear existing entries or add to them?");
+
+  QPushButton *clearButton =
+      msgBox.addButton("Clear & Replace", QMessageBox::ActionRole);
+  QPushButton *addButton =
+      msgBox.addButton("Add to Existing", QMessageBox::ActionRole);
+  QPushButton *cancelButton =
+      msgBox.addButton("Cancel", QMessageBox::RejectRole);
+
+  msgBox.setStyleSheet(StyleSheet::getMessageBoxStyleSheet());
+  msgBox.exec();
+
+  if (msgBox.clickedButton() == cancelButton) {
+    return;
+  }
+
+  bool clearExisting = (msgBox.clickedButton() == clearButton);
+
+  QSet<QString> existingCharacters;
+  if (!clearExisting) {
+    for (int i = 0; i < m_customNamesLayout->count() - 1; ++i) {
+      QWidget *rowWidget =
+          qobject_cast<QWidget *>(m_customNamesLayout->itemAt(i)->widget());
+      if (rowWidget) {
+        QList<QLineEdit *> lineEdits = rowWidget->findChildren<QLineEdit *>();
+        if (!lineEdits.isEmpty()) {
+          existingCharacters.insert(lineEdits[0]->text().trimmed());
+        }
+      }
+    }
+  } else {
+    while (m_customNamesLayout->count() > 1) {
+      QLayoutItem *item = m_customNamesLayout->takeAt(0);
+      if (item->widget()) {
+        item->widget()->deleteLater();
+      }
+      delete item;
+    }
+  }
+
+  Config &cfg = Config::instance();
+  int addedCount = 0;
+
+  for (const QString &characterName : characterNames) {
+    if (!clearExisting && existingCharacters.contains(characterName)) {
+      continue;
+    }
+
+    QString customName = cfg.getCustomThumbnailName(characterName);
+
+    QWidget *formRow = createCustomNameFormRow(characterName, customName);
+    int count = m_customNamesLayout->count();
+    m_customNamesLayout->insertWidget(count - 1, formRow);
+
+    addedCount++;
+  }
+
+  updateCustomNamesScrollHeight();
+
+  QString resultMsg = clearExisting ? QString("Replaced with %1 character%2.")
+                                          .arg(addedCount)
+                                          .arg(addedCount == 1 ? "" : "s")
+                                    : QString("Added %1 new character%2.")
+                                          .arg(addedCount)
+                                          .arg(addedCount == 1 ? "" : "s");
+
+  QMessageBox::information(this, "Populate Complete", resultMsg);
 }
 
 void ConfigDialog::onAddProcessName() {
