@@ -906,15 +906,26 @@ void ChatLogWorker::parseLogLine(const QString &line,
   if (normalizedLine.contains("(notify)")) {
     if (normalizedLine.contains("Following")) {
       static QRegularExpression followWarpPattern(
-          R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Following\s+(\S+)\s+in warp)");
+          R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Following\s+(.+?)\s+in warp)");
 
       QRegularExpressionMatch followMatch =
           followWarpPattern.match(normalizedLine);
       if (followMatch.hasMatch()) {
         QString leader = followMatch.captured(1).trimmed();
-        QString eventText = QString("Following %1").arg(leader);
+
+        // Check if the leader has a custom thumbnail name
+        const Config &cfg = Config::instance();
+        QString displayName = cfg.getCustomThumbnailName(leader);
+        if (displayName.isEmpty()) {
+          displayName = leader;
+        }
+
+        QString eventText = QString("Following %1").arg(displayName);
         qDebug() << "ChatLogWorker: Follow warp detected for" << characterName
-                 << "->" << leader;
+                 << "->" << leader
+                 << (displayName != leader
+                         ? QString(" (displayed as: %1)").arg(displayName)
+                         : "");
         emit combatEventDetected(characterName, "follow_warp", eventText);
         return;
       }
@@ -922,15 +933,26 @@ void ChatLogWorker::parseLogLine(const QString &line,
 
     if (normalizedLine.contains("Regrouping")) {
       static QRegularExpression regroupPattern(
-          R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Regrouping to\s+(\S+))");
+          R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Regrouping to\s+(.+?)(?:\.|$))");
 
       QRegularExpressionMatch regroupMatch =
           regroupPattern.match(normalizedLine);
       if (regroupMatch.hasMatch()) {
         QString leader = regroupMatch.captured(1).trimmed();
-        QString eventText = QString("Regrouping to %1").arg(leader);
+
+        // Check if the leader has a custom thumbnail name
+        const Config &cfg = Config::instance();
+        QString displayName = cfg.getCustomThumbnailName(leader);
+        if (displayName.isEmpty()) {
+          displayName = leader;
+        }
+
+        QString eventText = QString("Regrouping to %1").arg(displayName);
         qDebug() << "ChatLogWorker: Regroup detected for" << characterName
-                 << "->" << leader;
+                 << "->" << leader
+                 << (displayName != leader
+                         ? QString(" (displayed as: %1)").arg(displayName)
+                         : "");
         emit combatEventDetected(characterName, "regroup", eventText);
         return;
       }
