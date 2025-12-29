@@ -317,6 +317,7 @@ private:
   QCheckBox *m_combatEventFollowWarpCheck;
   QCheckBox *m_combatEventRegroupCheck;
   QCheckBox *m_combatEventCompressionCheck;
+  QCheckBox *m_combatEventDecloakCheck;
   QCheckBox *m_combatEventMiningStartCheck;
   QCheckBox *m_combatEventMiningStopCheck;
   QSpinBox *m_miningTimeoutSpin;

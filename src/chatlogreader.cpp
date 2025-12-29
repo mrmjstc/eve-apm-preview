@@ -978,6 +978,22 @@ void ChatLogWorker::parseLogLine(const QString &line,
         return;
       }
     }
+
+    if (normalizedLine.contains("cloak deactivates")) {
+      static QRegularExpression decloakPattern(
+          R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Your cloak deactivates due to proximity to (?:a nearby )?(.+?)\.)");
+
+      QRegularExpressionMatch decloakMatch =
+          decloakPattern.match(normalizedLine);
+      if (decloakMatch.hasMatch()) {
+        QString source = decloakMatch.captured(1).trimmed();
+        QString eventText = QString("Decloaked by %1").arg(source);
+        qDebug() << "ChatLogWorker: Decloak detected for" << characterName
+                 << "- Source:" << source;
+        emit combatEventDetected(characterName, "decloak", eventText);
+        return;
+      }
+    }
     return;
   }
 

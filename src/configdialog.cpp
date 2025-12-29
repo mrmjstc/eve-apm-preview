@@ -2072,6 +2072,7 @@ void ConfigDialog::createDataSourcesPage() {
   createEventRow("regroup", "Regroup commands", m_combatEventRegroupCheck);
   createEventRow("compression", "Compression events",
                  m_combatEventCompressionCheck);
+  createEventRow("decloak", "Decloak events", m_combatEventDecloakCheck);
   createEventRow("mining_started", "Mining started",
                  m_combatEventMiningStartCheck);
   createEventRow("mining_stopped", "Mining stopped",
@@ -2107,6 +2108,7 @@ void ConfigDialog::createDataSourcesPage() {
   connectEventCheckbox("follow_warp", m_combatEventFollowWarpCheck);
   connectEventCheckbox("regroup", m_combatEventRegroupCheck);
   connectEventCheckbox("compression", m_combatEventCompressionCheck);
+  connectEventCheckbox("decloak", m_combatEventDecloakCheck);
   connectEventCheckbox("mining_started", m_combatEventMiningStartCheck);
   connectEventCheckbox("mining_stopped", m_combatEventMiningStopCheck);
 
@@ -2689,6 +2691,21 @@ void ConfigDialog::setupBindings() {
           config.setEnabledCombatEventTypes(types);
         } else if (!value) {
           types.removeAll("compression");
+          config.setEnabledCombatEventTypes(types);
+        }
+      },
+      true));
+
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_combatEventDecloakCheck,
+      [&config]() { return config.isCombatEventTypeEnabled("decloak"); },
+      [&config](bool value) {
+        QStringList types = config.enabledCombatEventTypes();
+        if (value && !types.contains("decloak")) {
+          types << "decloak";
+          config.setEnabledCombatEventTypes(types);
+        } else if (!value) {
+          types.removeAll("decloak");
           config.setEnabledCombatEventTypes(types);
         }
       },
