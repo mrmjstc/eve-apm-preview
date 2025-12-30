@@ -6251,7 +6251,9 @@ void ConfigDialog::onCopyAllLegacySettings() {
           if (pos.contains("x") && pos.contains("y")) {
             int x = pos["x"].toInt();
             int y = pos["y"].toInt();
-            if (x >= 0 && y >= 0) {
+            // Only filter out -1 (hidden), allow negative coords for
+            // multi-monitor setups
+            if (x != -1 && y != -1) {
               flatLayout[charName] = QString("%1, %2").arg(x).arg(y);
             }
           }
@@ -7121,7 +7123,9 @@ void ConfigDialog::displayEVEXProfile(const QString &profileName,
         int x = pos["x"].toInt();
         int y = pos["y"].toInt();
 
-        if (x >= 0 && y >= 0) {
+        // Only filter out -1 (hidden), allow negative coords for multi-monitor
+        // setups
+        if (x != -1 && y != -1) {
           flatLayout[charName] = QString("%1, %2").arg(x).arg(y);
         }
       }
