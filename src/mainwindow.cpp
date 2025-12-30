@@ -1465,7 +1465,6 @@ void MainWindow::activateWindow(HWND hwnd) {
       }
 
       BringWindowToTop(hwnd);
-      ShowWindowAsync(hwnd, SW_RESTORE);
       SetForegroundWindow(hwnd);
       SetFocus(hwnd);
 
