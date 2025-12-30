@@ -419,19 +419,14 @@ void ConfigDialog::createAppearancePage() {
   m_customNamesScrollArea->setMinimumHeight(10);
   m_customNamesScrollArea->setMaximumHeight(240);
   m_customNamesScrollArea->setFixedHeight(10);
-  m_customNamesScrollArea->setStyleSheet("QScrollArea { "
-                                         "  background-color: #1e1e1e; "
-                                         "  border: 1px solid #3e3e42; "
-                                         "  border-radius: 4px; "
-                                         "} "
-                                         "QScrollBar:vertical { "
-                                         "  background: #252526; "
-                                         "  width: 10px; "
-                                         "}");
+  m_customNamesScrollArea->setStyleSheet(
+      "QScrollArea { background-color: transparent; border: none; }");
 
   m_customNamesContainer = new QWidget();
+  m_customNamesContainer->setStyleSheet(
+      "QWidget { background-color: transparent; }");
   m_customNamesLayout = new QVBoxLayout(m_customNamesContainer);
-  m_customNamesLayout->setContentsMargins(8, 8, 8, 8);
+  m_customNamesLayout->setContentsMargins(0, 0, 0, 0);
   m_customNamesLayout->setSpacing(8);
   m_customNamesLayout->addStretch();
 
