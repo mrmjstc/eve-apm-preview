@@ -661,6 +661,13 @@ void ConfigDialog::createAppearancePage() {
       StyleSheet::getCheckBoxStyleSheet());
   thumbnailVisibilitySectionLayout->addWidget(m_hideActiveClientThumbnailCheck);
 
+  m_hideThumbnailsWhenEVENotFocusedCheck =
+      new QCheckBox("Hide all thumbnails when EVE is not focused");
+  m_hideThumbnailsWhenEVENotFocusedCheck->setStyleSheet(
+      StyleSheet::getCheckBoxStyleSheet());
+  thumbnailVisibilitySectionLayout->addWidget(
+      m_hideThumbnailsWhenEVENotFocusedCheck);
+
   QLabel *hiddenCharactersLabel = new QLabel("Hidden Characters");
   hiddenCharactersLabel->setStyleSheet(
       StyleSheet::getSectionSubHeaderStyleSheet() + " margin-top: 10px;");
@@ -1031,6 +1038,60 @@ void ConfigDialog::createHotkeysPage() {
   closeAllSectionLayout->addLayout(closeAllGrid);
 
   layout->addWidget(closeAllSection);
+
+  QWidget *toggleThumbnailsSection = new QWidget();
+  toggleThumbnailsSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *toggleThumbnailsSectionLayout =
+      new QVBoxLayout(toggleThumbnailsSection);
+  toggleThumbnailsSectionLayout->setContentsMargins(16, 12, 16, 12);
+  toggleThumbnailsSectionLayout->setSpacing(10);
+
+  tagWidget(toggleThumbnailsSection,
+            {"toggle", "show", "hide", "thumbnails", "visibility", "hotkey"});
+
+  QLabel *toggleThumbnailsHeader = new QLabel("Toggle Thumbnails Visibility");
+  toggleThumbnailsHeader->setStyleSheet(
+      StyleSheet::getSectionHeaderStyleSheet());
+  toggleThumbnailsSectionLayout->addWidget(toggleThumbnailsHeader);
+
+  QLabel *toggleThumbnailsInfoLabel = new QLabel(
+      "Hotkey to manually show/hide all thumbnails (overrides all other "
+      "visibility settings).");
+  toggleThumbnailsInfoLabel->setStyleSheet(
+      StyleSheet::getInfoLabelStyleSheet());
+  toggleThumbnailsSectionLayout->addWidget(toggleThumbnailsInfoLabel);
+
+  QGridLayout *toggleThumbnailsGrid = new QGridLayout();
+  toggleThumbnailsGrid->setHorizontalSpacing(10);
+  toggleThumbnailsGrid->setVerticalSpacing(8);
+  toggleThumbnailsGrid->setColumnMinimumWidth(0, 120);
+  toggleThumbnailsGrid->setColumnStretch(2, 1);
+
+  QLabel *toggleThumbnailsLabel = new QLabel("Toggle visibility:");
+  toggleThumbnailsLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_toggleThumbnailsVisibilityCapture = new HotkeyCapture();
+  m_toggleThumbnailsVisibilityCapture->setFixedWidth(150);
+  m_toggleThumbnailsVisibilityCapture->setStyleSheet(
+      StyleSheet::getHotkeyCaptureStandaloneStyleSheet());
+
+  connect(m_toggleThumbnailsVisibilityCapture, &HotkeyCapture::hotkeyChanged,
+          this, &ConfigDialog::onHotkeyChanged);
+
+  QPushButton *clearToggleThumbnailsButton = new QPushButton("Clear");
+  clearToggleThumbnailsButton->setFixedWidth(60);
+  clearToggleThumbnailsButton->setStyleSheet(
+      StyleSheet::getSecondaryButtonStyleSheet());
+  connect(clearToggleThumbnailsButton, &QPushButton::clicked,
+          [this]() { m_toggleThumbnailsVisibilityCapture->clearHotkey(); });
+
+  toggleThumbnailsGrid->addWidget(toggleThumbnailsLabel, 0, 0, Qt::AlignLeft);
+  toggleThumbnailsGrid->addWidget(m_toggleThumbnailsVisibilityCapture, 0, 1);
+  toggleThumbnailsGrid->addWidget(clearToggleThumbnailsButton, 0, 2,
+                                  Qt::AlignLeft);
+
+  toggleThumbnailsSectionLayout->addLayout(toggleThumbnailsGrid);
+
+  layout->addWidget(toggleThumbnailsSection);
 
   QWidget *charHotkeysSection = new QWidget();
   charHotkeysSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
@@ -2556,6 +2617,14 @@ void ConfigDialog::setupBindings() {
       [&config](bool value) { config.setHideActiveClientThumbnail(value); },
       false));
 
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_hideThumbnailsWhenEVENotFocusedCheck,
+      [&config]() { return config.hideThumbnailsWhenEVENotFocused(); },
+      [&config](bool value) {
+        config.setHideThumbnailsWhenEVENotFocused(value);
+      },
+      false));
+
   auto highlightColorBinding = BindingHelpers::bindColorButton(
       m_highlightColorButton, [&config]() { return config.highlightColor(); },
       [&config](const QColor &color) { config.setHighlightColor(color); },
@@ -2833,6 +2902,21 @@ void ConfigDialog::loadSettings() {
       m_closeAllClientsCapture->setHotkeys(closeAllCombos);
     } else {
       m_closeAllClientsCapture->clearHotkey();
+    }
+
+    QVector<HotkeyBinding> toggleThumbnailsBindings =
+        hotkeyMgr->getToggleThumbnailsVisibilityHotkeys();
+    if (!toggleThumbnailsBindings.isEmpty()) {
+      QVector<HotkeyCombination> toggleThumbnailsCombos;
+      for (const HotkeyBinding &binding : toggleThumbnailsBindings) {
+        toggleThumbnailsCombos.append(HotkeyCombination(
+            binding.keyCode, binding.getModifiers() & MOD_CONTROL,
+            binding.getModifiers() & MOD_ALT,
+            binding.getModifiers() & MOD_SHIFT));
+      }
+      m_toggleThumbnailsVisibilityCapture->setHotkeys(toggleThumbnailsCombos);
+    } else {
+      m_toggleThumbnailsVisibilityCapture->clearHotkey();
     }
 
     QVector<HotkeyBinding> notLoggedInFwdBindings =
@@ -3349,6 +3433,15 @@ void ConfigDialog::saveSettings() {
           HotkeyBinding(combo.keyCode, combo.ctrl, combo.alt, combo.shift));
     }
     hotkeyMgr->setCloseAllClientsHotkeys(closeAllBindings);
+
+    QVector<HotkeyBinding> toggleThumbnailsBindings;
+    QVector<HotkeyCombination> toggleThumbnailsCombos =
+        m_toggleThumbnailsVisibilityCapture->getHotkeys();
+    for (const HotkeyCombination &combo : toggleThumbnailsCombos) {
+      toggleThumbnailsBindings.append(
+          HotkeyBinding(combo.keyCode, combo.ctrl, combo.alt, combo.shift));
+    }
+    hotkeyMgr->setToggleThumbnailsVisibilityHotkeys(toggleThumbnailsBindings);
 
     QVector<HotkeyBinding> notLoggedInFwdBindings;
     QVector<HotkeyCombination> notLoggedInFwdCombos =

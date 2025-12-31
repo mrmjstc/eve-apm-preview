@@ -240,6 +240,7 @@ private:
   QLabel *m_setClientLocationsLabel;
   QCheckBox *m_highlightActiveCheck;
   QCheckBox *m_hideActiveClientThumbnailCheck;
+  QCheckBox *m_hideThumbnailsWhenEVENotFocusedCheck;
   QPushButton *m_highlightColorButton;
   QLabel *m_highlightColorLabel;
   QSpinBox *m_highlightBorderWidthSpin;
@@ -350,6 +351,7 @@ private:
   HotkeyCapture *m_nonEVEForwardCapture;
   HotkeyCapture *m_nonEVEBackwardCapture;
   HotkeyCapture *m_closeAllClientsCapture;
+  HotkeyCapture *m_toggleThumbnailsVisibilityCapture;
   QCheckBox *m_wildcardHotkeysCheck;
   QCheckBox *m_hotkeysOnlyWhenEVEFocusedCheck;
 

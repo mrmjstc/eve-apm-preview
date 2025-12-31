@@ -581,7 +581,8 @@ void ThumbnailWidget::updateWindowFlags(bool alwaysOnTop) {
     m_overlayWidget->updateWindowFlags(alwaysOnTop);
   }
 
-  show();
+  // Note: Visibility is managed by MainWindow, not here
+  // Removed unconditional show() call to respect visibility settings
 }
 
 void ThumbnailWidget::setupDwmThumbnail() {

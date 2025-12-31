@@ -27,6 +27,9 @@ public:
   bool hideActiveClientThumbnail() const;
   void setHideActiveClientThumbnail(bool enabled);
 
+  bool hideThumbnailsWhenEVENotFocused() const;
+  void setHideThumbnailsWhenEVENotFocused(bool enabled);
+
   QColor highlightColor() const;
   void setHighlightColor(const QColor &color);
 
@@ -250,6 +253,7 @@ public:
   static constexpr const char *DEFAULT_UI_HIGHLIGHT_COLOR = "#FFFFFF";
   static constexpr int DEFAULT_UI_HIGHLIGHT_BORDER_WIDTH = 2;
   static constexpr bool DEFAULT_UI_HIDE_ACTIVE_THUMBNAIL = false;
+  static constexpr bool DEFAULT_UI_HIDE_THUMBNAILS_WHEN_EVE_NOT_FOCUSED = false;
   static constexpr int DEFAULT_ACTIVE_BORDER_STYLE =
       static_cast<int>(BorderStyle::Solid);
 
@@ -316,6 +320,7 @@ private:
 
   mutable bool m_cachedHighlightActive;
   mutable bool m_cachedHideActiveThumbnail;
+  mutable bool m_cachedHideThumbnailsWhenEVENotFocused;
   mutable QColor m_cachedHighlightColor;
   mutable int m_cachedHighlightBorderWidth;
   mutable BorderStyle m_cachedActiveBorderStyle;
@@ -413,6 +418,8 @@ private:
   static constexpr const char *KEY_THUMBNAIL_HEIGHT = "thumbnail/height";
   static constexpr const char *KEY_UI_HIDE_ACTIVE_THUMBNAIL =
       "ui/hideActiveClientThumbnail";
+  static constexpr const char *KEY_UI_HIDE_THUMBNAILS_WHEN_EVE_NOT_FOCUSED =
+      "ui/hideThumbnailsWhenEVENotFocused";
   static constexpr const char *KEY_THUMBNAIL_OPACITY = "thumbnail/opacity";
   static constexpr const char *KEY_THUMBNAIL_PROCESS_NAMES =
       "thumbnail/processNames";

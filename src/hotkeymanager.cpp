@@ -291,6 +291,9 @@ bool HotkeyManager::registerHotkeys() {
   registerHotkeyList(m_closeAllClientsHotkeys, m_closeAllClientsHotkeyIds,
                      false);
 
+  registerHotkeyList(m_toggleThumbnailsVisibilityHotkeys,
+                     m_toggleThumbnailsVisibilityHotkeyIds, false);
+
   registerProfileHotkeys();
 
   if (hasMouseButtonHotkeys()) {
@@ -348,6 +351,11 @@ void HotkeyManager::unregisterHotkeys() {
     unregisterHotkey(hotkeyId);
   }
   m_closeAllClientsHotkeyIds.clear();
+
+  for (int hotkeyId : m_toggleThumbnailsVisibilityHotkeyIds) {
+    unregisterHotkey(hotkeyId);
+  }
+  m_toggleThumbnailsVisibilityHotkeyIds.clear();
 
   m_hotkeyIdToCharacter.clear();
   m_hotkeyIdToCharacters.clear();
@@ -589,6 +597,12 @@ void HotkeyManager::setCloseAllClientsHotkeys(
   registerHotkeys();
 }
 
+void HotkeyManager::setToggleThumbnailsVisibilityHotkeys(
+    const QVector<HotkeyBinding> &bindings) {
+  m_toggleThumbnailsVisibilityHotkeys = bindings;
+  registerHotkeys();
+}
+
 void HotkeyManager::setProfileHotkeys(const QString &profileName,
                                       const QVector<HotkeyBinding> &bindings) {
   if (bindings.isEmpty()) {
@@ -763,6 +777,12 @@ void HotkeyManager::loadFromConfig() {
   m_closeAllClientsHotkeys = loadHotkeyList(settings, "closeAllClients");
   settings.endGroup();
 
+  m_toggleThumbnailsVisibilityHotkeys.clear();
+  settings.beginGroup("toggleThumbnailsVisibilityHotkeys");
+  m_toggleThumbnailsVisibilityHotkeys =
+      loadHotkeyList(settings, "toggleThumbnailsVisibility");
+  settings.endGroup();
+
   m_profileHotkeys.clear();
   QStringList profiles = Config::instance().listProfiles();
   for (const QString &profileName : profiles) {
@@ -856,6 +876,11 @@ void HotkeyManager::saveToConfig() {
 
   settings.beginGroup("closeAllHotkeys");
   saveHotkeyList(settings, "closeAllClients", m_closeAllClientsHotkeys);
+  settings.endGroup();
+
+  settings.beginGroup("toggleThumbnailsVisibilityHotkeys");
+  saveHotkeyList(settings, "toggleThumbnailsVisibility",
+                 m_toggleThumbnailsVisibilityHotkeys);
   settings.endGroup();
 
   settings.sync();
@@ -992,6 +1017,11 @@ LRESULT CALLBACK HotkeyManager::MessageWindowProc(HWND hwnd, UINT msg,
 
       if (manager->m_closeAllClientsHotkeyIds.contains(hotkeyId)) {
         emit manager->closeAllClientsRequested();
+        return 0;
+      }
+
+      if (manager->m_toggleThumbnailsVisibilityHotkeyIds.contains(hotkeyId)) {
+        emit manager->toggleThumbnailsVisibilityRequested();
         return 0;
       }
 

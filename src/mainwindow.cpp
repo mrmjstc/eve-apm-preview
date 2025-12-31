@@ -55,6 +55,9 @@ MainWindow::MainWindow(QObject *parent)
           &MainWindow::onHotkeysSuspendedChanged);
   connect(hotkeyManager.get(), &HotkeyManager::closeAllClientsRequested, this,
           &MainWindow::closeAllEVEClients);
+  connect(hotkeyManager.get(),
+          &HotkeyManager::toggleThumbnailsVisibilityRequested, this,
+          &MainWindow::toggleThumbnailsVisibility);
 
   refreshTimer = new QTimer(this);
   connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshWindows);
@@ -81,6 +84,13 @@ MainWindow::MainWindow(QObject *parent)
   connect(m_suspendHotkeysAction, &QAction::triggered, this,
           &MainWindow::toggleSuspendHotkeys);
   m_trayMenu->addAction(m_suspendHotkeysAction);
+
+  m_hideThumbnailsAction = new QAction("Hide Thumbnails", this);
+  m_hideThumbnailsAction->setCheckable(true);
+  m_hideThumbnailsAction->setChecked(false);
+  connect(m_hideThumbnailsAction, &QAction::triggered, this,
+          &MainWindow::toggleThumbnailsVisibility);
+  m_trayMenu->addAction(m_hideThumbnailsAction);
 
   m_trayMenu->addSeparator();
 
@@ -384,6 +394,9 @@ void MainWindow::refreshWindows() {
   const bool showNotLoggedInOverlay = cfg.showNotLoggedInOverlay();
   const bool showNonEVEOverlay = cfg.showNonEVEOverlay();
   const double thumbnailOpacity = cfg.thumbnailOpacity() / 100.0;
+  const bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
+  const HWND activeWindow = GetForegroundWindow();
+  const bool isEVEFocused = thumbnails.contains(activeWindow);
 
   QVector<WindowInfo> windows;
 
@@ -630,8 +643,17 @@ void MainWindow::refreshWindows() {
 
       if (shouldHide) {
         thumbWidget->hide();
+      } else if (m_thumbnailsManuallyHidden) {
+        // Respect manual hide state
+        thumbWidget->hide();
       } else {
-        thumbWidget->show();
+        // Check hide-when-EVE-not-focused setting (but not when config dialog
+        // is open)
+        if (hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) {
+          thumbWidget->hide();
+        } else {
+          thumbWidget->show();
+        }
       }
     } else {
       QString lastTitle = m_lastKnownTitles.value(window.handle, "");
@@ -688,7 +710,10 @@ void MainWindow::refreshWindows() {
             thumbWidget->setCharacterName(newDisplayName);
             thumbWidget->setSystemName(QString());
 
-            thumbWidget->show();
+            if (!m_thumbnailsManuallyHidden &&
+                !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog)) {
+              thumbWidget->show();
+            }
 
             if (!cfg.preserveLogoutPositions()) {
               QPoint pos = calculateNotLoggedInPosition(notLoggedInCount);
@@ -707,13 +732,18 @@ void MainWindow::refreshWindows() {
             showNotLoggedInOverlay ? NOT_LOGGED_IN_TEXT : "";
         thumbWidget->setCharacterName(newDisplayName);
         thumbWidget->setSystemName(QString());
-        thumbWidget->show();
+        if (!m_thumbnailsManuallyHidden &&
+            !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog)) {
+          thumbWidget->show();
+        }
       } else if (!isEVEClient) {
         thumbWidget->setCharacterName(showNonEVEOverlay ? window.title : "");
       } else if (isEVEClient && !characterName.isEmpty()) {
         if (cfg.isCharacterHidden(characterName)) {
           thumbWidget->hide();
-        } else {
+        } else if (!m_thumbnailsManuallyHidden &&
+                   !(hideWhenEVENotFocused && !isEVEFocused &&
+                     !m_configDialog)) {
           thumbWidget->show();
         }
       }
@@ -961,6 +991,7 @@ void MainWindow::updateActiveWindow() {
   const Config &cfg = Config::instance();
   HWND activeWindow = GetForegroundWindow();
   bool hideActive = cfg.hideActiveClientThumbnail();
+  bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
   bool highlightActive = cfg.highlightActiveWindow();
 
   static bool lastHideActive = false;
@@ -974,13 +1005,81 @@ void MainWindow::updateActiveWindow() {
   HWND previousActiveWindow = m_lastActiveWindow;
   m_lastActiveWindow = activeWindow;
 
+  // Check if the active window is an EVE window
+  bool isEVEFocused = thumbnails.contains(activeWindow);
+
+  // Track if we were previously not focused on EVE
+  static bool wasEVEFocused = true;
+  bool eveFocusChanged = (wasEVEFocused != isEVEFocused);
+
+  // If hide-when-EVE-not-focused is enabled and EVE is not focused, hide all
+  // (but not when config dialog is open)
+  if (hideWhenEVENotFocused && !isEVEFocused && !m_thumbnailsManuallyHidden &&
+      !m_configDialog) {
+    for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+      it.value()->hide();
+    }
+    wasEVEFocused = false;
+    return;
+  }
+
+  // If EVE just regained focus after being unfocused, update all thumbnails
+  if (hideWhenEVENotFocused && isEVEFocused && eveFocusChanged) {
+    wasEVEFocused = true;
+    // Update all thumbnails to restore visibility
+    for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+      HWND hwnd = it.key();
+      ThumbnailWidget *thumbnail = it.value();
+      if (!thumbnail)
+        continue;
+
+      QString characterName = m_windowToCharacter.value(hwnd);
+      bool isHidden =
+          !characterName.isEmpty() && cfg.isCharacterHidden(characterName);
+      bool isActive = (hwnd == activeWindow);
+
+      // Apply visibility logic
+      if (m_thumbnailsManuallyHidden) {
+        thumbnail->hide();
+      } else if (isHidden) {
+        thumbnail->hide();
+      } else if (hideActive && isActive) {
+        thumbnail->hide();
+      } else {
+        thumbnail->show();
+      }
+
+      // Update active state
+      if (highlightActive) {
+        thumbnail->setActive(isActive);
+      } else {
+        thumbnail->setActive(false);
+      }
+
+      if (isActive) {
+        thumbnail->forceUpdate();
+        if (thumbnail->hasCombatEvent()) {
+          thumbnail->setCombatMessage("", "");
+        }
+      }
+    }
+
+    if (activeWindow != nullptr && thumbnails.contains(activeWindow)) {
+      updateAllCycleIndices(activeWindow);
+    }
+    return;
+  }
+
+  wasEVEFocused = isEVEFocused;
+
   if (activeWindow != nullptr && !thumbnails.contains(activeWindow)) {
     if (previousActiveWindow != nullptr &&
         thumbnails.contains(previousActiveWindow)) {
       auto it = thumbnails.find(previousActiveWindow);
       if (it != thumbnails.end()) {
         it.value()->setActive(false);
-        if (hideActive) {
+        if (hideActive && !m_thumbnailsManuallyHidden &&
+            !(hideWhenEVENotFocused && !m_configDialog)) {
           it.value()->show();
         }
       }
@@ -1018,11 +1117,21 @@ void MainWindow::updateActiveWindow() {
     bool isHidden =
         !characterName.isEmpty() && cfg.isCharacterHidden(characterName);
 
-    if (isHidden) {
+    // Apply visibility logic
+    if (m_thumbnailsManuallyHidden) {
+      // Manual hide overrides everything
+      it.value()->hide();
+    } else if (isHidden) {
+      // Character is explicitly hidden
+      it.value()->hide();
+    } else if (hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) {
+      // Hide when EVE is not focused (unless config dialog is open)
       it.value()->hide();
     } else if (hideActive && isActive) {
+      // Hide active client setting
       it.value()->hide();
     } else {
+      // Show the thumbnail
       it.value()->show();
     }
   };
@@ -1631,8 +1740,29 @@ void MainWindow::showSettings() {
 
   hotkeyManager->setSuspended(true);
 
-  for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
-    it.value()->forceOverlayRender();
+  // Show all thumbnails when config dialog opens (unless manually hidden)
+  if (!m_thumbnailsManuallyHidden) {
+    const Config &cfg = Config::instance();
+    HWND activeWindow = GetForegroundWindow();
+    bool hideActive = cfg.hideActiveClientThumbnail();
+
+    for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
+      HWND hwnd = it.key();
+      ThumbnailWidget *thumb = it.value();
+      QString characterName = m_windowToCharacter.value(hwnd);
+      bool isHidden =
+          !characterName.isEmpty() && cfg.isCharacterHidden(characterName);
+      bool isActive = (hwnd == activeWindow);
+
+      if (!isHidden && !(hideActive && isActive)) {
+        thumb->show();
+      }
+      thumb->forceOverlayRender();
+    }
+  } else {
+    for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
+      it.value()->forceOverlayRender();
+    }
   }
 
   connect(m_configDialog, &QObject::destroyed, this, [this]() {
@@ -1643,6 +1773,9 @@ void MainWindow::showSettings() {
     // Reinstall mouse hook in case HotkeyCapture uninstalled it while capturing
     // mouse buttons
     hotkeyManager->registerHotkeys();
+
+    // Restore proper visibility state after config dialog closes
+    updateActiveWindow();
 
     for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
       it.value()->forceOverlayRender();
@@ -1718,6 +1851,11 @@ void MainWindow::applySettings() {
 
   int notLoggedInCount = 0;
   bool rememberPos = cfg.rememberPositions();
+
+  // Cache these values before the loop
+  const bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
+  const HWND currentActiveWindow = GetForegroundWindow();
+  const bool isEVECurrentlyFocused = thumbnails.contains(currentActiveWindow);
 
   for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
     HWND hwnd = it.key();
@@ -1824,21 +1962,31 @@ void MainWindow::applySettings() {
       QString characterName = m_windowToCharacter.value(hwnd);
       if (!characterName.isEmpty() && cfg.isCharacterHidden(characterName)) {
         thumb->hide();
+      } else if (m_thumbnailsManuallyHidden) {
+        // Respect manual hide state
+        thumb->hide();
       } else {
-
-        if (thumb->isHidden()) {
-          wchar_t titleBuf[256];
-          if (GetWindowTextW(hwnd, titleBuf, 256) > 0) {
-            QString currentTitle = QString::fromWCharArray(titleBuf);
-            QString charName = OverlayInfo::extractCharacterName(currentTitle);
-            if (!charName.isEmpty()) {
-              thumb->setTitle(currentTitle);
-              thumb->setCharacterName(charName);
+        // Check hide-when-EVE-not-focused setting (but not when config dialog
+        // is open)
+        if (hideWhenEVENotFocused && !isEVECurrentlyFocused &&
+            !m_configDialog) {
+          thumb->hide();
+        } else {
+          if (thumb->isHidden()) {
+            wchar_t titleBuf[256];
+            if (GetWindowTextW(hwnd, titleBuf, 256) > 0) {
+              QString currentTitle = QString::fromWCharArray(titleBuf);
+              QString charName =
+                  OverlayInfo::extractCharacterName(currentTitle);
+              if (!charName.isEmpty()) {
+                thumb->setTitle(currentTitle);
+                thumb->setCharacterName(charName);
+              }
             }
           }
-        }
 
-        thumb->show();
+          thumb->show();
+        }
       }
     }
   }
@@ -2074,6 +2222,49 @@ void MainWindow::closeAllEVEClients() {
       PostMessage(window.handle, WM_CLOSE, 0, 0);
     }
   }
+}
+
+void MainWindow::toggleThumbnailsVisibility() {
+  m_thumbnailsManuallyHidden = !m_thumbnailsManuallyHidden;
+
+  // Update the menu action state
+  if (m_hideThumbnailsAction) {
+    m_hideThumbnailsAction->setChecked(m_thumbnailsManuallyHidden);
+  }
+
+  // Cache these values before the loop
+  const Config &cfg = Config::instance();
+  const bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
+  const HWND currentActiveWindow = GetForegroundWindow();
+  const bool isEVECurrentlyFocused = thumbnails.contains(currentActiveWindow);
+  const bool hideActive = cfg.hideActiveClientThumbnail();
+
+  // Update visibility of all thumbnails
+  for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+    ThumbnailWidget *thumbnail = it.value();
+    if (!thumbnail)
+      continue;
+
+    if (m_thumbnailsManuallyHidden) {
+      thumbnail->hide();
+    } else {
+      // When showing, respect other visibility settings
+      HWND hwnd = it.key();
+      QString characterName = m_windowToCharacter.value(hwnd);
+      bool isHidden =
+          !characterName.isEmpty() && cfg.isCharacterHidden(characterName);
+      bool isActive = (hwnd == m_lastActiveWindow);
+
+      if (!isHidden && !(hideActive && isActive) &&
+          !(hideWhenEVENotFocused && !isEVECurrentlyFocused &&
+            !m_configDialog)) {
+        thumbnail->show();
+      }
+    }
+  }
+
+  qDebug() << "Thumbnails visibility toggled:"
+           << (m_thumbnailsManuallyHidden ? "HIDDEN" : "VISIBLE");
 }
 
 void MainWindow::saveCurrentClientLocations() {

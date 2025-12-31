@@ -54,6 +54,11 @@ void Config::loadCacheFromSettings() {
                                     ->value(KEY_UI_HIDE_ACTIVE_THUMBNAIL,
                                             DEFAULT_UI_HIDE_ACTIVE_THUMBNAIL)
                                     .toBool();
+  m_cachedHideThumbnailsWhenEVENotFocused =
+      m_settings
+          ->value(KEY_UI_HIDE_THUMBNAILS_WHEN_EVE_NOT_FOCUSED,
+                  DEFAULT_UI_HIDE_THUMBNAILS_WHEN_EVE_NOT_FOCUSED)
+          .toBool();
   m_cachedHighlightColor = QColor(
       m_settings->value(KEY_UI_HIGHLIGHT_COLOR, DEFAULT_UI_HIGHLIGHT_COLOR)
           .toString());
@@ -351,6 +356,15 @@ bool Config::hideActiveClientThumbnail() const {
 void Config::setHideActiveClientThumbnail(bool enabled) {
   m_settings->setValue(KEY_UI_HIDE_ACTIVE_THUMBNAIL, enabled);
   m_cachedHideActiveThumbnail = enabled;
+}
+
+bool Config::hideThumbnailsWhenEVENotFocused() const {
+  return m_cachedHideThumbnailsWhenEVENotFocused;
+}
+
+void Config::setHideThumbnailsWhenEVENotFocused(bool enabled) {
+  m_settings->setValue(KEY_UI_HIDE_THUMBNAILS_WHEN_EVE_NOT_FOCUSED, enabled);
+  m_cachedHideThumbnailsWhenEVENotFocused = enabled;
 }
 
 QColor Config::highlightColor() const { return m_cachedHighlightColor; }

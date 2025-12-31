@@ -54,6 +54,7 @@ private slots:
   void onHotkeysSuspendedChanged(bool suspended);
   void toggleSuspendHotkeys();
   void closeAllEVEClients();
+  void toggleThumbnailsVisibility();
 
 private:
   QTimer *refreshTimer;
@@ -62,6 +63,7 @@ private:
   QMenu *m_trayMenu;
   QMenu *m_profilesMenu;
   QAction *m_suspendHotkeysAction;
+  QAction *m_hideThumbnailsAction;
   ConfigDialog *m_configDialog = nullptr;
 
   std::unique_ptr<WindowCapture> windowCapture;
@@ -105,6 +107,7 @@ private:
 
   bool m_needsEnumeration = true;
   bool m_needsMappingUpdate = false;
+  bool m_thumbnailsManuallyHidden = false;
 
   QHash<HWND, QString> m_lastKnownTitles;
   QHash<HWND, QString> m_windowProcessNames;
