@@ -2328,6 +2328,41 @@ void ConfigDialog::createAboutPage() {
 
   layout->addSpacing(10);
 
+  // About Section
+  QWidget *aboutSection = new QWidget();
+  aboutSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *aboutSectionLayout = new QVBoxLayout(aboutSection);
+  aboutSectionLayout->setContentsMargins(16, 12, 16, 12);
+  aboutSectionLayout->setSpacing(10);
+
+  QLabel *aboutHeader = new QLabel("About");
+  aboutHeader->setStyleSheet(StyleSheet::getSubsectionHeaderStyleSheet());
+  aboutSectionLayout->addWidget(aboutHeader);
+
+  QHBoxLayout *aboutLayout = new QHBoxLayout();
+
+  QLabel *aboutInfoLabel = new QLabel(
+      "EVE-APM Preview is developed and maintained by Mr Majestic, as a"
+      " modern alternative to the original EVE-O Preview and EVE-X Preview "
+      "tools.");
+  aboutInfoLabel->setStyleSheet(StyleSheet::getFeatureLabelStyleSheet());
+  aboutInfoLabel->setWordWrap(true);
+  aboutLayout->addWidget(aboutInfoLabel, 1);
+
+  QPushButton *githubButton = new QPushButton("GitHub Repository");
+  githubButton->setStyleSheet(StyleSheet::getButtonStyleSheet());
+  githubButton->setCursor(Qt::PointingHandCursor);
+  githubButton->setFixedSize(160, 32);
+  connect(githubButton, &QPushButton::clicked, []() {
+    QDesktopServices::openUrl(
+        QUrl("https://github.com/mrmjstc/eve-apm-preview"));
+  });
+  aboutLayout->addWidget(githubButton);
+
+  aboutSectionLayout->addLayout(aboutLayout);
+
+  layout->addWidget(aboutSection);
+
   QWidget *updateSection = new QWidget();
   updateSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *updateSectionLayout = new QVBoxLayout(updateSection);
