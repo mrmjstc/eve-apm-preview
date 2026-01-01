@@ -2214,6 +2214,7 @@ void ConfigDialog::createDataSourcesPage() {
             m_combatEventFollowWarpCheck->setEnabled(checked);
             m_combatEventRegroupCheck->setEnabled(checked);
             m_combatEventCompressionCheck->setEnabled(checked);
+            m_combatEventDecloakCheck->setEnabled(checked);
             m_combatEventMiningStartCheck->setEnabled(checked);
             m_combatEventMiningStopCheck->setEnabled(checked);
 
@@ -2226,6 +2227,7 @@ void ConfigDialog::createDataSourcesPage() {
                 {"follow_warp", m_combatEventFollowWarpCheck},
                 {"regroup", m_combatEventRegroupCheck},
                 {"compression", m_combatEventCompressionCheck},
+                {"decloak", m_combatEventDecloakCheck},
                 {"mining_started", m_combatEventMiningStartCheck},
                 {"mining_stopped", m_combatEventMiningStopCheck}};
 
