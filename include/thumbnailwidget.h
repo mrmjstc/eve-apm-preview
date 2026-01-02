@@ -82,6 +82,7 @@ private:
   QString m_systemName;
   QString m_combatMessage;
   QString m_combatEventType;
+  QColor m_cachedSystemColor;
   QPoint m_dragPosition;
   bool m_isDragging = false;
   bool m_isGroupDragging = false;

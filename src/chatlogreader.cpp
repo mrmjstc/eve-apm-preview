@@ -21,9 +21,13 @@ ChatLogWorker::ChatLogWorker(QObject *parent)
   connect(m_fileWatcher, &QFileSystemWatcher::directoryChanged, this,
           &ChatLogWorker::checkForNewFiles);
 
+  // Periodic fallback scan in case directory watching misses file creation
+  // (e.g., on some network drives or during rapid file operations)
   connect(m_scanTimer, &QTimer::timeout, this,
           &ChatLogWorker::checkForNewFiles);
-  m_scanTimer->setInterval(300000);
+  m_scanTimer->setInterval(300000); // 5 minutes
+
+  updateCustomNameCache();
 }
 
 static QString normalizeLogLine(const QString &line) {
@@ -57,6 +61,50 @@ static QString normalizeLogLine(const QString &line) {
 
   s = s.trimmed();
   return s;
+}
+
+/// Fast timestamp parser for EVE log format "yyyy.MM.dd HH:mm:ss"
+static qint64 parseEVETimestamp(const QString &timestamp) {
+  // Expected format: "yyyy.MM.dd HH:mm:ss" (19 chars)
+  if (timestamp.length() != 19) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  // Manual parsing is significantly faster for fixed format
+  bool ok;
+  int year = timestamp.mid(0, 4).toInt(&ok);
+  if (!ok || year < 2000 || year > 2100) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  int month = timestamp.mid(5, 2).toInt(&ok);
+  if (!ok || month < 1 || month > 12) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  int day = timestamp.mid(8, 2).toInt(&ok);
+  if (!ok || day < 1 || day > 31) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  int hour = timestamp.mid(11, 2).toInt(&ok);
+  if (!ok || hour < 0 || hour > 23) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  int minute = timestamp.mid(14, 2).toInt(&ok);
+  if (!ok || minute < 0 || minute > 59) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  int second = timestamp.mid(17, 2).toInt(&ok);
+  if (!ok || second < 0 || second > 59) {
+    return QDateTime::currentMSecsSinceEpoch();
+  }
+
+  QDateTime dt(QDate(year, month, day), QTime(hour, minute, second));
+  return dt.isValid() ? dt.toMSecsSinceEpoch()
+                      : QDateTime::currentMSecsSinceEpoch();
 }
 
 ChatLogWorker::~ChatLogWorker() {
@@ -350,53 +398,64 @@ void ChatLogWorker::scanExistingLogs() {
                      << ":" << chatLogFile;
           }
 
-          QFile file(chatLogFile);
-          if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            in.setAutoDetectUnicode(true);
+          // Optimized initial system detection - single file open
+          QFileInfo fi(chatLogFile);
+          QString lastSystemLine;
 
+          // Try tail scan first (last 64KB)
+          const qint64 tailSize = 65536;
+          const qint64 fallbackSize = 5 * 1024 * 1024;
+
+          QFile file(chatLogFile);
+          if (file.open(QIODevice::ReadOnly)) {
+            qint64 fileSize = file.size();
+            qint64 startPos = 0;
+
+            if (fileSize > tailSize + 1024) {
+              startPos = fileSize - tailSize - 1024;
+              file.seek(startPos);
+            }
+
+            QByteArray tailData = file.readAll();
+            QString tailContent = QString::fromUtf8(tailData);
+            QStringList tailLines = tailContent.split('\n', Qt::SkipEmptyParts);
+
+            // Search backwards through tail lines for system change
             static QRegularExpression systemChangePattern(
                 R"(\[\s*([\d.\s:]+)\]\s*EVE System\s*>\s*Channel changed to Local\s*:\s*(.+))",
                 QRegularExpression::CaseInsensitiveOption |
                     QRegularExpression::UseUnicodePropertiesOption);
 
-            QString lastSystemLine = findLastMatchingLineInFile(
-                chatLogFile, systemChangePattern, 65536);
+            for (int i = tailLines.size() - 1; i >= 0; --i) {
+              QString normLine = normalizeLogLine(tailLines[i]);
+              if (systemChangePattern.match(normLine).hasMatch()) {
+                lastSystemLine = normLine;
+                break;
+              }
+            }
 
-            QFileInfo fi(chatLogFile);
-            const qint64 fallbackSize = 5 * 1024 * 1024;
-            if (lastSystemLine.isEmpty() && fi.size() <= fallbackSize) {
-              qDebug() << "ChatLogWorker: tail scan found nothing, falling "
-                          "back to full scan for"
+            // Fallback: if tail didn't find anything and file is small, scan
+            // all
+            if (lastSystemLine.isEmpty() && fileSize <= fallbackSize) {
+              qDebug() << "ChatLogWorker: tail scan found nothing, scanning "
+                          "entire file for"
                        << chatLogFile;
               file.seek(0);
-              QTextStream inFull(&file);
-              inFull.setAutoDetectUnicode(true);
-              QString firstNonEmptyLine;
-              while (!inFull.atEnd()) {
-                QString line = inFull.readLine();
+              QByteArray allData = file.readAll();
+              QString allContent = QString::fromUtf8(allData);
+              QStringList allLines = allContent.split('\n', Qt::SkipEmptyParts);
+
+              for (const QString &line : allLines) {
                 QString norm = normalizeLogLine(line);
-                if (firstNonEmptyLine.isEmpty() && !norm.isEmpty()) {
-                  firstNonEmptyLine = norm;
-                }
                 QString s = extractSystemFromLine(norm);
                 if (!s.isEmpty()) {
-                  lastSystemLine = norm;
+                  lastSystemLine =
+                      norm; // Keep overwriting to get the LAST match
                 }
-              }
-              if (lastSystemLine.isEmpty() && !firstNonEmptyLine.isEmpty()) {
-                qDebug() << "ChatLogWorker: fallback full scan found nothing "
-                            "either. First non-empty line:"
-                         << firstNonEmptyLine;
               }
             }
 
             if (!lastSystemLine.isEmpty()) {
-              static QRegularExpression systemChangePattern(
-                  R"(\[\s*([\d.\s:]+)\]\s*EVE System\s*>\s*Channel changed to Local\s*:\s*(.+))",
-                  QRegularExpression::CaseInsensitiveOption |
-                      QRegularExpression::UseUnicodePropertiesOption);
-
               QRegularExpressionMatch match =
                   systemChangePattern.match(lastSystemLine);
               if (match.hasMatch()) {
@@ -404,24 +463,29 @@ void ChatLogWorker::scanExistingLogs() {
                 QString rawSystem = match.captured(2).trimmed();
                 QString newSystem = sanitizeSystemName(rawSystem);
 
-                QDateTime dt =
-                    QDateTime::fromString(timestampStr, "yyyy.MM.dd HH:mm:ss");
-                qint64 updateTime = QDateTime::currentMSecsSinceEpoch();
-                if (dt.isValid()) {
-                  updateTime = dt.toMSecsSinceEpoch();
-                }
+                qint64 updateTime = parseEVETimestamp(timestampStr);
 
                 CharacterLocation &location =
                     m_characterLocations[characterName];
-                location.characterName = characterName;
-                location.systemName = newSystem;
-                location.lastUpdate = updateTime;
 
-                qDebug() << "ChatLogWorker: Initial system for" << characterName
-                         << ":" << newSystem << "(from" << timestampStr
-                         << ", gamelog monitoring:" << m_enableGameLogMonitoring
-                         << ")";
-                emit systemChanged(characterName, newSystem);
+                // Only update if we don't already have newer data
+                // This prevents chatlog rescans from overwriting current
+                // position
+                if (updateTime > location.lastUpdate ||
+                    location.systemName.isEmpty()) {
+                  location.characterName = characterName;
+                  location.systemName = newSystem;
+                  location.lastUpdate = updateTime;
+
+                  qDebug() << "ChatLogWorker: Initial system for"
+                           << characterName << ":" << newSystem << "(from"
+                           << timestampStr << ", gamelog monitoring:"
+                           << m_enableGameLogMonitoring << ")";
+                  emit systemChanged(characterName, newSystem);
+                } else {
+                  qDebug() << "ChatLogWorker: Chatlog data for" << characterName
+                           << "is older than current position, skipping";
+                }
               }
 
               parseLogLine(lastSystemLine, characterName);
@@ -472,13 +536,74 @@ void ChatLogWorker::scanExistingLogs() {
           qDebug() << "ChatLogWorker: Monitoring GAMELOG for" << characterName
                    << ":" << gameLogFile;
 
+          // Scan gamelog for most recent system jump
+          // Only update if this jump is NEWER than the chatlog system
+          QFileInfo fi(gameLogFile);
+          QString lastJumpLine;
+
           QFile file(gameLogFile);
           if (file.open(QIODevice::ReadOnly)) {
-            QTextStream in(&file);
-            in.setAutoDetectUnicode(true);
-            m_filePositions[gameLogFile] = file.size();
+            qint64 fileSize = file.size();
 
-            QFileInfo fi(gameLogFile);
+            // Read last 64KB to find most recent jump
+            const qint64 tailSize = 65536;
+            qint64 startPos = 0;
+
+            if (fileSize > tailSize + 1024) {
+              startPos = fileSize - tailSize - 1024;
+              file.seek(startPos);
+            }
+
+            QByteArray tailData = file.readAll();
+            QString tailContent = QString::fromUtf8(tailData);
+            QStringList tailLines = tailContent.split('\n', Qt::SkipEmptyParts);
+
+            // Search backwards for most recent system jump
+            static QRegularExpression jumpPattern(
+                R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
+
+            for (int i = tailLines.size() - 1; i >= 0; --i) {
+              QString normLine = normalizeLogLine(tailLines[i]);
+              if (jumpPattern.match(normLine).hasMatch()) {
+                lastJumpLine = normLine;
+                break;
+              }
+            }
+
+            // Process the jump only if it's newer than chatlog data
+            if (!lastJumpLine.isEmpty()) {
+              QRegularExpressionMatch jumpMatch =
+                  jumpPattern.match(lastJumpLine);
+              if (jumpMatch.hasMatch()) {
+                QString timestampStr = jumpMatch.captured(1).trimmed();
+                QString fromSystem = jumpMatch.captured(2).trimmed();
+                QString toSystem = jumpMatch.captured(3).trimmed();
+                QString newSystem = sanitizeSystemName(toSystem);
+
+                qint64 updateTime = parseEVETimestamp(timestampStr);
+
+                // Check if this jump is newer than existing location data
+                CharacterLocation &location =
+                    m_characterLocations[characterName];
+                if (updateTime > location.lastUpdate ||
+                    location.systemName != newSystem) {
+                  location.characterName = characterName;
+                  location.systemName = newSystem;
+                  location.lastUpdate = updateTime;
+
+                  qDebug() << "ChatLogWorker: Updated system from GAMELOG for"
+                           << characterName << ":" << newSystem << "(from"
+                           << timestampStr << ") - overriding chatlog data";
+                  emit systemChanged(characterName, newSystem);
+                } else {
+                  qDebug()
+                      << "ChatLogWorker: GAMELOG jump for" << characterName
+                      << "is older than chatlog data, keeping chatlog system";
+                }
+              }
+            }
+
+            m_filePositions[gameLogFile] = file.size();
             m_fileLastSize[gameLogFile] = fi.size();
             m_fileLastModified[gameLogFile] =
                 fi.lastModified().toMSecsSinceEpoch();
@@ -524,7 +649,65 @@ void ChatLogWorker::checkForNewFiles() {
     return;
   }
 
-  scanExistingLogs();
+  // Check if actual file lists have changed (new files appeared)
+  // This prevents unnecessary scans when existing files are just modified
+  bool newFilesFound = false;
+
+  if (m_enableChatLogMonitoring) {
+    QDir d(m_logDirectory);
+    if (d.exists()) {
+      QStringList chatFiles =
+          d.entryList(QStringList() << "Local_*.txt", QDir::Files);
+      QSet<QString> currentChatFiles;
+      for (const QString &f : chatFiles) {
+        currentChatFiles.insert(d.absoluteFilePath(f));
+      }
+
+      // Check if any new files appeared
+      if (m_knownChatLogFiles.isEmpty()) {
+        // First scan
+        m_knownChatLogFiles = currentChatFiles;
+        newFilesFound = true;
+      } else if (currentChatFiles != m_knownChatLogFiles) {
+        // Files added or removed
+        qDebug() << "ChatLogWorker: Detected chat log file changes";
+        m_knownChatLogFiles = currentChatFiles;
+        newFilesFound = true;
+      }
+    }
+  }
+
+  if (m_enableGameLogMonitoring) {
+    QDir gd(m_gameLogDirectory);
+    if (gd.exists()) {
+      QStringList gameFiles =
+          gd.entryList(QStringList() << "*.txt", QDir::Files);
+      QSet<QString> currentGameFiles;
+      for (const QString &f : gameFiles) {
+        currentGameFiles.insert(gd.absoluteFilePath(f));
+      }
+
+      // Check if any new files appeared
+      if (m_knownGameLogFiles.isEmpty()) {
+        // First scan
+        m_knownGameLogFiles = currentGameFiles;
+        newFilesFound = true;
+      } else if (currentGameFiles != m_knownGameLogFiles) {
+        // Files added or removed
+        qDebug() << "ChatLogWorker: Detected game log file changes";
+        m_knownGameLogFiles = currentGameFiles;
+        newFilesFound = true;
+      }
+    }
+  }
+
+  if (newFilesFound) {
+    qDebug() << "ChatLogWorker: New files detected, scanning...";
+    scanExistingLogs();
+  } else {
+    // Directory unchanged - this was just individual file modifications
+    // which are already handled by fileChanged signal
+  }
 }
 
 QString
@@ -649,6 +832,16 @@ QString ChatLogWorker::findLogFileForCharacter(const QString &characterName) {
 }
 
 QString ChatLogWorker::extractCharacterFromLogFile(const QString &filePath) {
+  QFileInfo fileInfo(filePath);
+  qint64 modTime = fileInfo.lastModified().toMSecsSinceEpoch();
+
+  // Check cache first
+  auto it = m_fileToCharacterCache.find(filePath);
+  if (it != m_fileToCharacterCache.end() && it->second == modTime) {
+    return it->first; // Return cached character name
+  }
+
+  // Cache miss or file modified - extract character name
   QFile file(filePath);
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
     return QString();
@@ -659,9 +852,10 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString &filePath) {
 
   static QRegularExpression listenerPattern(R"(Listener:\s+(.+))");
 
-  QFileInfo fileInfo(filePath);
   QString fileName = fileInfo.fileName();
   bool isChatLog = fileName.startsWith("Local_", Qt::CaseInsensitive);
+
+  QString characterName;
 
   if (isChatLog) {
     for (int i = 1; i <= 8 && !in.atEnd(); ++i) {
@@ -672,9 +866,7 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString &filePath) {
       QString line = in.readLine();
       QRegularExpressionMatch match = listenerPattern.match(line);
       if (match.hasMatch()) {
-        QString characterName = match.captured(1).trimmed();
-        file.close();
-        return characterName;
+        characterName = match.captured(1).trimmed();
       }
     }
   } else {
@@ -686,67 +878,81 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString &filePath) {
       QString line = in.readLine();
       QRegularExpressionMatch match = listenerPattern.match(line);
       if (match.hasMatch()) {
-        QString characterName = match.captured(1).trimmed();
-        file.close();
-        return characterName;
+        characterName = match.captured(1).trimmed();
       }
     }
   }
 
   file.close();
-  return QString();
+
+  // Cache the result
+  if (!characterName.isEmpty()) {
+    m_fileToCharacterCache[filePath] = qMakePair(characterName, modTime);
+  }
+
+  return characterName;
 }
 
 void ChatLogWorker::processLogFile(const QString &filePath) {
-  qDebug() << "ChatLogWorker: processLogFile called for:" << filePath;
-
-  QMutexLocker locker(&m_mutex);
-
-  if (!m_running) {
-    qDebug() << "ChatLogWorker: Not running, ignoring file change";
-    return;
-  }
+  qint64 processStartTime = QDateTime::currentMSecsSinceEpoch();
+  qDebug() << "ChatLogWorker: processLogFile STARTED for:" << filePath;
 
   QString characterName;
-  QString key = m_fileToKeyMap.value(filePath);
-  if (!key.isEmpty()) {
-    if (key.endsWith("_chatlog")) {
-      characterName = key.left(key.length() - 8);
-    } else if (key.endsWith("_gamelog")) {
-      characterName = key.left(key.length() - 8);
-    } else {
-      characterName = key;
+  qint64 lastPos;
+
+  // Minimize mutex lock time - only for data access
+  {
+    QMutexLocker locker(&m_mutex);
+
+    if (!m_running) {
+      qDebug() << "ChatLogWorker: Not running, ignoring file change";
+      return;
     }
-  } else {
-    for (auto it = m_characterToLogFile.constBegin();
-         it != m_characterToLogFile.constEnd(); ++it) {
-      if (it.value() == filePath) {
-        QString k = it.key();
-        if (k.endsWith("_chatlog")) {
-          characterName = k.left(k.length() - 8);
-        } else if (k.endsWith("_gamelog")) {
-          characterName = k.left(k.length() - 8);
-        } else {
-          characterName = k;
+
+    QString key = m_fileToKeyMap.value(filePath);
+    if (!key.isEmpty()) {
+      if (key.endsWith("_chatlog")) {
+        characterName = key.left(key.length() - 8);
+      } else if (key.endsWith("_gamelog")) {
+        characterName = key.left(key.length() - 8);
+      } else {
+        characterName = key;
+      }
+    } else {
+      for (auto it = m_characterToLogFile.constBegin();
+           it != m_characterToLogFile.constEnd(); ++it) {
+        if (it.value() == filePath) {
+          QString k = it.key();
+          if (k.endsWith("_chatlog")) {
+            characterName = k.left(k.length() - 8);
+          } else if (k.endsWith("_gamelog")) {
+            characterName = k.left(k.length() - 8);
+          } else {
+            characterName = k;
+          }
+          break;
         }
-        break;
       }
     }
-  }
 
-  if (characterName.isEmpty()) {
-    qDebug() << "ChatLogWorker: Could not find character for log file:"
-             << filePath;
-    return;
+    if (characterName.isEmpty()) {
+      qDebug() << "ChatLogWorker: Could not find character for log file:"
+               << filePath;
+      return;
+    }
+
+    lastPos = m_filePositions.value(filePath, 0);
   }
+  // Mutex released here - file I/O happens without lock
 
   qDebug() << "ChatLogWorker: Processing log for character:" << characterName;
   qDebug() << "ChatLogWorker: File path:" << filePath;
 
   QFile file(filePath);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+  if (!file.open(QIODevice::ReadOnly)) { // Removed | QIODevice::Text
     qWarning() << "ChatLogWorker: Failed to open log file:" << filePath;
 
+    QMutexLocker locker(&m_mutex);
     m_fileWatcher->removePath(filePath);
     m_characterToLogFile.remove(characterName);
     m_filePositions.remove(filePath);
@@ -754,10 +960,14 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     return;
   }
 
-  qint64 lastPos = m_filePositions.value(filePath, 0);
   qint64 fileSize = file.size();
   qDebug() << "ChatLogWorker: File size:" << fileSize
            << ", Last position:" << lastPos;
+
+  // Handle file truncation or rotation
+  if (lastPos > fileSize) {
+    lastPos = 0;
+  }
 
   if (lastPos > 0 && fileSize >= lastPos) {
     file.seek(lastPos);
@@ -765,23 +975,45 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     lastPos = 0;
   }
 
-  QTextStream in(&file);
-  in.setAutoDetectUnicode(true);
+  // Read remaining data into buffer - much faster than line-by-line
+  QByteArray newData = file.readAll();
+  qint64 newPos = file.pos();
+  file.close();
 
-  int linesRead = 0;
-  while (!in.atEnd()) {
-    QString line = in.readLine();
-    linesRead++;
+  if (newData.isEmpty()) {
+    qDebug() << "ChatLogWorker: No new data to process";
+    return;
+  }
+
+  // Convert to QString once with explicit UTF-8 encoding
+  QString content = QString::fromUtf8(newData);
+
+  // Split into lines and process
+  QStringList lines = content.split('\n', Qt::SkipEmptyParts);
+
+  qDebug() << "ChatLogWorker: Read" << lines.size() << "new lines from log";
+
+  // Process all lines (without mutex locked)
+  // Note: Qt::SkipEmptyParts already filters out empty lines
+  for (const QString &line : lines) {
     parseLogLine(line, characterName);
   }
 
-  qDebug() << "ChatLogWorker: Read" << linesRead << "new lines from log";
-
-  m_filePositions[filePath] = file.pos();
-  file.close();
+  // Update position with mutex
+  {
+    QMutexLocker locker(&m_mutex);
+    m_filePositions[filePath] = newPos;
+  }
+  
+  qint64 processElapsed = QDateTime::currentMSecsSinceEpoch() - processStartTime;
+  qDebug() << "ChatLogWorker: processLogFile COMPLETED in" << processElapsed << "ms";
 }
 
 void ChatLogWorker::markFileDirty(const QString &filePath) {
+  qint64 startTime = QDateTime::currentMSecsSinceEpoch();
+  QDateTime nowTime = QDateTime::currentDateTime();
+  qDebug() << "ChatLogWorker: markFileDirty CALLED at" << nowTime.toString("HH:mm:ss.zzz") << "for" << filePath;
+  
   QMutexLocker locker(&m_mutex);
 
   QFileInfo fi(filePath);
@@ -797,51 +1029,73 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
   qint64 lastModified = m_fileLastModified.value(filePath, -1);
 
   if (lastSize == currentSize && lastModified == currentModified) {
+    qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
+    qDebug() << "ChatLogWorker: markFileDirty - no change detected" << filePath
+             << "(" << elapsed << "ms)";
     return;
   }
 
+  qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
   qDebug() << "ChatLogWorker: markFileDirty for" << filePath
-           << "(size:" << lastSize << "->" << currentSize << ")";
+           << "(size:" << lastSize << "->" << currentSize << ")"
+           << "(" << elapsed << "ms so far)";
 
   m_fileLastSize[filePath] = currentSize;
   m_fileLastModified[filePath] = currentModified;
 
+  // Check rate limiting to batch rapid changes
   qint64 now = QDateTime::currentMSecsSinceEpoch();
   qint64 lastProcessed = m_fileLastProcessed.value(filePath, 0);
   qint64 timeSinceLastProcess = now - lastProcessed;
 
-  if (timeSinceLastProcess < 50) {
-    qDebug() << "ChatLogWorker: Rate limiting" << filePath << "(last processed"
-             << timeSinceLastProcess << "ms ago)";
+  // If processed very recently (< 20ms), use short debounce to batch
+  if (timeSinceLastProcess < 20) {
+    qDebug() << "ChatLogWorker: Using debounce for rapid changes" << filePath
+             << "(last processed" << timeSinceLastProcess << "ms ago)";
+    
+    QTimer *debounceTimer = m_debounceTimers.value(filePath, nullptr);
+
+    if (!debounceTimer) {
+      debounceTimer = new QTimer(this);
+      debounceTimer->setSingleShot(true);
+      debounceTimer->setInterval(10); // Very short 10ms debounce
+
+      connect(debounceTimer, &QTimer::timeout, this, [this, filePath]() {
+        QMutexLocker innerLocker(&m_mutex);
+
+        m_fileLastProcessed[filePath] = QDateTime::currentMSecsSinceEpoch();
+
+        QTimer *timerToDelete = m_debounceTimers.take(filePath);
+        innerLocker.unlock();
+
+        this->processLogFile(filePath);
+
+        if (timerToDelete) {
+          timerToDelete->deleteLater();
+        }
+      });
+
+      m_debounceTimers[filePath] = debounceTimer;
+    }
+
+    // Restart the timer to batch multiple rapid changes
+    debounceTimer->start();
+    
+    elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
+    qDebug() << "ChatLogWorker: markFileDirty debounce timer started"
+             << "(" << elapsed << "ms total)";
     return;
   }
 
-  QTimer *debounceTimer = m_debounceTimers.value(filePath, nullptr);
-
-  if (!debounceTimer) {
-    debounceTimer = new QTimer(this);
-    debounceTimer->setSingleShot(true);
-    debounceTimer->setInterval(30);
-
-    connect(debounceTimer, &QTimer::timeout, this, [this, filePath]() {
-      QMutexLocker innerLocker(&m_mutex);
-
-      m_fileLastProcessed[filePath] = QDateTime::currentMSecsSinceEpoch();
-
-      QTimer *timerToDelete = m_debounceTimers.take(filePath);
-      innerLocker.unlock();
-
-      this->processLogFile(filePath);
-
-      if (timerToDelete) {
-        timerToDelete->deleteLater();
-      }
-    });
-
-    m_debounceTimers[filePath] = debounceTimer;
-  }
-
-  debounceTimer->start();
+  // Process immediately if enough time has passed
+  m_fileLastProcessed[filePath] = now;
+  locker.unlock();
+  
+  processLogFile(filePath);
+  
+  elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
+  qDebug() << "ChatLogWorker: markFileDirty completed with immediate processing"
+           << "(" << elapsed << "ms total)";
 }
 
 void ChatLogWorker::parseLogLine(const QString &line,
@@ -853,7 +1107,22 @@ void ChatLogWorker::parseLogLine(const QString &line,
     return;
   }
 
-  if (!m_enableGameLogMonitoring && normalizedLine.contains("EVE System")) {
+  // Use indexOf for faster string searching (search from position 20 to skip
+  // timestamp)
+  const int searchStart = 20;
+  int notifyPos =
+      normalizedLine.indexOf("(notify)", searchStart, Qt::CaseInsensitive);
+  int questionPos =
+      normalizedLine.indexOf("(question)", searchStart, Qt::CaseInsensitive);
+  int miningPos =
+      normalizedLine.indexOf("(mining)", searchStart, Qt::CaseInsensitive);
+  int nonePos =
+      normalizedLine.indexOf("(None)", searchStart, Qt::CaseInsensitive);
+  int eveSystemPos =
+      normalizedLine.indexOf("EVE System", searchStart, Qt::CaseInsensitive);
+
+  // Handle EVE System messages (chatlog only)
+  if (!m_enableGameLogMonitoring && eveSystemPos != -1) {
     static QRegularExpression systemChangePattern(
         R"(\[\s*([\d.\s:]+)\]\s*EVE System\s*>\s*Channel changed to Local\s*:\s*(.+))",
         QRegularExpression::CaseInsensitiveOption |
@@ -866,11 +1135,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
 
       QString newSystem = sanitizeSystemName(rawSystem);
 
-      QDateTime dt = QDateTime::fromString(timestampStr, "yyyy.MM.dd HH:mm:ss");
-      qint64 updateTime = QDateTime::currentMSecsSinceEpoch();
-      if (dt.isValid()) {
-        updateTime = dt.toMSecsSinceEpoch();
-      }
+      qint64 updateTime = parseEVETimestamp(timestampStr);
 
       CharacterLocation &location = m_characterLocations[characterName];
       if (location.systemName != newSystem) {
@@ -881,13 +1146,18 @@ void ChatLogWorker::parseLogLine(const QString &line,
         qDebug() << "ChatLogWorker: System change detected (chatlog):"
                  << characterName << "->" << newSystem << "(from"
                  << timestampStr << ")";
+        
+        qint64 emitTime = QDateTime::currentMSecsSinceEpoch();
         emit systemChanged(characterName, newSystem);
+        qint64 emitElapsed = QDateTime::currentMSecsSinceEpoch() - emitTime;
+        qDebug() << "ChatLogWorker: systemChanged signal emitted in" << emitElapsed << "ms";
       }
     }
     return;
   }
 
-  if (normalizedLine.contains("(question)")) {
+  // Handle fleet invites
+  if (questionPos != -1) {
     static QRegularExpression fleetInvitePattern(
         R"(\[\s*[\d.\s:]+\]\s*\(question\)\s*<a href="[^"]+">([^<]+)</a>\s*wants you to join their fleet)");
 
@@ -903,8 +1173,19 @@ void ChatLogWorker::parseLogLine(const QString &line,
     return;
   }
 
-  if (normalizedLine.contains("(notify)")) {
-    if (normalizedLine.contains("Following")) {
+  // Handle notification messages
+  if (notifyPos != -1) {
+    // Sub-search within notify messages using indexOf for efficiency
+    int followingPos =
+        normalizedLine.indexOf("Following", notifyPos, Qt::CaseInsensitive);
+    int regroupingPos =
+        normalizedLine.indexOf("Regrouping", notifyPos, Qt::CaseInsensitive);
+    int compressedPos =
+        normalizedLine.indexOf("compressed", notifyPos, Qt::CaseInsensitive);
+    int cloakPos = normalizedLine.indexOf("cloak deactivates", notifyPos,
+                                          Qt::CaseInsensitive);
+
+    if (followingPos != -1) {
       static QRegularExpression followWarpPattern(
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Following\s+(.+?)\s+in warp)");
 
@@ -913,12 +1194,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
       if (followMatch.hasMatch()) {
         QString leader = followMatch.captured(1).trimmed();
 
-        // Check if the leader has a custom thumbnail name
-        const Config &cfg = Config::instance();
-        QString displayName = cfg.getCustomThumbnailName(leader);
-        if (displayName.isEmpty()) {
-          displayName = leader;
-        }
+        QString displayName = m_cachedCustomNames.value(leader, leader);
 
         QString eventText = QString("Following %1").arg(displayName);
         qDebug() << "ChatLogWorker: Follow warp detected for" << characterName
@@ -931,7 +1207,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
       }
     }
 
-    if (normalizedLine.contains("Regrouping")) {
+    if (regroupingPos != -1) {
       static QRegularExpression regroupPattern(
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Regrouping to\s+(.+?)(?:\.|$))");
 
@@ -940,12 +1216,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
       if (regroupMatch.hasMatch()) {
         QString leader = regroupMatch.captured(1).trimmed();
 
-        // Check if the leader has a custom thumbnail name
-        const Config &cfg = Config::instance();
-        QString displayName = cfg.getCustomThumbnailName(leader);
-        if (displayName.isEmpty()) {
-          displayName = leader;
-        }
+        QString displayName = m_cachedCustomNames.value(leader, leader);
 
         QString eventText = QString("Regrouping to %1").arg(displayName);
         qDebug() << "ChatLogWorker: Regroup detected for" << characterName
@@ -958,7 +1229,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
       }
     }
 
-    if (normalizedLine.contains("compressed")) {
+    if (compressedPos != -1) {
       static QRegularExpression compressionPattern(
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Successfully compressed\s+(.+?)\s+into\s+(\d+)\s+(.+))");
 
@@ -979,7 +1250,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
       }
     }
 
-    if (normalizedLine.contains("cloak deactivates")) {
+    if (cloakPos != -1) {
       static QRegularExpression decloakPattern(
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Your cloak deactivates due to proximity to (?:a nearby )?(.+?)\.)");
 
@@ -997,7 +1268,8 @@ void ChatLogWorker::parseLogLine(const QString &line,
     return;
   }
 
-  if (normalizedLine.contains("(mining)")) {
+  // Handle mining events
+  if (miningPos != -1) {
     static QRegularExpression miningPattern(R"(\[\s*[\d.\s:]+\]\s*\(mining\))");
 
     QRegularExpressionMatch miningMatch = miningPattern.match(normalizedLine);
@@ -1008,34 +1280,40 @@ void ChatLogWorker::parseLogLine(const QString &line,
     return;
   }
 
-  if (normalizedLine.contains("(None)") && normalizedLine.contains("Jumping")) {
-    static QRegularExpression jumpPattern(
-        R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
+  // Handle system jumps (gamelog)
+  if (nonePos != -1) {
+    int jumpingPos =
+        normalizedLine.indexOf("Jumping", nonePos, Qt::CaseInsensitive);
+    if (jumpingPos != -1) {
+      static QRegularExpression jumpPattern(
+          R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
 
-    QRegularExpressionMatch jumpMatch = jumpPattern.match(normalizedLine);
-    if (jumpMatch.hasMatch()) {
-      QString timestampStr = jumpMatch.captured(1).trimmed();
-      QString fromSystem = jumpMatch.captured(2).trimmed();
-      QString toSystem = jumpMatch.captured(3).trimmed();
+      QRegularExpressionMatch jumpMatch = jumpPattern.match(normalizedLine);
+      if (jumpMatch.hasMatch()) {
+        QString timestampStr = jumpMatch.captured(1).trimmed();
+        QString fromSystem = jumpMatch.captured(2).trimmed();
+        QString toSystem = jumpMatch.captured(3).trimmed();
 
-      QString newSystem = sanitizeSystemName(toSystem);
+        QString newSystem = sanitizeSystemName(toSystem);
 
-      QDateTime dt = QDateTime::fromString(timestampStr, "yyyy.MM.dd HH:mm:ss");
-      qint64 updateTime = QDateTime::currentMSecsSinceEpoch();
-      if (dt.isValid()) {
-        updateTime = dt.toMSecsSinceEpoch();
-      }
+        qint64 updateTime = parseEVETimestamp(timestampStr);
 
-      CharacterLocation &location = m_characterLocations[characterName];
-      if (location.systemName != newSystem) {
-        location.characterName = characterName;
-        location.systemName = newSystem;
-        location.lastUpdate = updateTime;
+        CharacterLocation &location = m_characterLocations[characterName];
+        if (location.systemName != newSystem) {
+          location.characterName = characterName;
+          location.systemName = newSystem;
+          location.lastUpdate = updateTime;
 
-        qDebug() << "ChatLogWorker: System jump detected (gamelog):"
-                 << characterName << "from" << fromSystem << "to" << newSystem
-                 << "(at" << timestampStr << ")";
-        emit systemChanged(characterName, newSystem);
+          QDateTime detectTime = QDateTime::currentDateTime();
+          qDebug() << "ChatLogWorker: System jump detected (gamelog) at" << detectTime.toString("HH:mm:ss.zzz")
+                   << "-" << characterName << "from" << fromSystem << "to" << newSystem
+                   << "(jump timestamp:" << timestampStr << ")";
+          
+          qint64 emitTime = QDateTime::currentMSecsSinceEpoch();
+          emit systemChanged(characterName, newSystem);
+          qint64 emitElapsed = QDateTime::currentMSecsSinceEpoch() - emitTime;
+          qDebug() << "ChatLogWorker: systemChanged signal emitted in" << emitElapsed << "ms";
+        }
       }
     }
   }
@@ -1086,6 +1364,12 @@ void ChatLogWorker::onMiningTimeout(const QString &characterName) {
   }
 }
 
+void ChatLogWorker::updateCustomNameCache() {
+  m_cachedCustomNames = Config::instance().getAllCustomThumbnailNames();
+  qDebug() << "ChatLogWorker: Updated custom name cache with"
+           << m_cachedCustomNames.size() << "entries";
+}
+
 QString ChatLogWorker::extractSystemFromLine(const QString &logLine) {
   static QRegularExpression pattern(
       R"(Channel changed to Local\s*:\s*(.+))",
@@ -1098,47 +1382,6 @@ QString ChatLogWorker::extractSystemFromLine(const QString &logLine) {
   }
 
   return QString();
-}
-
-QString
-ChatLogWorker::findLastMatchingLineInFile(const QString &filePath,
-                                          const QRegularExpression &pattern,
-                                          qint64 tailSize) {
-  QFile file(filePath);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    return QString();
-  }
-
-  qint64 fileSize = file.size();
-  qint64 startPos = 0;
-  const qint64 safetyMargin = 1024;
-  if (fileSize > tailSize + safetyMargin) {
-    startPos = fileSize - tailSize - safetyMargin;
-  }
-
-  if (!file.seek(startPos)) {
-    file.seek(0);
-  }
-
-  QTextStream in(&file);
-  in.setAutoDetectUnicode(true);
-
-  if (startPos > 0) {
-    in.readLine();
-  }
-
-  QString lastMatchLine;
-  while (!in.atEnd()) {
-    QString line = in.readLine();
-    QString normLine = normalizeLogLine(line);
-    QRegularExpressionMatch match = pattern.match(normLine);
-    if (match.hasMatch()) {
-      lastMatchLine = normLine;
-    }
-  }
-
-  file.close();
-  return lastMatchLine;
 }
 
 QHash<QString, QString> ChatLogWorker::buildListenerToFileMap(
@@ -1172,11 +1415,14 @@ QHash<QString, QString> ChatLogWorker::buildListenerToFileMap(
 }
 
 QString ChatLogWorker::sanitizeSystemName(const QString &system) {
+  static const QRegularExpression htmlTagPattern("<[^>]*>");
+  static const QRegularExpression whitespacePattern("\\s+");
+
   QString s = system;
-  s = s.remove(QRegularExpression("<[^>]*>"));
+  s = s.remove(htmlTagPattern);
 
   s = s.trimmed();
-  s = s.replace(QRegularExpression("\\s+"), " ");
+  s = s.replace(whitespacePattern, " ");
 
   if (!s.isEmpty() && (s.endsWith('.') || s.endsWith(','))) {
     s.chop(1);
@@ -1190,6 +1436,9 @@ ChatLogReader::ChatLogReader(QObject *parent)
     : QObject(parent), m_workerThread(new QThread(this)),
       m_worker(new ChatLogWorker()), m_monitoring(false) {
   m_worker->moveToThread(m_workerThread);
+
+  // Set higher priority for faster event processing
+  m_workerThread->setPriority(QThread::HighPriority);
 
   connect(m_worker, &ChatLogWorker::systemChanged, this,
           &ChatLogReader::handleSystemChanged, Qt::QueuedConnection);

@@ -95,6 +95,15 @@ void ThumbnailWidget::setSystemName(const QString &systemName) {
   }
 
   m_systemName = systemName;
+  
+  // Cache the system color when system changes
+  const Config &cfg = Config::instance();
+  if (cfg.useUniqueSystemNameColors()) {
+    m_cachedSystemColor = OverlayInfo::generateUniqueColor(m_systemName);
+  } else {
+    m_cachedSystemColor = cfg.systemNameColor();
+  }
+  
   updateOverlays();
   if (m_overlayWidget) {
     m_overlayWidget->setSystemName(systemName);
@@ -174,14 +183,8 @@ void ThumbnailWidget::updateOverlays() {
       QFont systemFont = cfg.systemNameFont();
       systemFont.setBold(true);
 
-      QColor systemColor;
-      if (cfg.useUniqueSystemNameColors()) {
-        systemColor = OverlayInfo::generateUniqueColor(m_systemName);
-      } else {
-        systemColor = cfg.systemNameColor();
-      }
-
-      OverlayElement sysElement(m_systemName, systemColor, pos, true,
+      // Use cached system color instead of regenerating
+      OverlayElement sysElement(m_systemName, m_cachedSystemColor, pos, true,
                                 systemFont);
       m_overlays.append(sysElement);
     }

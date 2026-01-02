@@ -50,9 +50,6 @@ public slots:
   void processLogFile(const QString &filePath);
   void markFileDirty(const QString &filePath);
   void checkForNewFiles();
-  QString findLastMatchingLineInFile(const QString &filePath,
-                                     const QRegularExpression &pattern,
-                                     qint64 tailSize = 65536);
   QHash<QString, QString> buildListenerToFileMap(const QDir &dir,
                                                  const QStringList &filters,
                                                  int maxAgeHours = 24);
@@ -69,6 +66,7 @@ private:
   void handleMiningEvent(const QString &characterName, const QString &ore);
   void onMiningTimeout(const QString &characterName);
   void cleanupDebounceTimer(const QString &filePath);
+  void updateCustomNameCache();
 
   QString m_logDirectory;
   QString m_gameLogDirectory;
@@ -81,6 +79,8 @@ private:
   QHash<QString, QTimer *> m_debounceTimers;
   QHash<QString, CharacterLocation> m_characterLocations;
   QHash<QString, QString> m_fileToKeyMap;
+  QHash<QString, QString> m_cachedCustomNames;
+  QHash<QString, QPair<QString, qint64>> m_fileToCharacterCache;
   QFileSystemWatcher *m_fileWatcher;
   QTimer *m_scanTimer;
   QMutex m_mutex;
@@ -93,6 +93,8 @@ private:
   QHash<QString, QString> m_cachedGameListenerMap;
   QHash<QString, QTimer *> m_miningTimers;
   QHash<QString, bool> m_miningActiveState;
+  QSet<QString> m_knownChatLogFiles;
+  QSet<QString> m_knownGameLogFiles;
 };
 
 class ChatLogReader : public QObject {
