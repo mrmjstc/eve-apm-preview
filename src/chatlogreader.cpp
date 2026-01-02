@@ -894,9 +894,6 @@ QString ChatLogWorker::extractCharacterFromLogFile(const QString &filePath) {
 }
 
 void ChatLogWorker::processLogFile(const QString &filePath) {
-  qint64 processStartTime = QDateTime::currentMSecsSinceEpoch();
-  qDebug() << "ChatLogWorker: processLogFile STARTED for:" << filePath;
-
   QString characterName;
   qint64 lastPos;
 
@@ -905,7 +902,6 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     QMutexLocker locker(&m_mutex);
 
     if (!m_running) {
-      qDebug() << "ChatLogWorker: Not running, ignoring file change";
       return;
     }
 
@@ -936,8 +932,6 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     }
 
     if (characterName.isEmpty()) {
-      qDebug() << "ChatLogWorker: Could not find character for log file:"
-               << filePath;
       return;
     }
 
@@ -945,11 +939,8 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
   }
   // Mutex released here - file I/O happens without lock
 
-  qDebug() << "ChatLogWorker: Processing log for character:" << characterName;
-  qDebug() << "ChatLogWorker: File path:" << filePath;
-
   QFile file(filePath);
-  if (!file.open(QIODevice::ReadOnly)) { // Removed | QIODevice::Text
+  if (!file.open(QIODevice::ReadOnly)) {
     qWarning() << "ChatLogWorker: Failed to open log file:" << filePath;
 
     QMutexLocker locker(&m_mutex);
@@ -961,8 +952,6 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
   }
 
   qint64 fileSize = file.size();
-  qDebug() << "ChatLogWorker: File size:" << fileSize
-           << ", Last position:" << lastPos;
 
   // Handle file truncation or rotation
   if (lastPos > fileSize) {
@@ -981,7 +970,6 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
   file.close();
 
   if (newData.isEmpty()) {
-    qDebug() << "ChatLogWorker: No new data to process";
     return;
   }
 
@@ -991,10 +979,7 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
   // Split into lines and process
   QStringList lines = content.split('\n', Qt::SkipEmptyParts);
 
-  qDebug() << "ChatLogWorker: Read" << lines.size() << "new lines from log";
-
   // Process all lines (without mutex locked)
-  // Note: Qt::SkipEmptyParts already filters out empty lines
   for (const QString &line : lines) {
     parseLogLine(line, characterName);
   }
@@ -1004,25 +989,13 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     QMutexLocker locker(&m_mutex);
     m_filePositions[filePath] = newPos;
   }
-
-  qint64 processElapsed =
-      QDateTime::currentMSecsSinceEpoch() - processStartTime;
-  qDebug() << "ChatLogWorker: processLogFile COMPLETED in" << processElapsed
-           << "ms";
 }
 
 void ChatLogWorker::markFileDirty(const QString &filePath) {
-  qint64 startTime = QDateTime::currentMSecsSinceEpoch();
-  QDateTime nowTime = QDateTime::currentDateTime();
-  qDebug() << "ChatLogWorker: markFileDirty CALLED at"
-           << nowTime.toString("HH:mm:ss.zzz") << "for" << filePath;
-
   QMutexLocker locker(&m_mutex);
 
   QFileInfo fi(filePath);
   if (!fi.exists()) {
-    qDebug() << "ChatLogWorker: markFileDirty called for non-existent file:"
-             << filePath;
     return;
   }
 
@@ -1031,74 +1004,20 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
   qint64 lastSize = m_fileLastSize.value(filePath, -1);
   qint64 lastModified = m_fileLastModified.value(filePath, -1);
 
+  // No change detected - skip processing
   if (lastSize == currentSize && lastModified == currentModified) {
-    qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
-    qDebug() << "ChatLogWorker: markFileDirty - no change detected" << filePath
-             << "(" << elapsed << "ms)";
     return;
   }
-
-  qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
-  qDebug() << "ChatLogWorker: markFileDirty for" << filePath
-           << "(size:" << lastSize << "->" << currentSize << ")"
-           << "(" << elapsed << "ms so far)";
 
   m_fileLastSize[filePath] = currentSize;
   m_fileLastModified[filePath] = currentModified;
 
-  // Check rate limiting to batch rapid changes
-  qint64 now = QDateTime::currentMSecsSinceEpoch();
-  qint64 lastProcessed = m_fileLastProcessed.value(filePath, 0);
-  qint64 timeSinceLastProcess = now - lastProcessed;
-
-  // If processed very recently (< 20ms), use short debounce to batch
-  if (timeSinceLastProcess < 20) {
-    qDebug() << "ChatLogWorker: Using debounce for rapid changes" << filePath
-             << "(last processed" << timeSinceLastProcess << "ms ago)";
-
-    QTimer *debounceTimer = m_debounceTimers.value(filePath, nullptr);
-
-    if (!debounceTimer) {
-      debounceTimer = new QTimer(this);
-      debounceTimer->setSingleShot(true);
-      debounceTimer->setInterval(10); // Very short 10ms debounce
-
-      connect(debounceTimer, &QTimer::timeout, this, [this, filePath]() {
-        QMutexLocker innerLocker(&m_mutex);
-
-        m_fileLastProcessed[filePath] = QDateTime::currentMSecsSinceEpoch();
-
-        QTimer *timerToDelete = m_debounceTimers.take(filePath);
-        innerLocker.unlock();
-
-        this->processLogFile(filePath);
-
-        if (timerToDelete) {
-          timerToDelete->deleteLater();
-        }
-      });
-
-      m_debounceTimers[filePath] = debounceTimer;
-    }
-
-    // Restart the timer to batch multiple rapid changes
-    debounceTimer->start();
-
-    elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
-    qDebug() << "ChatLogWorker: markFileDirty debounce timer started"
-             << "(" << elapsed << "ms total)";
-    return;
-  }
-
-  // Process immediately if enough time has passed
-  m_fileLastProcessed[filePath] = now;
+  // Release mutex before file I/O to allow other files to be processed
+  // concurrently
   locker.unlock();
 
+  // Process the file immediately
   processLogFile(filePath);
-
-  elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
-  qDebug() << "ChatLogWorker: markFileDirty completed with immediate processing"
-           << "(" << elapsed << "ms total)";
 }
 
 void ChatLogWorker::parseLogLine(const QString &line,
