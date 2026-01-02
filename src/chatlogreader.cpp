@@ -1004,16 +1004,19 @@ void ChatLogWorker::processLogFile(const QString &filePath) {
     QMutexLocker locker(&m_mutex);
     m_filePositions[filePath] = newPos;
   }
-  
-  qint64 processElapsed = QDateTime::currentMSecsSinceEpoch() - processStartTime;
-  qDebug() << "ChatLogWorker: processLogFile COMPLETED in" << processElapsed << "ms";
+
+  qint64 processElapsed =
+      QDateTime::currentMSecsSinceEpoch() - processStartTime;
+  qDebug() << "ChatLogWorker: processLogFile COMPLETED in" << processElapsed
+           << "ms";
 }
 
 void ChatLogWorker::markFileDirty(const QString &filePath) {
   qint64 startTime = QDateTime::currentMSecsSinceEpoch();
   QDateTime nowTime = QDateTime::currentDateTime();
-  qDebug() << "ChatLogWorker: markFileDirty CALLED at" << nowTime.toString("HH:mm:ss.zzz") << "for" << filePath;
-  
+  qDebug() << "ChatLogWorker: markFileDirty CALLED at"
+           << nowTime.toString("HH:mm:ss.zzz") << "for" << filePath;
+
   QMutexLocker locker(&m_mutex);
 
   QFileInfo fi(filePath);
@@ -1052,7 +1055,7 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
   if (timeSinceLastProcess < 20) {
     qDebug() << "ChatLogWorker: Using debounce for rapid changes" << filePath
              << "(last processed" << timeSinceLastProcess << "ms ago)";
-    
+
     QTimer *debounceTimer = m_debounceTimers.value(filePath, nullptr);
 
     if (!debounceTimer) {
@@ -1080,7 +1083,7 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
 
     // Restart the timer to batch multiple rapid changes
     debounceTimer->start();
-    
+
     elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
     qDebug() << "ChatLogWorker: markFileDirty debounce timer started"
              << "(" << elapsed << "ms total)";
@@ -1090,9 +1093,9 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
   // Process immediately if enough time has passed
   m_fileLastProcessed[filePath] = now;
   locker.unlock();
-  
+
   processLogFile(filePath);
-  
+
   elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
   qDebug() << "ChatLogWorker: markFileDirty completed with immediate processing"
            << "(" << elapsed << "ms total)";
@@ -1146,11 +1149,12 @@ void ChatLogWorker::parseLogLine(const QString &line,
         qDebug() << "ChatLogWorker: System change detected (chatlog):"
                  << characterName << "->" << newSystem << "(from"
                  << timestampStr << ")";
-        
+
         qint64 emitTime = QDateTime::currentMSecsSinceEpoch();
         emit systemChanged(characterName, newSystem);
         qint64 emitElapsed = QDateTime::currentMSecsSinceEpoch() - emitTime;
-        qDebug() << "ChatLogWorker: systemChanged signal emitted in" << emitElapsed << "ms";
+        qDebug() << "ChatLogWorker: systemChanged signal emitted in"
+                 << emitElapsed << "ms";
       }
     }
     return;
@@ -1305,14 +1309,16 @@ void ChatLogWorker::parseLogLine(const QString &line,
           location.lastUpdate = updateTime;
 
           QDateTime detectTime = QDateTime::currentDateTime();
-          qDebug() << "ChatLogWorker: System jump detected (gamelog) at" << detectTime.toString("HH:mm:ss.zzz")
-                   << "-" << characterName << "from" << fromSystem << "to" << newSystem
+          qDebug() << "ChatLogWorker: System jump detected (gamelog) at"
+                   << detectTime.toString("HH:mm:ss.zzz") << "-"
+                   << characterName << "from" << fromSystem << "to" << newSystem
                    << "(jump timestamp:" << timestampStr << ")";
-          
+
           qint64 emitTime = QDateTime::currentMSecsSinceEpoch();
           emit systemChanged(characterName, newSystem);
           qint64 emitElapsed = QDateTime::currentMSecsSinceEpoch() - emitTime;
-          qDebug() << "ChatLogWorker: systemChanged signal emitted in" << emitElapsed << "ms";
+          qDebug() << "ChatLogWorker: systemChanged signal emitted in"
+                   << emitElapsed << "ms";
         }
       }
     }

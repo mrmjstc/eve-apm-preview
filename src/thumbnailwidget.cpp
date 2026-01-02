@@ -95,7 +95,7 @@ void ThumbnailWidget::setSystemName(const QString &systemName) {
   }
 
   m_systemName = systemName;
-  
+
   // Cache the system color when system changes
   const Config &cfg = Config::instance();
   if (cfg.useUniqueSystemNameColors()) {
@@ -103,7 +103,7 @@ void ThumbnailWidget::setSystemName(const QString &systemName) {
   } else {
     m_cachedSystemColor = cfg.systemNameColor();
   }
-  
+
   updateOverlays();
   if (m_overlayWidget) {
     m_overlayWidget->setSystemName(systemName);
