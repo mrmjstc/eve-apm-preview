@@ -173,7 +173,15 @@ void ThumbnailWidget::updateOverlays() {
           static_cast<OverlayPosition>(cfg.systemNamePosition());
       QFont systemFont = cfg.systemNameFont();
       systemFont.setBold(true);
-      OverlayElement sysElement(m_systemName, cfg.systemNameColor(), pos, true,
+
+      QColor systemColor;
+      if (cfg.useUniqueSystemNameColors()) {
+        systemColor = OverlayInfo::generateUniqueColor(m_systemName);
+      } else {
+        systemColor = cfg.systemNameColor();
+      }
+
+      OverlayElement sysElement(m_systemName, systemColor, pos, true,
                                 systemFont);
       m_overlays.append(sysElement);
     }

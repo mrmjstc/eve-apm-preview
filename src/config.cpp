@@ -182,6 +182,11 @@ void Config::loadCacheFromSettings() {
   m_cachedShowSystemName =
       m_settings->value(KEY_OVERLAY_SHOW_SYSTEM, DEFAULT_OVERLAY_SHOW_SYSTEM)
           .toBool();
+  m_cachedUniqueSystemNameColors =
+      m_settings
+          ->value(KEY_OVERLAY_UNIQUE_SYSTEM_COLORS,
+                  DEFAULT_OVERLAY_UNIQUE_SYSTEM_COLORS)
+          .toBool();
   m_cachedSystemNameColor = QColor(
       m_settings->value(KEY_OVERLAY_SYSTEM_COLOR, DEFAULT_OVERLAY_SYSTEM_COLOR)
           .toString());
@@ -743,6 +748,15 @@ bool Config::showSystemName() const { return m_cachedShowSystemName; }
 void Config::setShowSystemName(bool enabled) {
   m_settings->setValue(KEY_OVERLAY_SHOW_SYSTEM, enabled);
   m_cachedShowSystemName = enabled;
+}
+
+bool Config::useUniqueSystemNameColors() const {
+  return m_cachedUniqueSystemNameColors;
+}
+
+void Config::setUseUniqueSystemNameColors(bool enabled) {
+  m_settings->setValue(KEY_OVERLAY_UNIQUE_SYSTEM_COLORS, enabled);
+  m_cachedUniqueSystemNameColors = enabled;
 }
 
 QColor Config::systemNameColor() const { return m_cachedSystemNameColor; }

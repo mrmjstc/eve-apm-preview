@@ -156,6 +156,9 @@ public:
   bool showSystemName() const;
   void setShowSystemName(bool enabled);
 
+  bool useUniqueSystemNameColors() const;
+  void setUseUniqueSystemNameColors(bool enabled);
+
   QColor systemNameColor() const;
   void setSystemNameColor(const QColor &color);
 
@@ -288,6 +291,7 @@ public:
   static constexpr bool DEFAULT_OVERLAY_SHOW_SYSTEM = false;
   static constexpr const char *DEFAULT_OVERLAY_SYSTEM_COLOR = "#C8C8C8";
   static constexpr int DEFAULT_OVERLAY_SYSTEM_POSITION = 3;
+  static constexpr bool DEFAULT_OVERLAY_UNIQUE_SYSTEM_COLORS = false;
   static constexpr bool DEFAULT_OVERLAY_SHOW_BACKGROUND = true;
   static constexpr const char *DEFAULT_OVERLAY_BACKGROUND_COLOR = "#000000";
   static constexpr int DEFAULT_OVERLAY_BACKGROUND_OPACITY = 70;
@@ -358,6 +362,7 @@ private:
   mutable int m_cachedCharacterNamePosition;
   mutable QFont m_cachedCharacterNameFont;
   mutable bool m_cachedShowSystemName;
+  mutable bool m_cachedUniqueSystemNameColors;
   mutable QColor m_cachedSystemNameColor;
   mutable int m_cachedSystemNamePosition;
   mutable QFont m_cachedSystemNameFont;
@@ -470,6 +475,8 @@ private:
       "overlay/characterNameFont";
   static constexpr const char *KEY_OVERLAY_SHOW_SYSTEM =
       "overlay/showSystemName";
+  static constexpr const char *KEY_OVERLAY_UNIQUE_SYSTEM_COLORS =
+      "overlay/uniqueSystemNameColors";
   static constexpr const char *KEY_OVERLAY_SYSTEM_COLOR =
       "overlay/systemNameColor";
   static constexpr const char *KEY_OVERLAY_SYSTEM_POSITION =

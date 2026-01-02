@@ -820,6 +820,9 @@ void ConfigDialog::createAppearancePage() {
   connect(m_systemNameColorButton, &QPushButton::clicked, this,
           &ConfigDialog::onColorButtonClicked);
 
+  m_uniqueSystemColorsCheck = new QCheckBox("Use unique colors");
+  m_uniqueSystemColorsCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+
   m_systemNamePositionLabel = new QLabel("Position:");
   m_systemNamePositionLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_systemNamePositionCombo = new QComboBox();
@@ -847,6 +850,7 @@ void ConfigDialog::createAppearancePage() {
 
   sysGrid->addWidget(m_systemNameColorLabel, 0, 0, Qt::AlignLeft);
   sysGrid->addWidget(m_systemNameColorButton, 0, 1);
+  sysGrid->addWidget(m_uniqueSystemColorsCheck, 0, 2, Qt::AlignLeft);
   sysGrid->addWidget(m_systemNamePositionLabel, 1, 0, Qt::AlignLeft);
   sysGrid->addWidget(m_systemNamePositionCombo, 1, 1);
   sysGrid->addWidget(m_systemNameFontLabel, 2, 0, Qt::AlignLeft);
@@ -856,12 +860,23 @@ void ConfigDialog::createAppearancePage() {
 
   connect(m_showSystemNameCheck, &QCheckBox::toggled, this,
           [this](bool checked) {
-            m_systemNameColorLabel->setEnabled(checked);
-            m_systemNameColorButton->setEnabled(checked);
+            m_uniqueSystemColorsCheck->setEnabled(checked);
+            m_systemNameColorLabel->setEnabled(
+                checked && !m_uniqueSystemColorsCheck->isChecked());
+            m_systemNameColorButton->setEnabled(
+                checked && !m_uniqueSystemColorsCheck->isChecked());
             m_systemNamePositionLabel->setEnabled(checked);
             m_systemNamePositionCombo->setEnabled(checked);
             m_systemNameFontLabel->setEnabled(checked);
             m_systemNameFontButton->setEnabled(checked);
+          });
+
+  connect(m_uniqueSystemColorsCheck, &QCheckBox::toggled, this,
+          [this](bool checked) {
+            m_systemNameColorLabel->setEnabled(
+                !checked && m_showSystemNameCheck->isChecked());
+            m_systemNameColorButton->setEnabled(
+                !checked && m_showSystemNameCheck->isChecked());
           });
 
   m_showBackgroundCheck = new QCheckBox("Show background");
@@ -2726,6 +2741,12 @@ void ConfigDialog::setupBindings() {
       m_showSystemNameCheck, [&config]() { return config.showSystemName(); },
       [&config](bool value) { config.setShowSystemName(value); }, true));
 
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_uniqueSystemColorsCheck,
+      [&config]() { return config.useUniqueSystemNameColors(); },
+      [&config](bool value) { config.setUseUniqueSystemNameColors(value); },
+      false));
+
   auto sysColorBinding = BindingHelpers::bindColorButton(
       m_systemNameColorButton, [&config]() { return config.systemNameColor(); },
       [&config](const QColor &color) { config.setSystemNameColor(color); },
@@ -3110,8 +3131,11 @@ void ConfigDialog::loadSettings() {
   m_characterNamePositionCombo->setEnabled(config.showCharacterName());
   m_characterNameFontLabel->setEnabled(config.showCharacterName());
   m_characterNameFontButton->setEnabled(config.showCharacterName());
-  m_systemNameColorLabel->setEnabled(config.showSystemName());
-  m_systemNameColorButton->setEnabled(config.showSystemName());
+  m_uniqueSystemColorsCheck->setEnabled(config.showSystemName());
+  m_systemNameColorLabel->setEnabled(config.showSystemName() &&
+                                     !config.useUniqueSystemNameColors());
+  m_systemNameColorButton->setEnabled(config.showSystemName() &&
+                                      !config.useUniqueSystemNameColors());
   m_systemNamePositionLabel->setEnabled(config.showSystemName());
   m_systemNamePositionCombo->setEnabled(config.showSystemName());
   m_systemNameFontLabel->setEnabled(config.showSystemName());
@@ -6196,6 +6220,8 @@ void ConfigDialog::onResetAppearanceDefaults() {
               Config::DEFAULT_OVERLAY_FONT_SIZE));
 
     m_showSystemNameCheck->setChecked(Config::DEFAULT_OVERLAY_SHOW_SYSTEM);
+    m_uniqueSystemColorsCheck->setChecked(
+        Config::DEFAULT_OVERLAY_UNIQUE_SYSTEM_COLORS);
     m_systemNameColor = QColor(Config::DEFAULT_OVERLAY_SYSTEM_COLOR);
     updateColorButton(m_systemNameColorButton, m_systemNameColor);
     m_systemNamePositionCombo->setCurrentIndex(

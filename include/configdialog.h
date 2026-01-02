@@ -277,6 +277,7 @@ private:
   QLabel *m_characterNameFontLabel;
 
   QCheckBox *m_showSystemNameCheck;
+  QCheckBox *m_uniqueSystemColorsCheck;
   QPushButton *m_systemNameColorButton;
   QLabel *m_systemNameColorLabel;
   QComboBox *m_systemNamePositionCombo;
