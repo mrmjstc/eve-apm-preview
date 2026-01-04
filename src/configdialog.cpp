@@ -735,7 +735,9 @@ void ConfigDialog::createAppearancePage() {
   overlaysSectionLayout->addWidget(overlaysHeader);
 
   QLabel *overlaysInfoTop =
-      new QLabel("Configure text overlays displayed on thumbnail windows.");
+      new QLabel("Configure text overlays displayed on thumbnail windows. "
+                 "System names require Data Sources > Chat log and Game log "
+                 "monitoring enabled.");
   overlaysInfoTop->setWordWrap(true);
   overlaysInfoTop->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
   overlaysSectionLayout->addWidget(overlaysInfoTop);
