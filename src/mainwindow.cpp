@@ -397,6 +397,7 @@ void MainWindow::refreshWindows() {
   const bool showNonEVEOverlay = cfg.showNonEVEOverlay();
   const double thumbnailOpacity = cfg.thumbnailOpacity() / 100.0;
   const bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
+  const bool hideActive = cfg.hideActiveClientThumbnail();
   const HWND activeWindow = GetForegroundWindow();
   const bool isEVEFocused = thumbnails.contains(activeWindow);
 
@@ -647,12 +648,12 @@ void MainWindow::refreshWindows() {
         thumbWidget->hide();
       } else if (m_thumbnailsManuallyHidden) {
         thumbWidget->hide();
+      } else if (hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) {
+        thumbWidget->hide();
+      } else if (hideActive && window.handle == activeWindow) {
+        thumbWidget->hide();
       } else {
-        if (hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) {
-          thumbWidget->hide();
-        } else {
-          thumbWidget->show();
-        }
+        thumbWidget->show();
       }
     } else {
       QString lastTitle = m_lastKnownTitles.value(window.handle, "");
@@ -710,7 +711,8 @@ void MainWindow::refreshWindows() {
             thumbWidget->setSystemName(QString());
 
             if (!m_thumbnailsManuallyHidden &&
-                !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog)) {
+                !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) &&
+                !(hideActive && window.handle == activeWindow)) {
               thumbWidget->show();
             }
 
@@ -732,7 +734,8 @@ void MainWindow::refreshWindows() {
         thumbWidget->setCharacterName(newDisplayName);
         thumbWidget->setSystemName(QString());
         if (!m_thumbnailsManuallyHidden &&
-            !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog)) {
+            !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) &&
+            !(hideActive && window.handle == activeWindow)) {
           thumbWidget->show();
         }
       } else if (!isEVEClient) {
@@ -742,7 +745,8 @@ void MainWindow::refreshWindows() {
           thumbWidget->hide();
         } else if (!m_thumbnailsManuallyHidden &&
                    !(hideWhenEVENotFocused && !isEVEFocused &&
-                     !m_configDialog)) {
+                     !m_configDialog) &&
+                   !(hideActive && window.handle == activeWindow)) {
           thumbWidget->show();
         }
       }
@@ -1831,6 +1835,7 @@ void MainWindow::applySettings() {
   bool rememberPos = cfg.rememberPositions();
 
   const bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
+  const bool hideActive = cfg.hideActiveClientThumbnail();
   const HWND currentActiveWindow = GetForegroundWindow();
   const bool isEVECurrentlyFocused = thumbnails.contains(currentActiveWindow);
 
@@ -1854,7 +1859,7 @@ void MainWindow::applySettings() {
         if (!customName.isEmpty()) {
           thumb->setCustomName(customName);
         } else {
-          thumb->setCustomName(QString()); 
+          thumb->setCustomName(QString());
         }
       }
     }
@@ -1944,6 +1949,8 @@ void MainWindow::applySettings() {
       } else {
         if (hideWhenEVENotFocused && !isEVECurrentlyFocused &&
             !m_configDialog) {
+          thumb->hide();
+        } else if (hideActive && hwnd == currentActiveWindow) {
           thumb->hide();
         } else {
           if (thumb->isHidden()) {
