@@ -2218,8 +2218,6 @@ void ConfigDialog::createDataSourcesPage() {
   createEventRow("compression", "Compression events",
                  m_combatEventCompressionCheck);
   createEventRow("decloak", "Decloak events", m_combatEventDecloakCheck);
-  createEventRow("mining_started", "Mining started",
-                 m_combatEventMiningStartCheck);
   createEventRow("mining_stopped", "Mining stopped",
                  m_combatEventMiningStopCheck);
 
@@ -2254,7 +2252,6 @@ void ConfigDialog::createDataSourcesPage() {
   connectEventCheckbox("regroup", m_combatEventRegroupCheck);
   connectEventCheckbox("compression", m_combatEventCompressionCheck);
   connectEventCheckbox("decloak", m_combatEventDecloakCheck);
-  connectEventCheckbox("mining_started", m_combatEventMiningStartCheck);
   connectEventCheckbox("mining_stopped", m_combatEventMiningStopCheck);
 
   QHBoxLayout *miningTimeoutLayout = new QHBoxLayout();
@@ -2293,7 +2290,6 @@ void ConfigDialog::createDataSourcesPage() {
             m_combatEventRegroupCheck->setEnabled(checked);
             m_combatEventCompressionCheck->setEnabled(checked);
             m_combatEventDecloakCheck->setEnabled(checked);
-            m_combatEventMiningStartCheck->setEnabled(checked);
             m_combatEventMiningStopCheck->setEnabled(checked);
 
             bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
@@ -2306,7 +2302,6 @@ void ConfigDialog::createDataSourcesPage() {
                 {"regroup", m_combatEventRegroupCheck},
                 {"compression", m_combatEventCompressionCheck},
                 {"decloak", m_combatEventDecloakCheck},
-                {"mining_started", m_combatEventMiningStartCheck},
                 {"mining_stopped", m_combatEventMiningStopCheck}};
 
             for (auto it = eventCheckboxes.constBegin();
@@ -2914,21 +2909,6 @@ void ConfigDialog::setupBindings() {
       true));
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
-      m_combatEventMiningStartCheck,
-      [&config]() { return config.isCombatEventTypeEnabled("mining_started"); },
-      [&config](bool value) {
-        QStringList types = config.enabledCombatEventTypes();
-        if (value && !types.contains("mining_started")) {
-          types << "mining_started";
-          config.setEnabledCombatEventTypes(types);
-        } else if (!value) {
-          types.removeAll("mining_started");
-          config.setEnabledCombatEventTypes(types);
-        }
-      },
-      true));
-
-  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_combatEventMiningStopCheck,
       [&config]() { return config.isCombatEventTypeEnabled("mining_stopped"); },
       [&config](bool value) {
@@ -3188,7 +3168,6 @@ void ConfigDialog::loadSettings() {
   m_combatEventFollowWarpCheck->setEnabled(combatMessagesEnabled);
   m_combatEventRegroupCheck->setEnabled(combatMessagesEnabled);
   m_combatEventCompressionCheck->setEnabled(combatMessagesEnabled);
-  m_combatEventMiningStartCheck->setEnabled(combatMessagesEnabled);
   m_combatEventMiningStopCheck->setEnabled(combatMessagesEnabled);
 
   bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
@@ -3200,7 +3179,6 @@ void ConfigDialog::loadSettings() {
       {"follow_warp", m_combatEventFollowWarpCheck},
       {"regroup", m_combatEventRegroupCheck},
       {"compression", m_combatEventCompressionCheck},
-      {"mining_started", m_combatEventMiningStartCheck},
       {"mining_stopped", m_combatEventMiningStopCheck}};
 
   for (auto it = eventCheckboxes.constBegin(); it != eventCheckboxes.constEnd();
@@ -6392,8 +6370,6 @@ void ConfigDialog::onResetCombatMessagesDefaults() {
         checkbox = m_combatEventRegroupCheck;
       else if (eventType == "compression")
         checkbox = m_combatEventCompressionCheck;
-      else if (eventType == "mining_started")
-        checkbox = m_combatEventMiningStartCheck;
       else if (eventType == "mining_stopped")
         checkbox = m_combatEventMiningStopCheck;
 

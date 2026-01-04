@@ -1260,7 +1260,6 @@ void ChatLogWorker::handleMiningEvent(const QString &characterName,
 
   if (!m_miningActiveState.value(characterName, false)) {
     m_miningActiveState[characterName] = true;
-    emit combatEventDetected(characterName, "mining_started", "Mining started");
     qDebug() << "ChatLogWorker: Mining started for" << characterName;
   } else {
     qDebug() << "ChatLogWorker: Mining already active for" << characterName

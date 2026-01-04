@@ -316,9 +316,8 @@ public:
   static constexpr int DEFAULT_COMBAT_BORDER_STYLE =
       static_cast<int>(BorderStyle::Dashed);
   static inline QStringList DEFAULT_COMBAT_MESSAGE_EVENT_TYPES() {
-    return QStringList{"fleet_invite",  "follow_warp", "regroup",
-                       "compression",   "decloak",     "mining_started",
-                       "mining_stopped"};
+    return QStringList{"fleet_invite", "follow_warp", "regroup",
+                       "compression",  "decloak",     "mining_stopped"};
   }
 
 private:
@@ -528,10 +527,11 @@ private:
   }
 
   static inline QMap<QString, QString> DEFAULT_EVENT_COLORS() {
-    return QMap<QString, QString>{
-        {"fleet_invite", "#4A9EFF"},   {"follow_warp", "#FFD700"},
-        {"regroup", "#FF8C42"},        {"compression", "#7FFF00"},
-        {"mining_started", "#FFD700"}, {"mining_stopped", "#FF6B6B"}};
+    return QMap<QString, QString>{{"fleet_invite", "#4A9EFF"},
+                                  {"follow_warp", "#FFD700"},
+                                  {"regroup", "#FF8C42"},
+                                  {"compression", "#7FFF00"},
+                                  {"mining_stopped", "#FF6B6B"}};
   }
 
   static constexpr const char *KEY_MINING_TIMEOUT_SECONDS =
