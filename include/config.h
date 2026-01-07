@@ -322,8 +322,8 @@ public:
   static constexpr int DEFAULT_COMBAT_BORDER_STYLE =
       static_cast<int>(BorderStyle::Dashed);
   static inline QStringList DEFAULT_COMBAT_MESSAGE_EVENT_TYPES() {
-    return QStringList{"fleet_invite", "follow_warp", "regroup",
-                       "compression",  "decloak",     "mining_stopped"};
+    return QStringList{"fleet_invite", "follow_warp", "regroup", "compression",
+                       "mining_stopped"};
   }
 
 private:
