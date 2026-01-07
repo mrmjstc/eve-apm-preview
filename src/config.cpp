@@ -1093,7 +1093,11 @@ QStringList Config::listProfiles() const {
   QFileInfoList fileList = profilesDir.entryInfoList(filters, QDir::Files);
 
   for (const QFileInfo &fileInfo : fileList) {
-    profiles.append(fileInfo.baseName());
+    QString baseName = fileInfo.baseName();
+    // Exclude the global settings file from the profile list
+    if (baseName != "settings.global") {
+      profiles.append(baseName);
+    }
   }
 
   profiles.sort();
