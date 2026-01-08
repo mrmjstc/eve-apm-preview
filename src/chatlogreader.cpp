@@ -28,6 +28,11 @@ ChatLogWorker::ChatLogWorker(QObject *parent)
   updateCustomNameCache();
 }
 
+/// Normalize a log line by removing invisible/problematic characters.
+/// This function is kept for potential fallback scenarios, but is no longer
+/// used in the hot path since EVE Online's log files are generally clean.
+/// Previously, this was called for every line parsed, causing significant
+/// CPU overhead with 40+ monitored files.
 static QString normalizeLogLine(const QString &line) {
   static const QRegularExpression controlCharsPattern(R"([\x00-\x1F\x7F])");
   static const QRegularExpression zeroWidthPattern(
@@ -415,9 +420,10 @@ void ChatLogWorker::scanExistingLogs() {
                     QRegularExpression::UseUnicodePropertiesOption);
 
             for (int i = tailLines.size() - 1; i >= 0; --i) {
-              QString normLine = normalizeLogLine(tailLines[i]);
-              if (systemChangePattern.match(normLine).hasMatch()) {
-                lastSystemLine = normLine;
+              // Trust EVE logs - use simple trimming instead of full normalization
+              QString line = tailLines[i].trimmed();
+              if (systemChangePattern.match(line).hasMatch()) {
+                lastSystemLine = line;
                 break;
               }
             }
@@ -432,10 +438,9 @@ void ChatLogWorker::scanExistingLogs() {
               QStringList allLines = allContent.split('\n', Qt::SkipEmptyParts);
 
               for (const QString &line : allLines) {
-                QString norm = normalizeLogLine(line);
-                QString s = extractSystemFromLine(norm);
+                QString s = extractSystemFromLine(line.trimmed());
                 if (!s.isEmpty()) {
-                  lastSystemLine = norm;
+                  lastSystemLine = line.trimmed();
                 }
               }
             }
@@ -534,9 +539,10 @@ void ChatLogWorker::scanExistingLogs() {
                 R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
 
             for (int i = tailLines.size() - 1; i >= 0; --i) {
-              QString normLine = normalizeLogLine(tailLines[i]);
-              if (jumpPattern.match(normLine).hasMatch()) {
-                lastJumpLine = normLine;
+              // Trust EVE logs - use simple trimming instead of full normalization
+              QString line = tailLines[i].trimmed();
+              if (jumpPattern.match(line).hasMatch()) {
+                lastJumpLine = line;
                 break;
               }
             }
@@ -1003,24 +1009,26 @@ void ChatLogWorker::markFileDirty(const QString &filePath) {
 
 void ChatLogWorker::parseLogLine(const QString &line,
                                  const QString &characterName) {
-  QString normalizedLine = normalizeLogLine(line);
+  // Trust EVE's logs to be clean - skip expensive normalization
+  // Only use simple trimming for performance with 40+ monitored files
+  const QString &workingLine = line.trimmed();
 
-  if (normalizedLine.isEmpty() || normalizedLine.length() < 25 ||
-      normalizedLine.length() > 1000) {
+  if (workingLine.isEmpty() || workingLine.length() < 25 ||
+      workingLine.length() > 1000) {
     return;
   }
 
   const int searchStart = 20;
   int notifyPos =
-      normalizedLine.indexOf("(notify)", searchStart, Qt::CaseInsensitive);
+      workingLine.indexOf("(notify)", searchStart, Qt::CaseInsensitive);
   int questionPos =
-      normalizedLine.indexOf("(question)", searchStart, Qt::CaseInsensitive);
+      workingLine.indexOf("(question)", searchStart, Qt::CaseInsensitive);
   int miningPos =
-      normalizedLine.indexOf("(mining)", searchStart, Qt::CaseInsensitive);
+      workingLine.indexOf("(mining)", searchStart, Qt::CaseInsensitive);
   int nonePos =
-      normalizedLine.indexOf("(None)", searchStart, Qt::CaseInsensitive);
+      workingLine.indexOf("(None)", searchStart, Qt::CaseInsensitive);
   int eveSystemPos =
-      normalizedLine.indexOf("EVE System", searchStart, Qt::CaseInsensitive);
+      workingLine.indexOf("EVE System", searchStart, Qt::CaseInsensitive);
 
   if (eveSystemPos != -1) {
     static QRegularExpression systemChangePattern(
@@ -1028,7 +1036,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
         QRegularExpression::CaseInsensitiveOption |
             QRegularExpression::UseUnicodePropertiesOption);
 
-    QRegularExpressionMatch match = systemChangePattern.match(normalizedLine);
+    QRegularExpressionMatch match = systemChangePattern.match(workingLine);
     if (match.hasMatch()) {
       QString timestampStr = match.captured(1).trimmed();
       QString rawSystem = match.captured(2).trimmed();
@@ -1071,7 +1079,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
         R"(\[\s*[\d.\s:]+\]\s*\(question\)\s*<a href="[^"]+">([^<]+)</a>\s*wants you to join their fleet)");
 
     QRegularExpressionMatch fleetMatch =
-        fleetInvitePattern.match(normalizedLine);
+        fleetInvitePattern.match(workingLine);
     if (fleetMatch.hasMatch()) {
       QString inviter = fleetMatch.captured(1).trimmed();
       QString eventText = QString("Fleet invite from %1").arg(inviter);
@@ -1084,12 +1092,12 @@ void ChatLogWorker::parseLogLine(const QString &line,
 
   if (notifyPos != -1) {
     int followingPos =
-        normalizedLine.indexOf("Following", notifyPos, Qt::CaseInsensitive);
+        workingLine.indexOf("Following", notifyPos, Qt::CaseInsensitive);
     int regroupingPos =
-        normalizedLine.indexOf("Regrouping", notifyPos, Qt::CaseInsensitive);
+        workingLine.indexOf("Regrouping", notifyPos, Qt::CaseInsensitive);
     int compressedPos =
-        normalizedLine.indexOf("compressed", notifyPos, Qt::CaseInsensitive);
-    int cloakPos = normalizedLine.indexOf("cloak deactivates", notifyPos,
+        workingLine.indexOf("compressed", notifyPos, Qt::CaseInsensitive);
+    int cloakPos = workingLine.indexOf("cloak deactivates", notifyPos,
                                           Qt::CaseInsensitive);
 
     if (followingPos != -1) {
@@ -1097,7 +1105,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Following\s+(.+?)\s+in warp)");
 
       QRegularExpressionMatch followMatch =
-          followWarpPattern.match(normalizedLine);
+          followWarpPattern.match(workingLine);
       if (followMatch.hasMatch()) {
         QString leader = followMatch.captured(1).trimmed();
 
@@ -1119,7 +1127,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Regrouping to\s+(.+?)(?:\.|$))");
 
       QRegularExpressionMatch regroupMatch =
-          regroupPattern.match(normalizedLine);
+          regroupPattern.match(workingLine);
       if (regroupMatch.hasMatch()) {
         QString leader = regroupMatch.captured(1).trimmed();
 
@@ -1141,7 +1149,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Successfully compressed\s+(.+?)\s+into\s+(\d+)\s+(.+))");
 
       QRegularExpressionMatch compressMatch =
-          compressionPattern.match(normalizedLine);
+          compressionPattern.match(workingLine);
       if (compressMatch.hasMatch()) {
         QString count = compressMatch.captured(2).trimmed();
         QString compressedItem = compressMatch.captured(3).trimmed();
@@ -1162,7 +1170,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
           R"(\[\s*[\d.\s:]+\]\s*\(notify\)\s*Your cloak deactivates due to proximity to (?:a nearby )?(.+?)\.)");
 
       QRegularExpressionMatch decloakMatch =
-          decloakPattern.match(normalizedLine);
+          decloakPattern.match(workingLine);
       if (decloakMatch.hasMatch()) {
         QString source = decloakMatch.captured(1).trimmed();
         QString eventText = QString("Decloaked by %1").arg(source);
@@ -1178,7 +1186,7 @@ void ChatLogWorker::parseLogLine(const QString &line,
   if (miningPos != -1) {
     static QRegularExpression miningPattern(R"(\[\s*[\d.\s:]+\]\s*\(mining\))");
 
-    QRegularExpressionMatch miningMatch = miningPattern.match(normalizedLine);
+    QRegularExpressionMatch miningMatch = miningPattern.match(workingLine);
     if (miningMatch.hasMatch()) {
       qDebug() << "ChatLogWorker: Mining event detected";
       handleMiningEvent(characterName, "ore");
@@ -1188,12 +1196,12 @@ void ChatLogWorker::parseLogLine(const QString &line,
 
   if (nonePos != -1) {
     int jumpingPos =
-        normalizedLine.indexOf("Jumping", nonePos, Qt::CaseInsensitive);
+        workingLine.indexOf("Jumping", nonePos, Qt::CaseInsensitive);
     if (jumpingPos != -1) {
       static QRegularExpression jumpPattern(
           R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
 
-      QRegularExpressionMatch jumpMatch = jumpPattern.match(normalizedLine);
+      QRegularExpressionMatch jumpMatch = jumpPattern.match(workingLine);
       if (jumpMatch.hasMatch()) {
         QString timestampStr = jumpMatch.captured(1).trimmed();
         QString fromSystem = jumpMatch.captured(2).trimmed();
