@@ -70,6 +70,10 @@ MainWindow::MainWindow(QObject *parent)
   connect(minimizeTimer, &QTimer::timeout, this,
           &MainWindow::minimizeInactiveWindows);
 
+  m_cycleThrottleTimer = new QTimer(this);
+  m_cycleThrottleTimer->setSingleShot(true);
+  m_cycleThrottleTimer->setInterval(30);
+
   m_trayMenu = new QMenu();
 
   QAction *settingsAction = new QAction(SETTINGS_TEXT, this);
@@ -1268,6 +1272,10 @@ QVector<HWND> MainWindow::buildCycleWindowList(const CycleGroup &group) {
 }
 
 void MainWindow::handleNamedCycleForward(const QString &groupName) {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   CycleGroup group = hotkeyManager->getCycleGroup(groupName);
   QVector<HWND> windowsToCycle = buildCycleWindowList(group);
 
@@ -1308,9 +1316,15 @@ void MainWindow::handleNamedCycleForward(const QString &groupName) {
   m_cycleIndexByGroup[groupName] = currentIndex;
   m_lastActivatedWindowByGroup[groupName] = hwnd;
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::handleNamedCycleBackward(const QString &groupName) {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   CycleGroup group = hotkeyManager->getCycleGroup(groupName);
   QVector<HWND> windowsToCycle = buildCycleWindowList(group);
 
@@ -1351,9 +1365,15 @@ void MainWindow::handleNamedCycleBackward(const QString &groupName) {
   m_cycleIndexByGroup[groupName] = currentIndex;
   m_lastActivatedWindowByGroup[groupName] = hwnd;
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::handleNotLoggedInCycleForward() {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   if (m_notLoggedInWindows.isEmpty()) {
     return;
   }
@@ -1378,9 +1398,15 @@ void MainWindow::handleNotLoggedInCycleForward() {
 
   HWND hwnd = m_notLoggedInWindows[m_notLoggedInCycleIndex];
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::handleNotLoggedInCycleBackward() {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   if (m_notLoggedInWindows.isEmpty()) {
     return;
   }
@@ -1405,9 +1431,15 @@ void MainWindow::handleNotLoggedInCycleBackward() {
 
   HWND hwnd = m_notLoggedInWindows[m_notLoggedInCycleIndex];
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::handleNonEVECycleForward() {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   if (m_nonEVEWindows.isEmpty()) {
     return;
   }
@@ -1432,9 +1464,15 @@ void MainWindow::handleNonEVECycleForward() {
 
   HWND hwnd = m_nonEVEWindows[m_nonEVECycleIndex];
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::handleNonEVECycleBackward() {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   if (m_nonEVEWindows.isEmpty()) {
     return;
   }
@@ -1459,10 +1497,16 @@ void MainWindow::handleNonEVECycleBackward() {
 
   HWND hwnd = m_nonEVEWindows[m_nonEVECycleIndex];
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::handleCharacterHotkeyCycle(
     const QVector<QString> &characterNames) {
+  if (m_cycleThrottleTimer->isActive()) {
+    return;
+  }
+
   QVector<HWND> windowsToCycle;
 
   for (const QString &characterName : characterNames) {
@@ -1514,6 +1558,8 @@ void MainWindow::handleCharacterHotkeyCycle(
   m_characterHotkeyCycleIndex[groupKey] = currentIndex;
   m_lastActivatedCharacterHotkeyWindow[groupKey] = hwnd;
   activateWindow(hwnd);
+
+  m_cycleThrottleTimer->start();
 }
 
 void MainWindow::activateCharacter(const QString &characterName) {

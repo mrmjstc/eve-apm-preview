@@ -60,6 +60,7 @@ private slots:
 private:
   QTimer *refreshTimer;
   QTimer *minimizeTimer;
+  QTimer *m_cycleThrottleTimer;
   QSystemTrayIcon *m_trayIcon;
   QMenu *m_trayMenu;
   QMenu *m_profilesMenu;
