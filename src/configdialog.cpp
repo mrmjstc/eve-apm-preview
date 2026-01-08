@@ -2085,7 +2085,10 @@ void ConfigDialog::createDataSourcesPage() {
       new QLabel("Monitor EVE Online chat and game logs to automatically "
                  "detect system locations and combat events. "
                  "Chat logs provide character location data, while game logs "
-                 "contain fleet notifications and other events.");
+                 "contain fleet notifications and other events. "
+                 "Log paths support environment variables (e.g., "
+                 "<tt>%USERPROFILE%\\Documents\\EVE\\logs\\Chatlogs</tt>) for "
+                 "portable configurations across different PCs.");
   logInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
   logInfoLabel->setWordWrap(true);
   logSectionLayout->addWidget(logInfoLabel);
@@ -3188,9 +3191,9 @@ void ConfigDialog::loadSettings() {
     }
   }
 
-  m_chatLogDirectoryEdit->setText(config.chatLogDirectory());
+  m_chatLogDirectoryEdit->setText(config.chatLogDirectoryRaw());
 
-  m_gameLogDirectoryEdit->setText(config.gameLogDirectory());
+  m_gameLogDirectoryEdit->setText(config.gameLogDirectoryRaw());
 
   for (auto it = m_eventColorButtons.constBegin();
        it != m_eventColorButtons.constEnd(); ++it) {
@@ -7592,6 +7595,9 @@ void ConfigDialog::onBrowseChatLogDirectory() {
   QString currentPath = m_chatLogDirectoryEdit->text().trimmed();
   if (currentPath.isEmpty()) {
     currentPath = Config::instance().getDefaultChatLogDirectory();
+  } else {
+    // Expand environment variables for the file dialog to work correctly
+    currentPath = Config::instance().chatLogDirectory();
   }
 
   QString dirPath = QFileDialog::getExistingDirectory(
@@ -7607,6 +7613,9 @@ void ConfigDialog::onBrowseGameLogDirectory() {
   QString currentPath = m_gameLogDirectoryEdit->text().trimmed();
   if (currentPath.isEmpty()) {
     currentPath = Config::instance().getDefaultGameLogDirectory();
+  } else {
+    // Expand environment variables for the file dialog to work correctly
+    currentPath = Config::instance().gameLogDirectory();
   }
 
   QString dirPath = QFileDialog::getExistingDirectory(

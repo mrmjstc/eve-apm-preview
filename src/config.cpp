@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QKeySequence>
 #include <QPoint>
+#include <QRegularExpression>
 #include <QStandardPaths>
 
 Config::Config() {
@@ -38,6 +39,40 @@ Config::Config() {
 }
 
 Config::~Config() { save(); }
+
+/// Helper function to expand environment variables in paths
+/// Supports both Windows (%VAR%) and Unix ($VAR or ${VAR}) formats
+static QString expandEnvironmentVariables(const QString &path) {
+  QString result = path;
+
+#ifdef Q_OS_WIN
+  // Windows format: %USERPROFILE%, %APPDATA%, etc.
+  QRegularExpression winEnvVar(R"(%([^%]+)%)");
+  QRegularExpressionMatchIterator it = winEnvVar.globalMatch(path);
+  while (it.hasNext()) {
+    QRegularExpressionMatch match = it.next();
+    QString varName = match.captured(1);
+    QString varValue = qEnvironmentVariable(varName.toUtf8().constData());
+    if (!varValue.isEmpty()) {
+      result.replace("%" + varName + "%", varValue);
+    }
+  }
+#endif
+
+  // Unix format: $VAR or ${VAR}
+  QRegularExpression unixEnvVar(R"(\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?)");
+  QRegularExpressionMatchIterator it2 = unixEnvVar.globalMatch(result);
+  while (it2.hasNext()) {
+    QRegularExpressionMatch match = it2.next();
+    QString varName = match.captured(1);
+    QString varValue = qEnvironmentVariable(varName.toUtf8().constData());
+    if (!varValue.isEmpty()) {
+      result.replace(match.captured(0), varValue);
+    }
+  }
+
+  return result;
+}
 
 Config &Config::instance() {
   static Config instance;
@@ -1471,7 +1506,11 @@ void Config::setEnableChatLogMonitoring(bool enabled) {
   m_cachedEnableChatLogMonitoring = enabled;
 }
 
-QString Config::chatLogDirectory() const { return m_cachedChatLogDirectory; }
+QString Config::chatLogDirectory() const {
+  return expandEnvironmentVariables(m_cachedChatLogDirectory);
+}
+
+QString Config::chatLogDirectoryRaw() const { return m_cachedChatLogDirectory; }
 
 void Config::setChatLogDirectory(const QString &directory) {
   m_settings->setValue(KEY_CHATLOG_DIRECTORY, directory);
@@ -1504,7 +1543,11 @@ QString Config::getDefaultGameLogDirectory() {
   return evePath;
 }
 
-QString Config::gameLogDirectory() const { return m_cachedGameLogDirectory; }
+QString Config::gameLogDirectory() const {
+  return expandEnvironmentVariables(m_cachedGameLogDirectory);
+}
+
+QString Config::gameLogDirectoryRaw() const { return m_cachedGameLogDirectory; }
 
 void Config::setGameLogDirectory(const QString &directory) {
   m_settings->setValue(KEY_GAMELOG_DIRECTORY, directory);

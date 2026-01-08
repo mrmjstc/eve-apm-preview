@@ -195,12 +195,16 @@ public:
   void setEnableChatLogMonitoring(bool enabled);
 
   QString chatLogDirectory() const;
+  QString chatLogDirectoryRaw()
+      const; // Returns path without variable expansion (for UI)
   void setChatLogDirectory(const QString &directory);
 
   bool enableGameLogMonitoring() const;
   void setEnableGameLogMonitoring(bool enabled);
 
   QString gameLogDirectory() const;
+  QString gameLogDirectoryRaw()
+      const; // Returns path without variable expansion (for UI)
   void setGameLogDirectory(const QString &directory);
 
   static QString getDefaultChatLogDirectory();
