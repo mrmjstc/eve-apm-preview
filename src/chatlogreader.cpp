@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QStandardPaths>
+#include <QStringDecoder>
 #include <QTextStream>
 #include <QTimer>
 
@@ -416,7 +417,20 @@ void ChatLogWorker::readInitialState(LogFileState *state) {
   }
 
   QByteArray tailData = file.readAll();
-  QString tailContent = QString::fromUtf8(tailData);
+
+  // Chatlogs use UTF-16 LE, gamelogs use UTF-8
+  QString tailContent;
+  if (state->isChatLog) {
+    auto decoder = QStringDecoder(QStringDecoder::Utf16LE);
+    tailContent = decoder(tailData);
+    // Remove BOM character if present
+    if (tailContent.startsWith(QChar(0xFEFF))) {
+      tailContent.remove(0, 1);
+    }
+  } else {
+    tailContent = QString::fromUtf8(tailData);
+  }
+
   QStringList tailLines = tailContent.split('\n', Qt::SkipEmptyParts);
 
   QString lastRelevantLine;
@@ -440,10 +454,23 @@ void ChatLogWorker::readInitialState(LogFileState *state) {
     if (lastRelevantLine.isEmpty() && fileSize <= fallbackSize) {
       qDebug()
           << "ChatLogWorker: tail scan found nothing, scanning entire file for"
-          << state->filePath;
+          << state->filePath << "(size:" << fileSize << "bytes)";
       file.seek(0);
       QByteArray allData = file.readAll();
-      QString allContent = QString::fromUtf8(allData);
+
+      // Chatlogs use UTF-16 LE, gamelogs use UTF-8
+      QString allContent;
+      if (state->isChatLog) {
+        auto decoder = QStringDecoder(QStringDecoder::Utf16LE);
+        allContent = decoder(allData);
+        // Remove BOM character if present
+        if (allContent.startsWith(QChar(0xFEFF))) {
+          allContent.remove(0, 1);
+        }
+      } else {
+        allContent = QString::fromUtf8(allData);
+      }
+
       QStringList allLines = allContent.split('\n', Qt::SkipEmptyParts);
 
       for (const QString &line : allLines) {
@@ -452,6 +479,15 @@ void ChatLogWorker::readInitialState(LogFileState *state) {
           lastRelevantLine = line.trimmed();
         }
       }
+
+      if (lastRelevantLine.isEmpty()) {
+        qDebug()
+            << "ChatLogWorker: No system change found in entire chatlog for"
+            << state->characterName;
+      }
+    } else if (lastRelevantLine.isEmpty() && fileSize > fallbackSize) {
+      qDebug() << "ChatLogWorker: tail scan found nothing and file too large ("
+               << fileSize << "bytes) for full scan:" << state->filePath;
     }
 
     if (!lastRelevantLine.isEmpty()) {
@@ -485,13 +521,16 @@ void ChatLogWorker::readInitialState(LogFileState *state) {
       parseLogLine(lastRelevantLine, state->characterName);
     }
   } else {
-    // Game log: look for "Jumping from" lines
+    // Game log: look for "Jumping from" and conduit jump lines
     static QRegularExpression jumpPattern(
         R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
+    static QRegularExpression conduitPattern(
+        R"(\[\s*([\d.\s:]+)\]\s*\(notify\)\s*A Conduit Field activated by .+ jumps you to\s+(.+))");
 
     for (int i = tailLines.size() - 1; i >= 0; --i) {
       QString line = tailLines[i].trimmed();
-      if (jumpPattern.match(line).hasMatch()) {
+      if (jumpPattern.match(line).hasMatch() ||
+          conduitPattern.match(line).hasMatch()) {
         lastRelevantLine = line;
         break;
       }
@@ -499,12 +538,23 @@ void ChatLogWorker::readInitialState(LogFileState *state) {
 
     if (!lastRelevantLine.isEmpty()) {
       QRegularExpressionMatch jumpMatch = jumpPattern.match(lastRelevantLine);
-      if (jumpMatch.hasMatch()) {
-        QString timestampStr = jumpMatch.captured(1).trimmed();
-        QString fromSystem = jumpMatch.captured(2).trimmed();
-        QString toSystem = jumpMatch.captured(3).trimmed();
-        QString newSystem = sanitizeSystemName(toSystem);
+      QRegularExpressionMatch conduitMatch =
+          conduitPattern.match(lastRelevantLine);
 
+      QString timestampStr;
+      QString newSystem;
+
+      if (jumpMatch.hasMatch()) {
+        timestampStr = jumpMatch.captured(1).trimmed();
+        QString toSystem = jumpMatch.captured(3).trimmed();
+        newSystem = sanitizeSystemName(toSystem);
+      } else if (conduitMatch.hasMatch()) {
+        timestampStr = conduitMatch.captured(1).trimmed();
+        QString toSystem = conduitMatch.captured(2).trimmed();
+        newSystem = sanitizeSystemName(toSystem);
+      }
+
+      if (!newSystem.isEmpty()) {
         qint64 updateTime = parseEVETimestamp(timestampStr);
 
         CharacterLocation &location =
@@ -847,8 +897,17 @@ bool ChatLogWorker::readNewLines(LogFileState *state) {
   state->lastSize = currentSize;
   state->lastModified = currentModified;
 
+  // Chatlogs use UTF-16 LE, gamelogs use UTF-8
+  QString newText;
+  if (state->isChatLog) {
+    auto decoder = QStringDecoder(QStringDecoder::Utf16LE);
+    newText = decoder(newData);
+  } else {
+    newText = QString::fromUtf8(newData);
+  }
+
   // Combine partial line from previous read with new data
-  QString text = state->partialLine + QString::fromUtf8(newData);
+  QString text = state->partialLine + newText;
   QStringList lines = text.split('\n');
 
   // Save last line if it doesn't end with newline (partial line)
@@ -1161,6 +1220,50 @@ void ChatLogWorker::parseLogLine(const QString &line,
                    << emitElapsed << "ms";
         } else {
           qDebug() << "ChatLogWorker: Gamelog jump for" << characterName
+                   << "is older than current location (current:"
+                   << location.systemName << "at" << location.lastUpdate
+                   << "ms, gamelog:" << newSystem << "at" << updateTime
+                   << "ms), ignoring";
+        }
+      }
+    }
+  }
+
+  // Check for conduit jumps: "(notify) A Conduit Field activated by ... jumps
+  // you to [system]"
+  if (notifyPos != -1) {
+    int conduitPos =
+        workingLine.indexOf("Conduit Field", notifyPos, Qt::CaseInsensitive);
+    if (conduitPos != -1) {
+      static QRegularExpression conduitPattern(
+          R"(\[\s*([\d.\s:]+)\]\s*\(notify\)\s*A Conduit Field activated by .+ jumps you to\s+(.+))");
+
+      QRegularExpressionMatch conduitMatch = conduitPattern.match(workingLine);
+      if (conduitMatch.hasMatch()) {
+        QString timestampStr = conduitMatch.captured(1).trimmed();
+        QString toSystem = conduitMatch.captured(2).trimmed();
+
+        QString newSystem = sanitizeSystemName(toSystem);
+
+        qint64 updateTime = parseEVETimestamp(timestampStr);
+
+        CharacterLocation &location = m_characterLocations[characterName];
+        if (updateTime > location.lastUpdate ||
+            (updateTime == location.lastUpdate &&
+             location.systemName != newSystem)) {
+          location.characterName = characterName;
+          location.systemName = newSystem;
+          location.lastUpdate = updateTime;
+
+          QDateTime detectTime = QDateTime::currentDateTime();
+          qDebug() << "ChatLogWorker: Conduit jump detected (gamelog) at"
+                   << detectTime.toString("HH:mm:ss.zzz") << "-"
+                   << characterName << "to" << newSystem
+                   << "(jump timestamp:" << timestampStr << ")";
+
+          emit systemChanged(characterName, newSystem);
+        } else {
+          qDebug() << "ChatLogWorker: Conduit jump for" << characterName
                    << "is older than current location (current:"
                    << location.systemName << "at" << location.lastUpdate
                    << "ms, gamelog:" << newSystem << "at" << updateTime
