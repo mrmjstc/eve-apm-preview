@@ -1003,13 +1003,16 @@ void ChatLogWorker::updatePollingRate(bool hadActivity) {
   // Use fast polling if we had activity this cycle
   if (hadActivity) {
     desiredInterval = FAST_POLL_MS;
-    m_activeFilesLastPoll++;
+    m_activeFilesLastPoll = 10; // Reset momentum counter on activity
   } else {
-    m_activeFilesLastPoll = 0; // Reset counter when no activity
+    // Decrement counter when no activity
+    if (m_activeFilesLastPoll > 0) {
+      m_activeFilesLastPoll--;
+    }
   }
 
   // Keep fast polling for a bit after activity stops (momentum)
-  if (m_activeFilesLastPoll > 0 && m_activeFilesLastPoll < 10) {
+  if (m_activeFilesLastPoll > 0) {
     desiredInterval = FAST_POLL_MS;
   }
 
