@@ -2205,9 +2205,16 @@ void MainWindow::onHotkeysSuspendedChanged(bool suspended) {
 void MainWindow::closeAllEVEClients() {
   QVector<WindowInfo> windows = windowCapture->getEVEWindows();
 
+  // Only close actual EVE clients (exefile.exe), not other monitored
+  // applications Users may have added other process names for thumbnail support
+  const QString eveProcessName = QStringLiteral("exefile.exe");
+
   for (const WindowInfo &window : windows) {
     if (window.handle && IsWindow(window.handle)) {
-      PostMessage(window.handle, WM_CLOSE, 0, 0);
+      if (window.processName.compare(eveProcessName, Qt::CaseInsensitive) ==
+          0) {
+        PostMessage(window.handle, WM_CLOSE, 0, 0);
+      }
     }
   }
 }
@@ -2215,9 +2222,16 @@ void MainWindow::closeAllEVEClients() {
 void MainWindow::minimizeAllEVEClients() {
   QVector<WindowInfo> windows = windowCapture->getEVEWindows();
 
+  // Only minimize actual EVE clients (exefile.exe), not other monitored
+  // applications Users may have added other process names for thumbnail support
+  const QString eveProcessName = QStringLiteral("exefile.exe");
+
   for (const WindowInfo &window : windows) {
     if (window.handle && IsWindow(window.handle)) {
-      ShowWindowAsync(window.handle, SW_FORCEMINIMIZE);
+      if (window.processName.compare(eveProcessName, Qt::CaseInsensitive) ==
+          0) {
+        ShowWindowAsync(window.handle, SW_FORCEMINIMIZE);
+      }
     }
   }
 }
