@@ -765,9 +765,9 @@ void ConfigDialog::createAppearancePage() {
   m_characterNamePositionLabel = new QLabel("Position:");
   m_characterNamePositionLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_characterNamePositionCombo = new QComboBox();
-  m_characterNamePositionCombo->addItems({"Top Left", "Top Center", "Top Right",
-                                          "Bottom Left", "Bottom Center",
-                                          "Bottom Right"});
+  m_characterNamePositionCombo->addItems(
+      {"Top Left", "Top Center", "Top Right", "Center Left", "Center",
+       "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"});
   m_characterNamePositionCombo->setFixedWidth(150);
   m_characterNamePositionCombo->setStyleSheet(
       StyleSheet::getComboBoxWithDisabledStyleSheet());
@@ -831,9 +831,9 @@ void ConfigDialog::createAppearancePage() {
   m_systemNamePositionLabel = new QLabel("Position:");
   m_systemNamePositionLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_systemNamePositionCombo = new QComboBox();
-  m_systemNamePositionCombo->addItems({"Top Left", "Top Center", "Top Right",
-                                       "Bottom Left", "Bottom Center",
-                                       "Bottom Right"});
+  m_systemNamePositionCombo->addItems(
+      {"Top Left", "Top Center", "Top Right", "Center Left", "Center",
+       "Center Right", "Bottom Left", "Bottom Center", "Bottom Right"});
   m_systemNamePositionCombo->setFixedWidth(150);
   m_systemNamePositionCombo->setStyleSheet(
       StyleSheet::getComboBoxWithDisabledStyleSheet());
@@ -2204,9 +2204,12 @@ void ConfigDialog::createDataSourcesPage() {
   m_combatMessagePositionCombo->addItem("Top Left", 0);
   m_combatMessagePositionCombo->addItem("Top Center", 1);
   m_combatMessagePositionCombo->addItem("Top Right", 2);
-  m_combatMessagePositionCombo->addItem("Bottom Left", 3);
-  m_combatMessagePositionCombo->addItem("Bottom Center", 4);
-  m_combatMessagePositionCombo->addItem("Bottom Right", 5);
+  m_combatMessagePositionCombo->addItem("Center Left", 3);
+  m_combatMessagePositionCombo->addItem("Center", 4);
+  m_combatMessagePositionCombo->addItem("Center Right", 5);
+  m_combatMessagePositionCombo->addItem("Bottom Left", 6);
+  m_combatMessagePositionCombo->addItem("Bottom Center", 7);
+  m_combatMessagePositionCombo->addItem("Bottom Right", 8);
   m_combatMessagePositionCombo->setFixedWidth(150);
 
   positionLayout->addWidget(m_combatMessagePositionLabel);
@@ -2962,7 +2965,7 @@ void ConfigDialog::setupBindings() {
   m_bindingManager.addBinding(BindingHelpers::bindComboBox(
       m_combatMessagePositionCombo,
       [&config]() { return config.combatMessagePosition(); },
-      [&config](int value) { config.setCombatMessagePosition(value); }, 3));
+      [&config](int value) { config.setCombatMessagePosition(value); }, 6));
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_combatEventFleetInviteCheck,

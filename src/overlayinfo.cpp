@@ -38,12 +38,10 @@ QColor OverlayInfo::generateUniqueColor(const QString &systemName) {
 
   const double goldenRatioConjugate = 0.618033988749895;
   double h = fmod(static_cast<double>(hash) * goldenRatioConjugate, 1.0);
-  int hue = static_cast<int>(h * 360.0); 
+  int hue = static_cast<int>(h * 360.0);
 
-  int saturation =
-      200 + ((hash >> 8) % 36); 
-  int value =
-      210 + ((hash >> 16) % 26); 
+  int saturation = 200 + ((hash >> 8) % 36);
+  int value = 210 + ((hash >> 16) % 26);
 
   QColor color;
   color.setHsv(hue, saturation, value);
@@ -82,7 +80,7 @@ QRect OverlayInfo::calculateTextRect(const QRect &thumbnailRect,
 
   QString displayText = truncateText(text, font, maxAvailableWidth);
 
-  int textWidth = metrics.horizontalAdvance(displayText) + 2;
+  int textWidth = metrics.horizontalAdvance(displayText);
   int textHeight = metrics.height();
 
   int x = padding;
@@ -100,6 +98,18 @@ QRect OverlayInfo::calculateTextRect(const QRect &thumbnailRect,
   case OverlayPosition::TopRight:
     x = thumbnailRect.width() - textWidth - padding;
     y = padding + textHeight;
+    break;
+  case OverlayPosition::CenterLeft:
+    x = padding;
+    y = (thumbnailRect.height() + textHeight) / 2;
+    break;
+  case OverlayPosition::Center:
+    x = (thumbnailRect.width() - textWidth) / 2;
+    y = (thumbnailRect.height() + textHeight) / 2;
+    break;
+  case OverlayPosition::CenterRight:
+    x = thumbnailRect.width() - textWidth - padding;
+    y = (thumbnailRect.height() + textHeight) / 2;
     break;
   case OverlayPosition::BottomLeft:
     x = padding;

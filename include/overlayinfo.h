@@ -11,6 +11,9 @@ enum class OverlayPosition {
   TopLeft,
   TopCenter,
   TopRight,
+  CenterLeft,
+  Center,
+  CenterRight,
   BottomLeft,
   BottomCenter,
   BottomRight

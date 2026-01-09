@@ -608,7 +608,6 @@ void ThumbnailWidget::updateWindowFlags(bool alwaysOnTop) {
   if (m_overlayWidget) {
     m_overlayWidget->updateWindowFlags(alwaysOnTop);
   }
-
 }
 
 void ThumbnailWidget::setupDwmThumbnail() {
@@ -930,7 +929,7 @@ void OverlayWidget::renderOverlaysToCache() {
   QPainter cachePainter(&m_overlayCache);
   cachePainter.setRenderHint(QPainter::Antialiasing);
 
-  int positionOffsets[6] = {0};
+  int positionOffsets[9] = {0};
 
   const Config &cfg = Config::instance();
   const bool showBg = cfg.showOverlayBackground();
@@ -968,6 +967,12 @@ void OverlayWidget::renderOverlaysToCache() {
       case OverlayPosition::TopRight:
         textRect.moveTop(textRect.top() + offset);
         break;
+      case OverlayPosition::CenterLeft:
+      case OverlayPosition::Center:
+      case OverlayPosition::CenterRight:
+        // For center positions, stack downward
+        textRect.moveTop(textRect.top() + offset);
+        break;
       case OverlayPosition::BottomLeft:
       case OverlayPosition::BottomCenter:
       case OverlayPosition::BottomRight:
@@ -985,7 +990,7 @@ void OverlayWidget::renderOverlaysToCache() {
     }
 
     cachePainter.setPen(overlay.color);
-    cachePainter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter,
+    cachePainter.drawText(textRect, Qt::AlignCenter | Qt::AlignVCenter,
                           displayText);
   }
 
