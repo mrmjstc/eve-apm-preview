@@ -592,9 +592,9 @@ void MainWindow::refreshWindows() {
           savedPos = cfg.getThumbnailPosition(characterName);
           hasSavedPosition = (savedPos != QPoint(-1, -1));
         } else if (!isEVEClient) {
-          QString uniqueId =
-              QString("%1::%2").arg(window.processName, window.title);
-          savedPos = cfg.getThumbnailPosition(uniqueId);
+          // Use only process name as key for non-EVE apps to avoid issues with
+          // dynamic window titles
+          savedPos = cfg.getThumbnailPosition(window.processName);
           hasSavedPosition = (savedPos != QPoint(-1, -1));
         }
       }
@@ -1664,10 +1664,10 @@ void MainWindow::onThumbnailPositionChanged(quintptr windowId,
       cfg.setThumbnailPosition(characterName, position);
     }
   } else {
-    QString title = m_lastKnownTitles.value(hwnd, "");
-    if (!title.isEmpty() && !processName.isEmpty()) {
-      QString uniqueId = QString("%1::%2").arg(processName, title);
-      cfg.setThumbnailPosition(uniqueId, position);
+    // Use only process name as key for non-EVE apps to avoid issues with
+    // dynamic window titles
+    if (!processName.isEmpty()) {
+      cfg.setThumbnailPosition(processName, position);
     }
   }
 }
@@ -1732,10 +1732,10 @@ void MainWindow::onGroupDragEnded(quintptr) {
         cfg.setThumbnailPosition(characterName, thumb->pos());
       }
     } else {
-      QString title = m_lastKnownTitles.value(hwnd, "");
-      if (!title.isEmpty() && !processName.isEmpty()) {
-        QString uniqueId = QString("%1::%2").arg(processName, title);
-        cfg.setThumbnailPosition(uniqueId, thumb->pos());
+      // Use only process name as key for non-EVE apps to avoid issues with
+      // dynamic window titles
+      if (!processName.isEmpty()) {
+        cfg.setThumbnailPosition(processName, thumb->pos());
       }
     }
   }
@@ -1938,10 +1938,10 @@ void MainWindow::applySettings() {
           hasSavedPosition = (savedPos != QPoint(-1, -1));
         }
       } else {
-        QString title = m_lastKnownTitles.value(hwnd, "");
-        if (!title.isEmpty() && !processName.isEmpty()) {
-          QString uniqueId = QString("%1::%2").arg(processName, title);
-          savedPos = cfg.getThumbnailPosition(uniqueId);
+        // Use only process name as key for non-EVE apps to avoid issues with
+        // dynamic window titles
+        if (!processName.isEmpty()) {
+          savedPos = cfg.getThumbnailPosition(processName);
           hasSavedPosition = (savedPos != QPoint(-1, -1));
         }
       }
