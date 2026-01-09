@@ -1,21 +1,23 @@
 #include "hotkeymanager.h"
 #include "config.h"
-#include "hookthread.h"
+#include "uiohookmanager.h"
 #include "windowcapture.h"
 #include <Psapi.h>
 #include <QSettings>
 #include <QStringList>
 
-#define WM_MOUSEBUTTON_HOTKEY (WM_USER + 1)
-
 QPointer<HotkeyManager> HotkeyManager::s_instance;
-HHOOK HotkeyManager::s_mouseHook = nullptr;
 
 HotkeyManager::HotkeyManager(QObject *parent)
     : QObject(parent), m_nextHotkeyId(1000), m_suspended(false),
-      m_messageWindow(nullptr) {
+      m_messageWindow(nullptr), m_uiohookManager(nullptr) {
   s_instance = this;
   createMessageWindow();
+
+  // Create and configure UIohookManager
+  m_uiohookManager = new UIohookManager(this);
+  m_uiohookManager->setHotkeyManager(this);
+
   loadFromConfig();
 }
 
@@ -991,18 +993,6 @@ LRESULT CALLBACK HotkeyManager::MessageWindowProc(HWND hwnd, UINT msg,
   HotkeyManager *manager =
       reinterpret_cast<HotkeyManager *>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 
-  if (msg == WM_MOUSEBUTTON_HOTKEY) {
-    if (manager && !s_instance.isNull()) {
-      int vkCode = wParam & 0xFFFF;
-      bool ctrl = (wParam & 0x10000) != 0;
-      bool alt = (wParam & 0x20000) != 0;
-      bool shift = (wParam & 0x40000) != 0;
-
-      manager->checkMouseButtonBindings(vkCode, ctrl, alt, shift);
-    }
-    return 0;
-  }
-
   if (msg == WM_HOTKEY) {
     if (manager && !s_instance.isNull()) {
       int hotkeyId = static_cast<int>(wParam);
@@ -1232,50 +1222,15 @@ bool HotkeyManager::hasMouseButtonHotkeys() const {
 }
 
 void HotkeyManager::installMouseHook() {
-  HookThread::instance().installMouseHook(HotkeyManager::LowLevelMouseProc);
+  if (m_uiohookManager && !m_uiohookManager->isRunning()) {
+    m_uiohookManager->start();
+  }
 }
 
 void HotkeyManager::uninstallMouseHook() {
-  HookThread::instance().uninstallMouseHook();
-}
-
-LRESULT CALLBACK HotkeyManager::LowLevelMouseProc(int nCode, WPARAM wParam,
-                                                  LPARAM lParam) {
-  if (nCode != HC_ACTION ||
-      (wParam != WM_MBUTTONUP && wParam != WM_XBUTTONUP)) {
-    return CallNextHookEx(s_mouseHook, nCode, wParam, lParam);
+  if (m_uiohookManager && m_uiohookManager->isRunning()) {
+    m_uiohookManager->stop();
   }
-
-  if (!s_instance.isNull() && !s_instance->m_suspended) {
-    int vkCode = 0;
-
-    if (wParam == WM_MBUTTONUP) {
-      vkCode = VK_MBUTTON;
-    } else if (wParam == WM_XBUTTONUP) {
-      MSLLHOOKSTRUCT *pMouse = reinterpret_cast<MSLLHOOKSTRUCT *>(lParam);
-      int xButton = HIWORD(pMouse->mouseData);
-
-      if (xButton == XBUTTON1) {
-        vkCode = VK_XBUTTON1;
-      } else if (xButton == XBUTTON2) {
-        vkCode = VK_XBUTTON2;
-      }
-    }
-
-    if (vkCode != 0) {
-      bool ctrl = GetKeyState(VK_CONTROL) & 0x8000;
-      bool alt = GetKeyState(VK_MENU) & 0x8000;
-      bool shift = GetKeyState(VK_SHIFT) & 0x8000;
-
-      WPARAM wParam = vkCode | (ctrl ? 0x10000 : 0) | (alt ? 0x20000 : 0) |
-                      (shift ? 0x40000 : 0);
-
-      PostMessageW(s_instance->m_messageWindow, WM_MOUSEBUTTON_HOTKEY, wParam,
-                   0);
-    }
-  }
-
-  return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
 
 void HotkeyManager::checkMouseButtonBindings(int vkCode, bool ctrl, bool alt,

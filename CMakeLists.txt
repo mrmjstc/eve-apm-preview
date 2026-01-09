@@ -11,6 +11,37 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+# Include FetchContent for downloading dependencies
+include(FetchContent)
+
+# Fetch and build libuiohook
+FetchContent_Declare(
+    libuiohook
+    GIT_REPOSITORY https://github.com/kwhat/libuiohook.git
+    GIT_TAG        1.3
+)
+
+# Configure libuiohook build options
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build libuiohook as static library" FORCE)
+set(ENABLE_TEST OFF CACHE BOOL "Disable libuiohook tests" FORCE)
+set(ENABLE_DEMO OFF CACHE BOOL "Disable libuiohook demos" FORCE)
+set(ENABLE_QUIET OFF CACHE BOOL "Enable libuiohook logging" FORCE)
+
+# Disable Qt processing for libuiohook
+set(CMAKE_AUTOMOC_OFF_LIBUIOHOOK ${CMAKE_AUTOMOC})
+set(CMAKE_AUTORCC_OFF_LIBUIOHOOK ${CMAKE_AUTORCC})
+set(CMAKE_AUTOUIC_OFF_LIBUIOHOOK ${CMAKE_AUTOUIC})
+set(CMAKE_AUTOMOC OFF)
+set(CMAKE_AUTORCC OFF)
+set(CMAKE_AUTOUIC OFF)
+
+FetchContent_MakeAvailable(libuiohook)
+
+# Restore Qt processing settings
+set(CMAKE_AUTOMOC ${CMAKE_AUTOMOC_OFF_LIBUIOHOOK})
+set(CMAKE_AUTORCC ${CMAKE_AUTORCC_OFF_LIBUIOHOOK})
+set(CMAKE_AUTOUIC ${CMAKE_AUTOUIC_OFF_LIBUIOHOOK})
+
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -31,6 +62,7 @@ set(SOURCES
     src/overlayinfo.cpp
     src/hotkeymanager.cpp
     src/hookthread.cpp
+    src/uiohookmanager.cpp
     src/configdialog.cpp
     src/hotkeycapture.cpp
     src/settingbinding.cpp
@@ -51,6 +83,7 @@ set(HEADERS
     include/overlayinfo.h
     include/hotkeymanager.h
     include/hookthread.h
+    include/uiohookmanager.h
     include/configdialog.h
     include/hotkeycapture.h
     include/settingbinding.h
@@ -76,10 +109,11 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Widgets 
     Qt6::Gui
     Qt6::Network
+    uiohook
 )
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} dwmapi user32 gdi32)
+    target_link_libraries(${PROJECT_NAME} dwmapi user32 gdi32 advapi32)
 endif()
 
 # Disable debug output in release builds

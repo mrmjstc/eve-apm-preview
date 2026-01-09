@@ -10,6 +10,7 @@
 #include <Windows.h>
 
 class QSettings;
+class UIohookManager;
 
 struct HotkeyBinding {
   int keyCode;
@@ -160,14 +161,18 @@ public:
   void registerProfileHotkeys();
   void unregisterProfileHotkeys();
 
-  void uninstallMouseHook();
-
   void loadFromConfig();
   void saveToConfig();
 
   void updateCharacterWindows(const QHash<QString, HWND> &characterWindows);
   HWND getWindowForCharacter(const QString &characterName) const;
   QString getCharacterForWindow(HWND hwnd) const;
+
+  /// Public method to check mouse button bindings (called from UIohookManager)
+  void checkMouseButtonBindings(int vkCode, bool ctrl, bool alt, bool shift);
+
+  /// Public method to stop mouse hooks (called during app shutdown)
+  void uninstallMouseHook();
 
 signals:
   void characterHotkeyPressed(QString characterName);
@@ -229,7 +234,8 @@ private:
   int m_nextHotkeyId;
 
   static QPointer<HotkeyManager> s_instance;
-  static HHOOK s_mouseHook;
+
+  UIohookManager *m_uiohookManager;
 
   HWND m_messageWindow;
   void createMessageWindow();
@@ -244,11 +250,8 @@ private:
   void unregisterHotkey(int hotkeyId);
 
   void installMouseHook();
-  static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam,
-                                            LPARAM lParam);
   bool isMouseButton(int keyCode) const;
   bool hasMouseButtonHotkeys() const;
-  void checkMouseButtonBindings(int vkCode, bool ctrl, bool alt, bool shift);
 
   void registerHotkeyList(const QVector<HotkeyBinding> &multiHotkeys);
   void registerHotkeyList(const QVector<HotkeyBinding> &multiHotkeys,
