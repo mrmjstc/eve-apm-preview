@@ -544,7 +544,7 @@ private:
     return QMap<QString, QString>{
         {"fleet_invite", "#4A9EFF"},  {"follow_warp", "#FFD700"},
         {"regroup", "#FF8C42"},       {"compression", "#7FFF00"},
-        {"decloak", "#FFFFFF"},       {"crystal_broke", "#28b69eff"},
+        {"decloak", "#FFFFFF"},       {"crystal_broke", "#008080"},
         {"mining_stopped", "#FF6B6B"}};
   }
 
