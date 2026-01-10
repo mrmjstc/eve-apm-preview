@@ -1129,8 +1129,9 @@ QStringList Config::listProfiles() const {
 
   for (const QFileInfo &fileInfo : fileList) {
     QString baseName = fileInfo.baseName();
-    // Exclude the global settings file from the profile list
-    if (baseName != "settings.global") {
+    // Exclude the global settings file(s) from the profile list
+    if (baseName.compare("settings.global", Qt::CaseInsensitive) != 0 &&
+        baseName.compare("settings", Qt::CaseInsensitive) != 0) {
       profiles.append(baseName);
     }
   }
