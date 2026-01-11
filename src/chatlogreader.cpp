@@ -1048,7 +1048,12 @@ void ChatLogWorker::parseLogLine(const QString &line,
                                  const QString &characterName) {
   // Trust EVE's logs to be clean - skip expensive normalization
   // Only use simple trimming for performance with 40+ monitored files
-  const QString &workingLine = line.trimmed();
+  QString workingLine = line.trimmed();
+
+  // Remove BOM character that appears at the start of each chatlog line
+  if (!workingLine.isEmpty() && workingLine[0] == QChar(0xFEFF)) {
+    workingLine.remove(0, 1);
+  }
 
   if (workingLine.isEmpty() || workingLine.length() < 25 ||
       workingLine.length() > 1000) {
