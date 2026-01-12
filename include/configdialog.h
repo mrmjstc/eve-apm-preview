@@ -330,6 +330,7 @@ private:
   QLabel *m_gameLogDirectoryLabel;
 
   QCheckBox *m_showCombatMessagesCheck;
+  QCheckBox *m_suppressCombatWhenFocusedCheck;
   QComboBox *m_combatMessagePositionCombo;
   QLabel *m_combatMessagePositionLabel;
   QPushButton *m_combatMessageFontButton;

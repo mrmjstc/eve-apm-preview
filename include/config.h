@@ -232,6 +232,9 @@ public:
   bool combatEventBorderHighlight(const QString &eventType) const;
   void setCombatEventBorderHighlight(const QString &eventType, bool enabled);
 
+  bool suppressCombatWhenFocused() const;
+  void setSuppressCombatWhenFocused(bool enabled);
+
   BorderStyle combatBorderStyle(const QString &eventType) const;
   void setCombatBorderStyle(const QString &eventType, BorderStyle style);
 
@@ -323,6 +326,7 @@ public:
   static constexpr const char *DEFAULT_COMBAT_MESSAGE_COLOR = "#FFFFFF";
   static constexpr int DEFAULT_MINING_TIMEOUT_SECONDS = 30;
   static constexpr bool DEFAULT_COMBAT_EVENT_BORDER_HIGHLIGHT = false;
+  static constexpr bool DEFAULT_COMBAT_SUPPRESS_FOCUSED = true;
   static constexpr int DEFAULT_COMBAT_BORDER_STYLE =
       static_cast<int>(BorderStyle::Dashed);
   static inline QStringList DEFAULT_COMBAT_MESSAGE_EVENT_TYPES() {
@@ -397,6 +401,7 @@ private:
   mutable QMap<QString, QColor> m_cachedCombatEventColors;
   mutable QMap<QString, int> m_cachedCombatEventDurations;
   mutable QMap<QString, bool> m_cachedCombatEventBorderHighlights;
+  mutable bool m_cachedSuppressCombatWhenFocused;
   mutable QMap<QString, BorderStyle> m_cachedCombatBorderStyles;
   mutable QStringList m_cachedEnabledCombatEventTypes;
   mutable int m_cachedMiningTimeoutSeconds;
@@ -523,6 +528,8 @@ private:
   static constexpr const char *KEY_COMBAT_POSITION = "combatMessages/position";
   static constexpr const char *KEY_COMBAT_COLOR = "combatMessages/color";
   static constexpr const char *KEY_COMBAT_FONT = "combatMessages/font";
+  static constexpr const char *KEY_COMBAT_SUPPRESS_FOCUSED =
+      "combatMessages/suppressWhenFocused";
   static constexpr const char *KEY_COMBAT_ENABLED_EVENT_TYPES =
       "combatMessages/enabledEventTypes";
 

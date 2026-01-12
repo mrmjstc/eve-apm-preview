@@ -2192,6 +2192,15 @@ void ConfigDialog::createDataSourcesPage() {
   m_showCombatMessagesCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
   combatSectionLayout->addWidget(m_showCombatMessagesCheck);
 
+  m_suppressCombatWhenFocusedCheck =
+      new QCheckBox("Suppress events for focused window");
+  m_suppressCombatWhenFocusedCheck->setStyleSheet(
+      StyleSheet::getCheckBoxStyleSheet());
+  m_suppressCombatWhenFocusedCheck->setToolTip(
+      "When enabled, combat event notifications will not be shown for the "
+      "currently focused/active window");
+  combatSectionLayout->addWidget(m_suppressCombatWhenFocusedCheck);
+
   QHBoxLayout *positionLayout = new QHBoxLayout();
   positionLayout->setContentsMargins(24, 0, 0, 0);
   m_combatMessagePositionLabel = new QLabel("Message position:");
@@ -2418,6 +2427,7 @@ void ConfigDialog::createDataSourcesPage() {
 
   connect(m_showCombatMessagesCheck, &QCheckBox::toggled, this,
           [this](bool checked) {
+            m_suppressCombatWhenFocusedCheck->setEnabled(checked);
             m_combatMessagePositionCombo->setEnabled(checked);
             m_combatMessagePositionLabel->setEnabled(checked);
             m_combatMessageFontButton->setEnabled(checked);
@@ -2427,6 +2437,7 @@ void ConfigDialog::createDataSourcesPage() {
             m_combatEventRegroupCheck->setEnabled(checked);
             m_combatEventCompressionCheck->setEnabled(checked);
             m_combatEventDecloakCheck->setEnabled(checked);
+            m_combatEventCrystalBrokeCheck->setEnabled(checked);
             m_combatEventMiningStopCheck->setEnabled(checked);
 
             bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
@@ -2439,6 +2450,7 @@ void ConfigDialog::createDataSourcesPage() {
                 {"regroup", m_combatEventRegroupCheck},
                 {"compression", m_combatEventCompressionCheck},
                 {"decloak", m_combatEventDecloakCheck},
+                {"crystal_broke", m_combatEventCrystalBrokeCheck},
                 {"mining_stopped", m_combatEventMiningStopCheck}};
 
             for (auto it = eventCheckboxes.constBegin();
@@ -2964,6 +2976,12 @@ void ConfigDialog::setupBindings() {
       m_showCombatMessagesCheck,
       [&config]() { return config.showCombatMessages(); },
       [&config](bool value) { config.setShowCombatMessages(value); }, true));
+
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_suppressCombatWhenFocusedCheck,
+      [&config]() { return config.suppressCombatWhenFocused(); },
+      [&config](bool value) { config.setSuppressCombatWhenFocused(value); },
+      false));
 
   m_bindingManager.addBinding(BindingHelpers::bindComboBox(
       m_combatMessagePositionCombo,

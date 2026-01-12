@@ -1111,7 +1111,7 @@ void MainWindow::updateActiveWindow() {
     if (isActive) {
       it.value()->forceUpdate();
 
-      if (it.value()->hasCombatEvent()) {
+      if (cfg.suppressCombatWhenFocused() && it.value()->hasCombatEvent()) {
         it.value()->setCombatMessage("", "");
         qDebug() << "MainWindow: Cleared combat event for focused window";
       }
@@ -2174,7 +2174,7 @@ void MainWindow::onCombatEventDetected(const QString &characterName,
   HWND hwnd = m_characterToWindow.value(characterName);
   if (hwnd && thumbnails.contains(hwnd)) {
     HWND activeWindow = GetForegroundWindow();
-    if (hwnd == activeWindow) {
+    if (cfg.suppressCombatWhenFocused() && hwnd == activeWindow) {
       qDebug() << "MainWindow: Suppressing combat event for focused window:"
                << characterName;
       return;

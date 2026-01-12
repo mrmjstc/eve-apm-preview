@@ -286,6 +286,10 @@ void Config::loadCacheFromSettings() {
   defaultCombatFont.setBold(true);
   m_cachedCombatMessageFont =
       m_settings->value(KEY_COMBAT_FONT, defaultCombatFont).value<QFont>();
+  m_cachedSuppressCombatWhenFocused =
+      m_settings
+          ->value(KEY_COMBAT_SUPPRESS_FOCUSED, DEFAULT_COMBAT_SUPPRESS_FOCUSED)
+          .toBool();
 
   m_cachedCombatEventColors.clear();
   m_cachedCombatEventDurations.clear();
@@ -1104,6 +1108,8 @@ void Config::initializeDefaultProfile() {
                           DEFAULT_OVERLAY_FONT_SIZE);
   defaultCombatFont.setBold(true);
   m_settings->setValue(KEY_COMBAT_FONT, defaultCombatFont.toString());
+  m_settings->setValue(KEY_COMBAT_SUPPRESS_FOCUSED,
+                       DEFAULT_COMBAT_SUPPRESS_FOCUSED);
   m_settings->setValue(KEY_COMBAT_ENABLED_EVENT_TYPES,
                        DEFAULT_COMBAT_MESSAGE_EVENT_TYPES());
   m_settings->setValue(KEY_MINING_TIMEOUT_SECONDS,
@@ -1295,6 +1301,8 @@ bool Config::createProfile(const QString &profileName, bool useDefaults) {
                             DEFAULT_OVERLAY_FONT_SIZE);
     defaultCombatFont.setBold(true);
     newProfile.setValue(KEY_COMBAT_FONT, defaultCombatFont.toString());
+    newProfile.setValue(KEY_COMBAT_SUPPRESS_FOCUSED,
+                        DEFAULT_COMBAT_SUPPRESS_FOCUSED);
     newProfile.setValue(KEY_COMBAT_ENABLED_EVENT_TYPES,
                         DEFAULT_COMBAT_MESSAGE_EVENT_TYPES());
     newProfile.setValue(KEY_MINING_TIMEOUT_SECONDS,
@@ -1648,6 +1656,15 @@ void Config::setCombatEventBorderHighlight(const QString &eventType,
   QString key = combatEventBorderHighlightKey(eventType);
   m_settings->setValue(key, enabled);
   m_cachedCombatEventBorderHighlights[eventType] = enabled;
+}
+
+bool Config::suppressCombatWhenFocused() const {
+  return m_cachedSuppressCombatWhenFocused;
+}
+
+void Config::setSuppressCombatWhenFocused(bool enabled) {
+  m_settings->setValue(KEY_COMBAT_SUPPRESS_FOCUSED, enabled);
+  m_cachedSuppressCombatWhenFocused = enabled;
 }
 
 BorderStyle Config::combatBorderStyle(const QString &eventType) const {
