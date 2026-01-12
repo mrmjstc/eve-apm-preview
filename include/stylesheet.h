@@ -59,6 +59,7 @@ public:
   static QString getDialogStyleSheetForWidget();
   static QString getColorButtonStyleSheet(const QString &backgroundColor,
                                           const QString &textColor);
+  static QString getTabWidgetStyleSheet();
 
   static QString colorBackground();
   static QString colorBackgroundLight();
@@ -66,6 +67,7 @@ public:
   static QString colorSection();
   static QString colorBorder();
   static QString colorAccent();
+  static QString colorAccentSecondary();
   static QString colorTextPrimary();
   static QString colorTextSecondary();
   static QString colorTextInfo();

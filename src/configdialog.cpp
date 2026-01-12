@@ -33,6 +33,7 @@
 #include <QScrollBar>
 #include <QSslError>
 #include <QSslSocket>
+#include <QTabWidget>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -2167,6 +2168,7 @@ void ConfigDialog::createDataSourcesPage() {
 
   layout->addWidget(logMonitoringSection);
 
+  // Combat Event Messages Section with Tabs
   QWidget *combatSection = new QWidget();
   combatSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *combatSectionLayout = new QVBoxLayout(combatSection);
@@ -2188,21 +2190,14 @@ void ConfigDialog::createDataSourcesPage() {
   combatInfoLabel->setWordWrap(true);
   combatSectionLayout->addWidget(combatInfoLabel);
 
+  // Master enable checkbox
   m_showCombatMessagesCheck = new QCheckBox("Show combat event messages");
   m_showCombatMessagesCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
   combatSectionLayout->addWidget(m_showCombatMessagesCheck);
 
-  m_suppressCombatWhenFocusedCheck =
-      new QCheckBox("Suppress events for focused window");
-  m_suppressCombatWhenFocusedCheck->setStyleSheet(
-      StyleSheet::getCheckBoxStyleSheet());
-  m_suppressCombatWhenFocusedCheck->setToolTip(
-      "When enabled, combat event notifications will not be shown for the "
-      "currently focused/active window");
-  combatSectionLayout->addWidget(m_suppressCombatWhenFocusedCheck);
-
+  // Global settings
   QHBoxLayout *positionLayout = new QHBoxLayout();
-  positionLayout->setContentsMargins(24, 0, 0, 0);
+  positionLayout->setContentsMargins(0, 0, 0, 0);
   m_combatMessagePositionLabel = new QLabel("Message position:");
   m_combatMessagePositionLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_combatMessagePositionLabel->setFixedWidth(150);
@@ -2227,7 +2222,7 @@ void ConfigDialog::createDataSourcesPage() {
   combatSectionLayout->addLayout(positionLayout);
 
   QHBoxLayout *fontLayout = new QHBoxLayout();
-  fontLayout->setContentsMargins(24, 0, 0, 0);
+  fontLayout->setContentsMargins(0, 0, 0, 0);
   m_combatMessageFontLabel = new QLabel("Message font:");
   m_combatMessageFontLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_combatMessageFontLabel->setFixedWidth(150);
@@ -2251,70 +2246,112 @@ void ConfigDialog::createDataSourcesPage() {
   fontLayout->addStretch();
   combatSectionLayout->addLayout(fontLayout);
 
-  auto createEventRow = [&](const QString &eventType, const QString &label,
-                            QCheckBox *&checkbox) {
-    QHBoxLayout *rowLayout = new QHBoxLayout();
+  // Create tab widget for individual event settings
+  QTabWidget *combatTabs = new QTabWidget();
+  combatTabs->setStyleSheet(StyleSheet::getTabWidgetStyleSheet());
 
-    checkbox = new QCheckBox(label);
+  // Helper to create event tab
+  auto createEventTab = [&](const QString &eventType, const QString &label,
+                            QCheckBox *&checkbox) {
+    QWidget *tab = new QWidget();
+    QVBoxLayout *layout = new QVBoxLayout(tab);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(12);
+
+    checkbox = new QCheckBox("Enable this event type");
     checkbox->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
-    checkbox->setFixedWidth(174);
-    rowLayout->addWidget(checkbox);
+    layout->addWidget(checkbox);
+
+    QCheckBox *suppressCheck = new QCheckBox("Suppress for focused window");
+    suppressCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+    suppressCheck->setToolTip("Do not show this event notification for the "
+                              "currently focused/active window");
+    connect(
+        suppressCheck, &QCheckBox::toggled, this, [eventType](bool checked) {
+          Config::instance().setCombatEventSuppressFocused(eventType, checked);
+        });
+    m_eventSuppressFocusedCheckBoxes[eventType] = suppressCheck;
+    layout->addWidget(suppressCheck);
+
+    layout->addSpacing(8);
+
+    // Color setting
+    QHBoxLayout *colorLayout = new QHBoxLayout();
+    QLabel *colorLabel = new QLabel("Message color:");
+    colorLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    colorLabel->setFixedWidth(120);
+    m_eventColorLabels[eventType] = colorLabel;
 
     QPushButton *colorBtn = new QPushButton();
-    colorBtn->setFixedSize(120, 32);
+    colorBtn->setFixedSize(150, 32);
     colorBtn->setCursor(Qt::PointingHandCursor);
     updateColorButton(colorBtn, Qt::white);
     connect(
         colorBtn, &QPushButton::clicked, this, [this, eventType, colorBtn]() {
           QColor currentColor = Config::instance().combatEventColor(eventType);
-          QColor color = QColorDialog::getColor(
-              currentColor, this, QString("Select %1 Color").arg(eventType));
+          QColor color = QColorDialog::getColor(currentColor, this,
+                                                QString("Select Color"));
           if (color.isValid()) {
             updateColorButton(colorBtn, color);
             Config::instance().setCombatEventColor(eventType, color);
           }
         });
     m_eventColorButtons[eventType] = colorBtn;
-    rowLayout->addWidget(colorBtn);
+    colorLayout->addWidget(colorLabel);
+    colorLayout->addWidget(colorBtn);
+    colorLayout->addStretch();
+    layout->addLayout(colorLayout);
 
-    rowLayout->addSpacing(20);
-
-    QLabel *durationLabel = new QLabel("Duration:");
+    // Duration setting
+    QHBoxLayout *durationLayout = new QHBoxLayout();
+    QLabel *durationLabel = new QLabel("Display duration:");
     durationLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    durationLabel->setFixedWidth(120);
     m_eventDurationLabels[eventType] = durationLabel;
-    rowLayout->addWidget(durationLabel);
 
     QSpinBox *durationSpin = new QSpinBox();
     durationSpin->setStyleSheet(StyleSheet::getSpinBoxStyleSheet());
     durationSpin->setRange(1, 30);
     durationSpin->setSingleStep(1);
     durationSpin->setSuffix(" sec");
-    durationSpin->setFixedWidth(90);
+    durationSpin->setFixedWidth(100);
     connect(durationSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
             [eventType](int value) {
               Config::instance().setCombatEventDuration(eventType,
                                                         value * 1000);
             });
     m_eventDurationSpins[eventType] = durationSpin;
-    rowLayout->addWidget(durationSpin);
+    durationLayout->addWidget(durationLabel);
+    durationLayout->addWidget(durationSpin);
+    durationLayout->addStretch();
+    layout->addLayout(durationLayout);
 
-    rowLayout->addSpacing(20);
+    layout->addSpacing(12);
 
-    QCheckBox *borderCheck = new QCheckBox("Border");
+    // Border settings group
+    QCheckBox *borderCheck = new QCheckBox("Show colored border");
     borderCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
     borderCheck->setToolTip("Show colored border when this event occurs");
     connect(borderCheck, &QCheckBox::toggled, this,
             [this, eventType](bool checked) {
               Config::instance().setCombatEventBorderHighlight(eventType,
                                                                checked);
+              if (m_eventBorderStyleLabels.contains(eventType)) {
+                m_eventBorderStyleLabels[eventType]->setEnabled(checked);
+              }
               if (m_eventBorderStyleCombos.contains(eventType)) {
                 m_eventBorderStyleCombos[eventType]->setEnabled(checked);
               }
             });
     m_eventBorderCheckBoxes[eventType] = borderCheck;
-    rowLayout->addWidget(borderCheck);
+    layout->addWidget(borderCheck);
 
-    rowLayout->addSpacing(10);
+    QHBoxLayout *borderStyleLayout = new QHBoxLayout();
+    borderStyleLayout->setContentsMargins(24, 0, 0, 0);
+    QLabel *styleLabel = new QLabel("Border style:");
+    styleLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    styleLabel->setFixedWidth(96);
+    m_eventBorderStyleLabels[eventType] = styleLabel;
 
     QComboBox *styleCombo = new QComboBox();
     styleCombo->setStyleSheet(StyleSheet::getComboBoxStyleSheet());
@@ -2338,7 +2375,7 @@ void ConfigDialog::createDataSourcesPage() {
     styleCombo->addItem("Double Glow",
                         static_cast<int>(BorderStyle::DoubleGlow));
     styleCombo->addItem("Zigzag", static_cast<int>(BorderStyle::Zigzag));
-    styleCombo->setFixedWidth(140);
+    styleCombo->setFixedWidth(150);
     styleCombo->setToolTip("Border style for this event");
     connect(styleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this, eventType, styleCombo](int index) {
@@ -2347,42 +2384,227 @@ void ConfigDialog::createDataSourcesPage() {
               Config::instance().setCombatBorderStyle(eventType, style);
             });
     m_eventBorderStyleCombos[eventType] = styleCombo;
-    rowLayout->addWidget(styleCombo);
+    borderStyleLayout->addWidget(styleLabel);
+    borderStyleLayout->addWidget(styleCombo);
+    borderStyleLayout->addStretch();
+    layout->addLayout(borderStyleLayout);
 
-    rowLayout->addStretch();
-    combatSectionLayout->addLayout(rowLayout);
+    layout->addStretch();
+    return tab;
   };
 
-  createEventRow("fleet_invite", "Fleet invites",
-                 m_combatEventFleetInviteCheck);
-  createEventRow("follow_warp", "Following in warp",
-                 m_combatEventFollowWarpCheck);
-  createEventRow("regroup", "Regroup commands", m_combatEventRegroupCheck);
-  createEventRow("compression", "Compression events",
-                 m_combatEventCompressionCheck);
-  createEventRow("decloak", "Decloak events", m_combatEventDecloakCheck);
-  createEventRow("crystal_broke", "Mining crystal broke",
-                 m_combatEventCrystalBrokeCheck);
-  createEventRow("mining_stopped", "Mining stopped",
-                 m_combatEventMiningStopCheck);
+  // Create individual tabs for each event
+  combatTabs->addTab(createEventTab("fleet_invite", "Fleet Invites",
+                                    m_combatEventFleetInviteCheck),
+                     "Fleet Invites");
+  combatTabs->addTab(createEventTab("follow_warp", "Following in Warp",
+                                    m_combatEventFollowWarpCheck),
+                     "Warp Follow");
+  combatTabs->addTab(
+      createEventTab("regroup", "Regroup Commands", m_combatEventRegroupCheck),
+      "Regroup");
+  combatTabs->addTab(createEventTab("compression", "Compression Events",
+                                    m_combatEventCompressionCheck),
+                     "Compression");
+  combatTabs->addTab(
+      createEventTab("decloak", "Decloak Events", m_combatEventDecloakCheck),
+      "Decloak");
+  combatTabs->addTab(createEventTab("crystal_broke", "Mining Crystal Broke",
+                                    m_combatEventCrystalBrokeCheck),
+                     "Crystal Broke");
 
+  // Mining stopped tab with special timeout setting
+  QWidget *miningStopTab = new QWidget();
+  QVBoxLayout *miningStopLayout = new QVBoxLayout(miningStopTab);
+  miningStopLayout->setContentsMargins(16, 16, 16, 16);
+  miningStopLayout->setSpacing(12);
+
+  m_combatEventMiningStopCheck = new QCheckBox("Enable this event type");
+  m_combatEventMiningStopCheck->setStyleSheet(
+      StyleSheet::getCheckBoxStyleSheet());
+  miningStopLayout->addWidget(m_combatEventMiningStopCheck);
+
+  QCheckBox *miningSuppressCheck = new QCheckBox("Suppress for focused window");
+  miningSuppressCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+  miningSuppressCheck->setToolTip(
+      "Do not show this event notification for the currently focused/active "
+      "window");
+  connect(miningSuppressCheck, &QCheckBox::toggled, this, [](bool checked) {
+    Config::instance().setCombatEventSuppressFocused("mining_stopped", checked);
+  });
+  m_eventSuppressFocusedCheckBoxes["mining_stopped"] = miningSuppressCheck;
+  miningStopLayout->addWidget(miningSuppressCheck);
+
+  miningStopLayout->addSpacing(8);
+
+  QHBoxLayout *miningColorLayout = new QHBoxLayout();
+  QLabel *miningColorLabel = new QLabel("Message color:");
+  miningColorLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  miningColorLabel->setFixedWidth(120);
+  m_eventColorLabels["mining_stopped"] = miningColorLabel;
+
+  QPushButton *miningColorBtn = new QPushButton();
+  miningColorBtn->setFixedSize(150, 32);
+  miningColorBtn->setCursor(Qt::PointingHandCursor);
+  updateColorButton(miningColorBtn, Qt::white);
+  connect(miningColorBtn, &QPushButton::clicked, this,
+          [this, miningColorBtn]() {
+            QColor currentColor =
+                Config::instance().combatEventColor("mining_stopped");
+            QColor color =
+                QColorDialog::getColor(currentColor, this, "Select Color");
+            if (color.isValid()) {
+              updateColorButton(miningColorBtn, color);
+              Config::instance().setCombatEventColor("mining_stopped", color);
+            }
+          });
+  m_eventColorButtons["mining_stopped"] = miningColorBtn;
+  miningColorLayout->addWidget(miningColorLabel);
+  miningColorLayout->addWidget(miningColorBtn);
+  miningColorLayout->addStretch();
+  miningStopLayout->addLayout(miningColorLayout);
+
+  QHBoxLayout *miningDurationLayout = new QHBoxLayout();
+  QLabel *miningDurationLabel = new QLabel("Display duration:");
+  miningDurationLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  miningDurationLabel->setFixedWidth(120);
+  m_eventDurationLabels["mining_stopped"] = miningDurationLabel;
+
+  QSpinBox *miningDurationSpin = new QSpinBox();
+  miningDurationSpin->setStyleSheet(StyleSheet::getSpinBoxStyleSheet());
+  miningDurationSpin->setRange(1, 30);
+  miningDurationSpin->setSingleStep(1);
+  miningDurationSpin->setSuffix(" sec");
+  miningDurationSpin->setFixedWidth(100);
+  connect(miningDurationSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+          [](int value) {
+            Config::instance().setCombatEventDuration("mining_stopped",
+                                                      value * 1000);
+          });
+  m_eventDurationSpins["mining_stopped"] = miningDurationSpin;
+  miningDurationLayout->addWidget(miningDurationLabel);
+  miningDurationLayout->addWidget(miningDurationSpin);
+  miningDurationLayout->addStretch();
+  miningStopLayout->addLayout(miningDurationLayout);
+
+  miningStopLayout->addSpacing(12);
+
+  // Mining-specific timeout
+  QHBoxLayout *miningTimeoutLayout = new QHBoxLayout();
+  m_miningTimeoutLabel = new QLabel("Mining timeout:");
+  m_miningTimeoutLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_miningTimeoutLabel->setFixedWidth(120);
+  m_miningTimeoutLabel->setToolTip(
+      "Time to wait before showing mining stopped event");
+
+  m_miningTimeoutSpin = new QSpinBox();
+  m_miningTimeoutSpin->setStyleSheet(StyleSheet::getSpinBoxStyleSheet());
+  m_miningTimeoutSpin->setRange(15, 120);
+  m_miningTimeoutSpin->setSingleStep(5);
+  m_miningTimeoutSpin->setSuffix(" sec");
+  m_miningTimeoutSpin->setFixedWidth(100);
+
+  miningTimeoutLayout->addWidget(m_miningTimeoutLabel);
+  miningTimeoutLayout->addWidget(m_miningTimeoutSpin);
+  miningTimeoutLayout->addStretch();
+  miningStopLayout->addLayout(miningTimeoutLayout);
+
+  miningStopLayout->addSpacing(8);
+
+  QCheckBox *miningBorderCheck = new QCheckBox("Show colored border");
+  miningBorderCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+  connect(miningBorderCheck, &QCheckBox::toggled, this, [this](bool checked) {
+    Config::instance().setCombatEventBorderHighlight("mining_stopped", checked);
+    if (m_eventBorderStyleLabels.contains("mining_stopped")) {
+      m_eventBorderStyleLabels["mining_stopped"]->setEnabled(checked);
+    }
+    if (m_eventBorderStyleCombos.contains("mining_stopped")) {
+      m_eventBorderStyleCombos["mining_stopped"]->setEnabled(checked);
+    }
+  });
+  m_eventBorderCheckBoxes["mining_stopped"] = miningBorderCheck;
+  miningStopLayout->addWidget(miningBorderCheck);
+
+  QHBoxLayout *miningBorderStyleLayout = new QHBoxLayout();
+  miningBorderStyleLayout->setContentsMargins(24, 0, 0, 0);
+  QLabel *miningStyleLabel = new QLabel("Border style:");
+  miningStyleLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  miningStyleLabel->setFixedWidth(96);
+  m_eventBorderStyleLabels["mining_stopped"] = miningStyleLabel;
+
+  QComboBox *miningStyleCombo = new QComboBox();
+  miningStyleCombo->setStyleSheet(StyleSheet::getComboBoxStyleSheet());
+  miningStyleCombo->addItem("Solid", static_cast<int>(BorderStyle::Solid));
+  miningStyleCombo->addItem("Dashed", static_cast<int>(BorderStyle::Dashed));
+  miningStyleCombo->addItem("Dotted", static_cast<int>(BorderStyle::Dotted));
+  miningStyleCombo->addItem("Dash-Dot", static_cast<int>(BorderStyle::DashDot));
+  miningStyleCombo->addItem("Faded", static_cast<int>(BorderStyle::FadedEdges));
+  miningStyleCombo->addItem("Corners",
+                            static_cast<int>(BorderStyle::CornerAccents));
+  miningStyleCombo->addItem("Rounded",
+                            static_cast<int>(BorderStyle::RoundedCorners));
+  miningStyleCombo->addItem("Neon", static_cast<int>(BorderStyle::Neon));
+  miningStyleCombo->addItem("Shimmer", static_cast<int>(BorderStyle::Shimmer));
+  miningStyleCombo->addItem("Thick/Thin",
+                            static_cast<int>(BorderStyle::ThickThin));
+  miningStyleCombo->addItem("Electric Arc",
+                            static_cast<int>(BorderStyle::ElectricArc));
+  miningStyleCombo->addItem("Rainbow", static_cast<int>(BorderStyle::Rainbow));
+  miningStyleCombo->addItem("Breathing Glow",
+                            static_cast<int>(BorderStyle::BreathingGlow));
+  miningStyleCombo->addItem("Double Glow",
+                            static_cast<int>(BorderStyle::DoubleGlow));
+  miningStyleCombo->addItem("Zigzag", static_cast<int>(BorderStyle::Zigzag));
+  miningStyleCombo->setFixedWidth(150);
+  connect(miningStyleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this, miningStyleCombo](int index) {
+            BorderStyle style = static_cast<BorderStyle>(
+                miningStyleCombo->itemData(index).toInt());
+            Config::instance().setCombatBorderStyle("mining_stopped", style);
+          });
+  m_eventBorderStyleCombos["mining_stopped"] = miningStyleCombo;
+  miningBorderStyleLayout->addWidget(miningStyleLabel);
+  miningBorderStyleLayout->addWidget(miningStyleCombo);
+  miningBorderStyleLayout->addStretch();
+  miningStopLayout->addLayout(miningBorderStyleLayout);
+
+  miningStopLayout->addStretch();
+
+  combatTabs->addTab(miningStopTab, "Mining Stopped");
+
+  combatSectionLayout->addWidget(combatTabs);
+
+  combatSectionLayout->addWidget(combatTabs);
+
+  // Connect event checkboxes
   auto connectEventCheckbox = [this](const QString &eventType,
                                      QCheckBox *checkbox) {
     connect(checkbox, &QCheckBox::toggled, this,
             [this, eventType](bool checked) {
               bool enable = checked && m_showCombatMessagesCheck->isChecked();
 
+              if (m_eventSuppressFocusedCheckBoxes.contains(eventType)) {
+                m_eventSuppressFocusedCheckBoxes[eventType]->setEnabled(enable);
+              }
+              if (m_eventColorLabels.contains(eventType)) {
+                m_eventColorLabels[eventType]->setEnabled(enable);
+              }
               if (m_eventColorButtons.contains(eventType)) {
                 m_eventColorButtons[eventType]->setEnabled(enable);
-              }
-              if (m_eventDurationSpins.contains(eventType)) {
-                m_eventDurationSpins[eventType]->setEnabled(enable);
               }
               if (m_eventDurationLabels.contains(eventType)) {
                 m_eventDurationLabels[eventType]->setEnabled(enable);
               }
+              if (m_eventDurationSpins.contains(eventType)) {
+                m_eventDurationSpins[eventType]->setEnabled(enable);
+              }
               if (m_eventBorderCheckBoxes.contains(eventType)) {
                 m_eventBorderCheckBoxes[eventType]->setEnabled(enable);
+              }
+              if (m_eventBorderStyleLabels.contains(eventType)) {
+                bool borderEnabled =
+                    enable && m_eventBorderCheckBoxes[eventType]->isChecked();
+                m_eventBorderStyleLabels[eventType]->setEnabled(borderEnabled);
               }
               if (m_eventBorderStyleCombos.contains(eventType)) {
                 bool borderEnabled =
@@ -2400,24 +2622,6 @@ void ConfigDialog::createDataSourcesPage() {
   connectEventCheckbox("crystal_broke", m_combatEventCrystalBrokeCheck);
   connectEventCheckbox("mining_stopped", m_combatEventMiningStopCheck);
 
-  QHBoxLayout *miningTimeoutLayout = new QHBoxLayout();
-  miningTimeoutLayout->setContentsMargins(24, 0, 0, 0);
-  m_miningTimeoutLabel = new QLabel("Mining timeout:");
-  m_miningTimeoutLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
-  m_miningTimeoutLabel->setFixedWidth(150);
-
-  m_miningTimeoutSpin = new QSpinBox();
-  m_miningTimeoutSpin->setStyleSheet(StyleSheet::getSpinBoxStyleSheet());
-  m_miningTimeoutSpin->setRange(15, 120);
-  m_miningTimeoutSpin->setSingleStep(5);
-  m_miningTimeoutSpin->setSuffix(" sec");
-  m_miningTimeoutSpin->setFixedWidth(120);
-
-  miningTimeoutLayout->addWidget(m_miningTimeoutLabel);
-  miningTimeoutLayout->addWidget(m_miningTimeoutSpin);
-  miningTimeoutLayout->addStretch();
-  combatSectionLayout->addLayout(miningTimeoutLayout);
-
   connect(m_combatEventMiningStopCheck, &QCheckBox::toggled, this,
           [this](bool checked) {
             bool enable = checked && m_showCombatMessagesCheck->isChecked();
@@ -2425,59 +2629,70 @@ void ConfigDialog::createDataSourcesPage() {
             m_miningTimeoutLabel->setEnabled(enable);
           });
 
-  connect(m_showCombatMessagesCheck, &QCheckBox::toggled, this,
-          [this](bool checked) {
-            m_suppressCombatWhenFocusedCheck->setEnabled(checked);
-            m_combatMessagePositionCombo->setEnabled(checked);
-            m_combatMessagePositionLabel->setEnabled(checked);
-            m_combatMessageFontButton->setEnabled(checked);
-            m_combatMessageFontLabel->setEnabled(checked);
-            m_combatEventFleetInviteCheck->setEnabled(checked);
-            m_combatEventFollowWarpCheck->setEnabled(checked);
-            m_combatEventRegroupCheck->setEnabled(checked);
-            m_combatEventCompressionCheck->setEnabled(checked);
-            m_combatEventDecloakCheck->setEnabled(checked);
-            m_combatEventCrystalBrokeCheck->setEnabled(checked);
-            m_combatEventMiningStopCheck->setEnabled(checked);
+  connect(
+      m_showCombatMessagesCheck, &QCheckBox::toggled, this,
+      [this](bool checked) {
+        m_combatMessagePositionCombo->setEnabled(checked);
+        m_combatMessagePositionLabel->setEnabled(checked);
+        m_combatMessageFontButton->setEnabled(checked);
+        m_combatMessageFontLabel->setEnabled(checked);
+        m_combatEventFleetInviteCheck->setEnabled(checked);
+        m_combatEventFollowWarpCheck->setEnabled(checked);
+        m_combatEventRegroupCheck->setEnabled(checked);
+        m_combatEventCompressionCheck->setEnabled(checked);
+        m_combatEventDecloakCheck->setEnabled(checked);
+        m_combatEventCrystalBrokeCheck->setEnabled(checked);
+        m_combatEventMiningStopCheck->setEnabled(checked);
 
-            bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
-            m_miningTimeoutSpin->setEnabled(checked && miningStopChecked);
-            m_miningTimeoutLabel->setEnabled(checked && miningStopChecked);
+        bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
+        m_miningTimeoutSpin->setEnabled(checked && miningStopChecked);
+        m_miningTimeoutLabel->setEnabled(checked && miningStopChecked);
 
-            QMap<QString, QCheckBox *> eventCheckboxes = {
-                {"fleet_invite", m_combatEventFleetInviteCheck},
-                {"follow_warp", m_combatEventFollowWarpCheck},
-                {"regroup", m_combatEventRegroupCheck},
-                {"compression", m_combatEventCompressionCheck},
-                {"decloak", m_combatEventDecloakCheck},
-                {"crystal_broke", m_combatEventCrystalBrokeCheck},
-                {"mining_stopped", m_combatEventMiningStopCheck}};
+        QMap<QString, QCheckBox *> eventCheckboxes = {
+            {"fleet_invite", m_combatEventFleetInviteCheck},
+            {"follow_warp", m_combatEventFollowWarpCheck},
+            {"regroup", m_combatEventRegroupCheck},
+            {"compression", m_combatEventCompressionCheck},
+            {"decloak", m_combatEventDecloakCheck},
+            {"crystal_broke", m_combatEventCrystalBrokeCheck},
+            {"mining_stopped", m_combatEventMiningStopCheck}};
 
-            for (auto it = eventCheckboxes.constBegin();
-                 it != eventCheckboxes.constEnd(); ++it) {
-              QString eventType = it.key();
-              bool eventEnabled = checked && it.value()->isChecked();
+        for (auto it = eventCheckboxes.constBegin();
+             it != eventCheckboxes.constEnd(); ++it) {
+          QString eventType = it.key();
+          bool eventEnabled = checked && it.value()->isChecked();
 
-              if (m_eventColorButtons.contains(eventType)) {
-                m_eventColorButtons[eventType]->setEnabled(eventEnabled);
-              }
-              if (m_eventDurationSpins.contains(eventType)) {
-                m_eventDurationSpins[eventType]->setEnabled(eventEnabled);
-              }
-              if (m_eventDurationLabels.contains(eventType)) {
-                m_eventDurationLabels[eventType]->setEnabled(eventEnabled);
-              }
-              if (m_eventBorderCheckBoxes.contains(eventType)) {
-                m_eventBorderCheckBoxes[eventType]->setEnabled(eventEnabled);
-              }
-              if (m_eventBorderStyleCombos.contains(eventType)) {
-                bool borderEnabled =
-                    eventEnabled &&
-                    m_eventBorderCheckBoxes[eventType]->isChecked();
-                m_eventBorderStyleCombos[eventType]->setEnabled(borderEnabled);
-              }
-            }
-          });
+          if (m_eventSuppressFocusedCheckBoxes.contains(eventType)) {
+            m_eventSuppressFocusedCheckBoxes[eventType]->setEnabled(
+                eventEnabled);
+          }
+          if (m_eventColorLabels.contains(eventType)) {
+            m_eventColorLabels[eventType]->setEnabled(eventEnabled);
+          }
+          if (m_eventColorButtons.contains(eventType)) {
+            m_eventColorButtons[eventType]->setEnabled(eventEnabled);
+          }
+          if (m_eventDurationLabels.contains(eventType)) {
+            m_eventDurationLabels[eventType]->setEnabled(eventEnabled);
+          }
+          if (m_eventDurationSpins.contains(eventType)) {
+            m_eventDurationSpins[eventType]->setEnabled(eventEnabled);
+          }
+          if (m_eventBorderCheckBoxes.contains(eventType)) {
+            m_eventBorderCheckBoxes[eventType]->setEnabled(eventEnabled);
+          }
+          if (m_eventBorderStyleLabels.contains(eventType)) {
+            bool borderEnabled =
+                eventEnabled && m_eventBorderCheckBoxes[eventType]->isChecked();
+            m_eventBorderStyleLabels[eventType]->setEnabled(borderEnabled);
+          }
+          if (m_eventBorderStyleCombos.contains(eventType)) {
+            bool borderEnabled =
+                eventEnabled && m_eventBorderCheckBoxes[eventType]->isChecked();
+            m_eventBorderStyleCombos[eventType]->setEnabled(borderEnabled);
+          }
+        }
+      });
 
   layout->addWidget(combatSection);
 
@@ -2977,12 +3192,6 @@ void ConfigDialog::setupBindings() {
       [&config]() { return config.showCombatMessages(); },
       [&config](bool value) { config.setShowCombatMessages(value); }, true));
 
-  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
-      m_suppressCombatWhenFocusedCheck,
-      [&config]() { return config.suppressCombatWhenFocused(); },
-      [&config](bool value) { config.setSuppressCombatWhenFocused(value); },
-      false));
-
   m_bindingManager.addBinding(BindingHelpers::bindComboBox(
       m_combatMessagePositionCombo,
       [&config]() { return config.combatMessagePosition(); },
@@ -3253,6 +3462,13 @@ void ConfigDialog::loadSettings() {
     QString eventType = it.key();
     QCheckBox *borderCheck = it.value();
     borderCheck->setChecked(config.combatEventBorderHighlight(eventType));
+  }
+
+  for (auto it = m_eventSuppressFocusedCheckBoxes.constBegin();
+       it != m_eventSuppressFocusedCheckBoxes.constEnd(); ++it) {
+    QString eventType = it.key();
+    QCheckBox *suppressCheck = it.value();
+    suppressCheck->setChecked(config.combatEventSuppressFocused(eventType));
   }
 
   for (auto it = m_eventBorderStyleCombos.constBegin();

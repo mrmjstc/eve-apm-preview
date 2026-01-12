@@ -232,6 +232,9 @@ public:
   bool combatEventBorderHighlight(const QString &eventType) const;
   void setCombatEventBorderHighlight(const QString &eventType, bool enabled);
 
+  bool combatEventSuppressFocused(const QString &eventType) const;
+  void setCombatEventSuppressFocused(const QString &eventType, bool enabled);
+
   bool suppressCombatWhenFocused() const;
   void setSuppressCombatWhenFocused(bool enabled);
 
@@ -401,6 +404,7 @@ private:
   mutable QMap<QString, QColor> m_cachedCombatEventColors;
   mutable QMap<QString, int> m_cachedCombatEventDurations;
   mutable QMap<QString, bool> m_cachedCombatEventBorderHighlights;
+  mutable QMap<QString, bool> m_cachedCombatEventSuppressFocused;
   mutable bool m_cachedSuppressCombatWhenFocused;
   mutable QMap<QString, BorderStyle> m_cachedCombatBorderStyles;
   mutable QStringList m_cachedEnabledCombatEventTypes;
@@ -542,6 +546,10 @@ private:
   static inline QString
   combatEventBorderHighlightKey(const QString &eventType) {
     return QString("combatMessages/borderHighlights/%1").arg(eventType);
+  }
+  static inline QString
+  combatEventSuppressFocusedKey(const QString &eventType) {
+    return QString("combatMessages/suppressFocused/%1").arg(eventType);
   }
   static inline QString combatBorderStyleKey(const QString &eventType) {
     return QString("combatMessages/borderStyles/%1").arg(eventType);

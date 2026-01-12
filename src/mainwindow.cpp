@@ -1063,7 +1063,13 @@ void MainWindow::updateActiveWindow() {
       if (isActive) {
         thumbnail->forceUpdate();
         if (thumbnail->hasCombatEvent()) {
-          thumbnail->setCombatMessage("", "");
+          QString currentEventType = thumbnail->getCombatEventType();
+          if (!currentEventType.isEmpty() &&
+              cfg.combatEventSuppressFocused(currentEventType)) {
+            thumbnail->setCombatMessage("", "");
+            qDebug() << "MainWindow: Cleared combat event for focused window:"
+                     << currentEventType;
+          }
         }
       }
     }
@@ -1111,9 +1117,14 @@ void MainWindow::updateActiveWindow() {
     if (isActive) {
       it.value()->forceUpdate();
 
-      if (cfg.suppressCombatWhenFocused() && it.value()->hasCombatEvent()) {
-        it.value()->setCombatMessage("", "");
-        qDebug() << "MainWindow: Cleared combat event for focused window";
+      if (it.value()->hasCombatEvent()) {
+        QString currentEventType = it.value()->getCombatEventType();
+        if (!currentEventType.isEmpty() &&
+            cfg.combatEventSuppressFocused(currentEventType)) {
+          it.value()->setCombatMessage("", "");
+          qDebug() << "MainWindow: Cleared combat event for focused window:"
+                   << currentEventType;
+        }
       }
     }
 
@@ -2174,9 +2185,9 @@ void MainWindow::onCombatEventDetected(const QString &characterName,
   HWND hwnd = m_characterToWindow.value(characterName);
   if (hwnd && thumbnails.contains(hwnd)) {
     HWND activeWindow = GetForegroundWindow();
-    if (cfg.suppressCombatWhenFocused() && hwnd == activeWindow) {
+    if (cfg.combatEventSuppressFocused(eventType) && hwnd == activeWindow) {
       qDebug() << "MainWindow: Suppressing combat event for focused window:"
-               << characterName;
+               << characterName << "event:" << eventType;
       return;
     }
 

@@ -6,6 +6,7 @@ QString StyleSheet::colorBackgroundDark() { return "#353535"; }
 QString StyleSheet::colorSection() { return "#252525"; }
 QString StyleSheet::colorBorder() { return "#555555"; }
 QString StyleSheet::colorAccent() { return "#fdcc12"; }
+QString StyleSheet::colorAccentSecondary() { return "#0078d4"; }
 QString StyleSheet::colorTextPrimary() { return "#ffffff"; }
 QString StyleSheet::colorTextSecondary() { return "#cccccc"; }
 QString StyleSheet::colorTextInfo() { return "#888888"; }
@@ -1101,4 +1102,32 @@ QString StyleSheet::getProfileSeparatorStyleSheet() {
                  "   background-color: #3c3c3c;"
                  "   max-width: 1px;"
                  "}");
+}
+
+QString StyleSheet::getTabWidgetStyleSheet() {
+  return QString("QTabWidget::pane {"
+                 "   border: 1px solid #3a3a3a;"
+                 "   background-color: #2b2b2b;"
+                 "   border-radius: 4px;"
+                 "   margin-top: 4px;"
+                 "}"
+                 "QTabBar::tab {"
+                 "   background-color: #2b2b2b;"
+                 "   color: #d0d0d0;"
+                 "   padding: 6px 12px;"
+                 "   border: 1px solid #3a3a3a;"
+                 "   border-bottom: none;"
+                 "   border-top-left-radius: 4px;"
+                 "   border-top-right-radius: 4px;"
+                 "   min-width: 80px;"
+                 "}"
+                 "QTabBar::tab:selected {"
+                 "   background-color: #3a3a3a;"
+                 "   color: #ffffff;"
+                 "   border-bottom: 2px solid %1;"
+                 "}"
+                 "QTabBar::tab:hover {"
+                 "   background-color: #3a3a3a;"
+                 "}")
+      .arg(colorAccent()); // Yellow accent for selected tab indicator
 }

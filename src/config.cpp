@@ -1658,6 +1658,22 @@ void Config::setCombatEventBorderHighlight(const QString &eventType,
   m_cachedCombatEventBorderHighlights[eventType] = enabled;
 }
 
+bool Config::combatEventSuppressFocused(const QString &eventType) const {
+  if (!m_cachedCombatEventSuppressFocused.contains(eventType)) {
+    QString key = combatEventSuppressFocusedKey(eventType);
+    bool value = m_settings->value(key, false).toBool();
+    m_cachedCombatEventSuppressFocused[eventType] = value;
+  }
+  return m_cachedCombatEventSuppressFocused.value(eventType, false);
+}
+
+void Config::setCombatEventSuppressFocused(const QString &eventType,
+                                           bool enabled) {
+  QString key = combatEventSuppressFocusedKey(eventType);
+  m_settings->setValue(key, enabled);
+  m_cachedCombatEventSuppressFocused[eventType] = enabled;
+}
+
 bool Config::suppressCombatWhenFocused() const {
   return m_cachedSuppressCombatWhenFocused;
 }

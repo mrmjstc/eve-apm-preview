@@ -330,7 +330,6 @@ private:
   QLabel *m_gameLogDirectoryLabel;
 
   QCheckBox *m_showCombatMessagesCheck;
-  QCheckBox *m_suppressCombatWhenFocusedCheck;
   QComboBox *m_combatMessagePositionCombo;
   QLabel *m_combatMessagePositionLabel;
   QPushButton *m_combatMessageFontButton;
@@ -350,6 +349,9 @@ private:
   QMap<QString, QCheckBox *> m_eventBorderCheckBoxes;
   QMap<QString, QComboBox *> m_eventBorderStyleCombos;
   QMap<QString, QLabel *> m_eventDurationLabels;
+  QMap<QString, QLabel *> m_eventColorLabels;
+  QMap<QString, QLabel *> m_eventBorderStyleLabels;
+  QMap<QString, QCheckBox *> m_eventSuppressFocusedCheckBoxes;
   QLabel *m_miningTimeoutLabel;
 
   QVariantMap m_legacySettings;
