@@ -2600,8 +2600,6 @@ void ConfigDialog::createDataSourcesPage() {
   miningDurationLayout->addStretch();
   miningStopLayout->addLayout(miningDurationLayout);
 
-  miningStopLayout->addSpacing(12);
-
   // Mining-specific timeout
   QHBoxLayout *miningTimeoutLayout = new QHBoxLayout();
   m_miningTimeoutLabel = new QLabel("Mining timeout:");
@@ -2622,7 +2620,7 @@ void ConfigDialog::createDataSourcesPage() {
   miningTimeoutLayout->addStretch();
   miningStopLayout->addLayout(miningTimeoutLayout);
 
-  miningStopLayout->addSpacing(8);
+  miningStopLayout->addSpacing(12);
 
   QCheckBox *miningBorderCheck = new QCheckBox("Show colored border");
   miningBorderCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
@@ -2680,6 +2678,121 @@ void ConfigDialog::createDataSourcesPage() {
   miningBorderStyleLayout->addWidget(miningStyleCombo);
   miningBorderStyleLayout->addStretch();
   miningStopLayout->addLayout(miningBorderStyleLayout);
+
+  miningStopLayout->addSpacing(12);
+
+  // Sound notification settings for mining stopped
+  QCheckBox *miningSoundCheck = new QCheckBox("Play sound notification");
+  miningSoundCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+  miningSoundCheck->setToolTip("Play a sound when this event occurs");
+  connect(miningSoundCheck, &QCheckBox::toggled, this, [this](bool checked) {
+    Config::instance().setCombatEventSoundEnabled("mining_stopped", checked);
+    if (m_eventSoundFileLabels.contains("mining_stopped")) {
+      m_eventSoundFileLabels["mining_stopped"]->setEnabled(checked);
+    }
+    if (m_eventSoundFileButtons.contains("mining_stopped")) {
+      m_eventSoundFileButtons["mining_stopped"]->setEnabled(checked);
+    }
+    if (m_eventSoundVolumeLabels.contains("mining_stopped")) {
+      m_eventSoundVolumeLabels["mining_stopped"]->setEnabled(checked);
+    }
+    if (m_eventSoundVolumeSliders.contains("mining_stopped")) {
+      m_eventSoundVolumeSliders["mining_stopped"]->setEnabled(checked);
+    }
+    if (m_eventSoundVolumeValueLabels.contains("mining_stopped")) {
+      m_eventSoundVolumeValueLabels["mining_stopped"]->setEnabled(checked);
+    }
+    if (m_eventSoundPlayButtons.contains("mining_stopped")) {
+      m_eventSoundPlayButtons["mining_stopped"]->setEnabled(checked);
+    }
+  });
+  m_eventSoundCheckBoxes["mining_stopped"] = miningSoundCheck;
+  miningStopLayout->addWidget(miningSoundCheck);
+
+  QHBoxLayout *miningSoundFileLayout = new QHBoxLayout();
+  miningSoundFileLayout->setContentsMargins(24, 0, 0, 0);
+  QLabel *miningSoundFileLabel = new QLabel("Sound file:");
+  miningSoundFileLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  miningSoundFileLabel->setFixedWidth(96);
+  m_eventSoundFileLabels["mining_stopped"] = miningSoundFileLabel;
+
+  QPushButton *miningSoundFileBtn = new QPushButton("Browse...");
+  miningSoundFileBtn->setStyleSheet(StyleSheet::getButtonStyleSheet());
+  miningSoundFileBtn->setFixedWidth(150);
+  miningSoundFileBtn->setCursor(Qt::PointingHandCursor);
+  miningSoundFileBtn->setToolTip("Select a sound file (.wav recommended)");
+  connect(miningSoundFileBtn, &QPushButton::clicked, this,
+          [this, miningSoundFileBtn]() {
+            QString currentFile =
+                Config::instance().combatEventSoundFile("mining_stopped");
+            QString fileName = QFileDialog::getOpenFileName(
+                this, "Select Sound File", currentFile,
+                "Sound Files (*.wav *.mp3 *.ogg);;All Files (*)");
+            if (!fileName.isEmpty()) {
+              Config::instance().setCombatEventSoundFile("mining_stopped",
+                                                         fileName);
+              QFileInfo fileInfo(fileName);
+              miningSoundFileBtn->setText(fileInfo.fileName());
+            }
+          });
+  m_eventSoundFileButtons["mining_stopped"] = miningSoundFileBtn;
+
+  QPushButton *miningSoundPlayBtn = new QPushButton("▶ Test");
+  miningSoundPlayBtn->setStyleSheet(StyleSheet::getButtonStyleSheet());
+  miningSoundPlayBtn->setFixedWidth(80);
+  miningSoundPlayBtn->setCursor(Qt::PointingHandCursor);
+  miningSoundPlayBtn->setToolTip("Play the selected sound file");
+  connect(miningSoundPlayBtn, &QPushButton::clicked, this, [this]() {
+    QString soundFile =
+        Config::instance().combatEventSoundFile("mining_stopped");
+    if (!soundFile.isEmpty() && QFile::exists(soundFile)) {
+      if (!m_testSoundEffect) {
+        m_testSoundEffect = std::make_unique<QSoundEffect>();
+      }
+      m_testSoundEffect->setSource(QUrl::fromLocalFile(soundFile));
+      int volume = Config::instance().combatEventSoundVolume("mining_stopped");
+      m_testSoundEffect->setVolume(volume / 100.0);
+      m_testSoundEffect->play();
+    }
+  });
+  m_eventSoundPlayButtons["mining_stopped"] = miningSoundPlayBtn;
+
+  miningSoundFileLayout->addWidget(miningSoundFileLabel);
+  miningSoundFileLayout->addWidget(miningSoundFileBtn);
+  miningSoundFileLayout->addWidget(miningSoundPlayBtn);
+  miningSoundFileLayout->addStretch();
+  miningStopLayout->addLayout(miningSoundFileLayout);
+
+  QHBoxLayout *miningSoundVolumeLayout = new QHBoxLayout();
+  miningSoundVolumeLayout->setContentsMargins(24, 0, 0, 0);
+  QLabel *miningSoundVolumeLabel = new QLabel("Volume:");
+  miningSoundVolumeLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  miningSoundVolumeLabel->setFixedWidth(96);
+  m_eventSoundVolumeLabels["mining_stopped"] = miningSoundVolumeLabel;
+
+  QSlider *miningSoundVolumeSlider = new QSlider(Qt::Horizontal);
+  miningSoundVolumeSlider->setRange(0, 100);
+  miningSoundVolumeSlider->setValue(Config::DEFAULT_COMBAT_SOUND_VOLUME);
+  miningSoundVolumeSlider->setFixedWidth(120);
+  m_eventSoundVolumeSliders["mining_stopped"] = miningSoundVolumeSlider;
+
+  QLabel *miningSoundVolumeValueLabel = new QLabel("70%");
+  miningSoundVolumeValueLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  miningSoundVolumeValueLabel->setFixedWidth(40);
+  m_eventSoundVolumeValueLabels["mining_stopped"] = miningSoundVolumeValueLabel;
+
+  connect(miningSoundVolumeSlider, &QSlider::valueChanged, this,
+          [this, miningSoundVolumeValueLabel](int value) {
+            Config::instance().setCombatEventSoundVolume("mining_stopped",
+                                                         value);
+            miningSoundVolumeValueLabel->setText(QString("%1%").arg(value));
+          });
+
+  miningSoundVolumeLayout->addWidget(miningSoundVolumeLabel);
+  miningSoundVolumeLayout->addWidget(miningSoundVolumeSlider);
+  miningSoundVolumeLayout->addWidget(miningSoundVolumeValueLabel);
+  miningSoundVolumeLayout->addStretch();
+  miningStopLayout->addLayout(miningSoundVolumeLayout);
 
   miningStopLayout->addStretch();
 
