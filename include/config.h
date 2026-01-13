@@ -238,6 +238,16 @@ public:
   bool suppressCombatWhenFocused() const;
   void setSuppressCombatWhenFocused(bool enabled);
 
+  bool combatEventSoundEnabled(const QString &eventType) const;
+  void setCombatEventSoundEnabled(const QString &eventType, bool enabled);
+
+  QString combatEventSoundFile(const QString &eventType) const;
+  void setCombatEventSoundFile(const QString &eventType,
+                               const QString &filePath);
+
+  int combatEventSoundVolume(const QString &eventType) const;
+  void setCombatEventSoundVolume(const QString &eventType, int volume);
+
   BorderStyle combatBorderStyle(const QString &eventType) const;
   void setCombatBorderStyle(const QString &eventType, BorderStyle style);
 
@@ -332,6 +342,8 @@ public:
   static constexpr bool DEFAULT_COMBAT_SUPPRESS_FOCUSED = true;
   static constexpr int DEFAULT_COMBAT_BORDER_STYLE =
       static_cast<int>(BorderStyle::Dashed);
+  static constexpr bool DEFAULT_COMBAT_SOUND_ENABLED = false;
+  static constexpr int DEFAULT_COMBAT_SOUND_VOLUME = 70;
   static inline QStringList DEFAULT_COMBAT_MESSAGE_EVENT_TYPES() {
     return QStringList{"fleet_invite",  "follow_warp", "regroup",
                        "compression",   "decloak",     "crystal_broke",
@@ -409,6 +421,9 @@ private:
   mutable QMap<QString, BorderStyle> m_cachedCombatBorderStyles;
   mutable QStringList m_cachedEnabledCombatEventTypes;
   mutable int m_cachedMiningTimeoutSeconds;
+  mutable QMap<QString, bool> m_cachedCombatEventSoundsEnabled;
+  mutable QMap<QString, QString> m_cachedCombatEventSoundFiles;
+  mutable QMap<QString, int> m_cachedCombatEventSoundVolumes;
 
   mutable QHash<QString, QColor> m_cachedCharacterBorderColors;
   mutable QHash<QString, QPoint> m_cachedThumbnailPositions;
@@ -553,6 +568,15 @@ private:
   }
   static inline QString combatBorderStyleKey(const QString &eventType) {
     return QString("combatMessages/borderStyles/%1").arg(eventType);
+  }
+  static inline QString combatEventSoundEnabledKey(const QString &eventType) {
+    return QString("combatMessages/soundEnabled/%1").arg(eventType);
+  }
+  static inline QString combatEventSoundFileKey(const QString &eventType) {
+    return QString("combatMessages/soundFile/%1").arg(eventType);
+  }
+  static inline QString combatEventSoundVolumeKey(const QString &eventType) {
+    return QString("combatMessages/soundVolume/%1").arg(eventType);
   }
 
   static inline QMap<QString, QString> DEFAULT_EVENT_COLORS() {

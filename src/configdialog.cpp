@@ -2389,6 +2389,119 @@ void ConfigDialog::createDataSourcesPage() {
     borderStyleLayout->addStretch();
     layout->addLayout(borderStyleLayout);
 
+    layout->addSpacing(12);
+
+    // Sound notification settings
+    QCheckBox *soundCheck = new QCheckBox("Play sound notification");
+    soundCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
+    soundCheck->setToolTip("Play a sound when this event occurs");
+    connect(soundCheck, &QCheckBox::toggled, this,
+            [this, eventType](bool checked) {
+              Config::instance().setCombatEventSoundEnabled(eventType, checked);
+              if (m_eventSoundFileLabels.contains(eventType)) {
+                m_eventSoundFileLabels[eventType]->setEnabled(checked);
+              }
+              if (m_eventSoundFileButtons.contains(eventType)) {
+                m_eventSoundFileButtons[eventType]->setEnabled(checked);
+              }
+              if (m_eventSoundVolumeLabels.contains(eventType)) {
+                m_eventSoundVolumeLabels[eventType]->setEnabled(checked);
+              }
+              if (m_eventSoundVolumeSliders.contains(eventType)) {
+                m_eventSoundVolumeSliders[eventType]->setEnabled(checked);
+              }
+              if (m_eventSoundVolumeValueLabels.contains(eventType)) {
+                m_eventSoundVolumeValueLabels[eventType]->setEnabled(checked);
+              }
+              if (m_eventSoundPlayButtons.contains(eventType)) {
+                m_eventSoundPlayButtons[eventType]->setEnabled(checked);
+              }
+            });
+    m_eventSoundCheckBoxes[eventType] = soundCheck;
+    layout->addWidget(soundCheck);
+
+    QHBoxLayout *soundFileLayout = new QHBoxLayout();
+    soundFileLayout->setContentsMargins(24, 0, 0, 0);
+    QLabel *soundFileLabel = new QLabel("Sound file:");
+    soundFileLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    soundFileLabel->setFixedWidth(96);
+    m_eventSoundFileLabels[eventType] = soundFileLabel;
+
+    QPushButton *soundFileBtn = new QPushButton("Browse...");
+    soundFileBtn->setStyleSheet(StyleSheet::getButtonStyleSheet());
+    soundFileBtn->setFixedWidth(150);
+    soundFileBtn->setCursor(Qt::PointingHandCursor);
+    soundFileBtn->setToolTip("Select a sound file (.wav recommended)");
+    connect(soundFileBtn, &QPushButton::clicked, this,
+            [this, eventType, soundFileBtn]() {
+              QString currentFile =
+                  Config::instance().combatEventSoundFile(eventType);
+              QString fileName = QFileDialog::getOpenFileName(
+                  this, "Select Sound File", currentFile,
+                  "Sound Files (*.wav *.mp3 *.ogg);;All Files (*)");
+              if (!fileName.isEmpty()) {
+                Config::instance().setCombatEventSoundFile(eventType, fileName);
+                QFileInfo fileInfo(fileName);
+                soundFileBtn->setText(fileInfo.fileName());
+              }
+            });
+    m_eventSoundFileButtons[eventType] = soundFileBtn;
+
+    QPushButton *playBtn = new QPushButton("▶ Test");
+    playBtn->setStyleSheet(StyleSheet::getButtonStyleSheet());
+    playBtn->setFixedWidth(80);
+    playBtn->setCursor(Qt::PointingHandCursor);
+    playBtn->setToolTip("Play the selected sound file");
+    connect(playBtn, &QPushButton::clicked, this, [this, eventType]() {
+      QString soundFile = Config::instance().combatEventSoundFile(eventType);
+      if (!soundFile.isEmpty() && QFile::exists(soundFile)) {
+        if (!m_testSoundEffect) {
+          m_testSoundEffect = std::make_unique<QSoundEffect>();
+        }
+        m_testSoundEffect->setSource(QUrl::fromLocalFile(soundFile));
+        int volume = Config::instance().combatEventSoundVolume(eventType);
+        m_testSoundEffect->setVolume(volume / 100.0);
+        m_testSoundEffect->play();
+      }
+    });
+    m_eventSoundPlayButtons[eventType] = playBtn;
+
+    soundFileLayout->addWidget(soundFileLabel);
+    soundFileLayout->addWidget(soundFileBtn);
+    soundFileLayout->addWidget(playBtn);
+    soundFileLayout->addStretch();
+    layout->addLayout(soundFileLayout);
+
+    QHBoxLayout *volumeLayout = new QHBoxLayout();
+    volumeLayout->setContentsMargins(24, 0, 0, 0);
+    QLabel *volumeLabel = new QLabel("Volume:");
+    volumeLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    volumeLabel->setFixedWidth(96);
+    m_eventSoundVolumeLabels[eventType] = volumeLabel;
+
+    QSlider *volumeSlider = new QSlider(Qt::Horizontal);
+    volumeSlider->setRange(0, 100);
+    volumeSlider->setValue(Config::DEFAULT_COMBAT_SOUND_VOLUME);
+    volumeSlider->setFixedWidth(120);
+    m_eventSoundVolumeSliders[eventType] = volumeSlider;
+
+    QLabel *volumeValueLabel = new QLabel("70%");
+    volumeValueLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+    volumeValueLabel->setFixedWidth(40);
+    m_eventSoundVolumeValueLabels[eventType] = volumeValueLabel;
+
+    connect(volumeSlider, &QSlider::valueChanged, this,
+            [this, eventType, volumeValueLabel](int value) {
+              Config::instance().setCombatEventSoundVolume(eventType, value);
+              volumeValueLabel->setText(QString("%1%").arg(value));
+            });
+
+    volumeLayout->addWidget(volumeLabel);
+    volumeLayout->addWidget(volumeSlider);
+    volumeLayout->addWidget(volumeValueLabel);
+    volumeLayout->addStretch();
+    layout->addLayout(volumeLayout);
+
     layout->addStretch();
     return tab;
   };
@@ -3482,6 +3595,47 @@ void ConfigDialog::loadSettings() {
     }
     if (m_eventBorderCheckBoxes.contains(eventType)) {
       styleCombo->setEnabled(m_eventBorderCheckBoxes[eventType]->isChecked());
+    }
+  }
+
+  // Load sound settings
+  for (auto it = m_eventSoundCheckBoxes.constBegin();
+       it != m_eventSoundCheckBoxes.constEnd(); ++it) {
+    QString eventType = it.key();
+    QCheckBox *soundCheck = it.value();
+    bool soundEnabled = config.combatEventSoundEnabled(eventType);
+    soundCheck->setChecked(soundEnabled);
+
+    // Update button text if sound file is set
+    if (m_eventSoundFileButtons.contains(eventType)) {
+      QString soundFile = config.combatEventSoundFile(eventType);
+      if (!soundFile.isEmpty()) {
+        QFileInfo fileInfo(soundFile);
+        m_eventSoundFileButtons[eventType]->setText(fileInfo.fileName());
+      }
+      m_eventSoundFileButtons[eventType]->setEnabled(soundEnabled);
+    }
+
+    // Update volume slider and label
+    if (m_eventSoundVolumeSliders.contains(eventType)) {
+      int volume = config.combatEventSoundVolume(eventType);
+      m_eventSoundVolumeSliders[eventType]->setValue(volume);
+      m_eventSoundVolumeSliders[eventType]->setEnabled(soundEnabled);
+    }
+    if (m_eventSoundVolumeValueLabels.contains(eventType)) {
+      int volume = config.combatEventSoundVolume(eventType);
+      m_eventSoundVolumeValueLabels[eventType]->setText(
+          QString("%1%").arg(volume));
+      m_eventSoundVolumeValueLabels[eventType]->setEnabled(soundEnabled);
+    }
+    if (m_eventSoundFileLabels.contains(eventType)) {
+      m_eventSoundFileLabels[eventType]->setEnabled(soundEnabled);
+    }
+    if (m_eventSoundVolumeLabels.contains(eventType)) {
+      m_eventSoundVolumeLabels[eventType]->setEnabled(soundEnabled);
+    }
+    if (m_eventSoundPlayButtons.contains(eventType)) {
+      m_eventSoundPlayButtons[eventType]->setEnabled(soundEnabled);
     }
   }
 
@@ -7151,6 +7305,26 @@ void ConfigDialog::onResetCombatMessagesDefaults() {
       if (m_eventBorderCheckBoxes.contains(eventType)) {
         m_eventBorderCheckBoxes[eventType]->setChecked(
             Config::DEFAULT_COMBAT_EVENT_BORDER_HIGHLIGHT);
+      }
+
+      if (m_eventSoundCheckBoxes.contains(eventType)) {
+        m_eventSoundCheckBoxes[eventType]->setChecked(
+            Config::DEFAULT_COMBAT_SOUND_ENABLED);
+      }
+
+      if (m_eventSoundFileButtons.contains(eventType)) {
+        m_eventSoundFileButtons[eventType]->setText("Browse...");
+        Config::instance().setCombatEventSoundFile(eventType, QString());
+      }
+
+      if (m_eventSoundVolumeSliders.contains(eventType)) {
+        m_eventSoundVolumeSliders[eventType]->setValue(
+            Config::DEFAULT_COMBAT_SOUND_VOLUME);
+      }
+
+      if (m_eventSoundVolumeValueLabels.contains(eventType)) {
+        m_eventSoundVolumeValueLabels[eventType]->setText(
+            QString("%1%").arg(Config::DEFAULT_COMBAT_SOUND_VOLUME));
       }
     }
 

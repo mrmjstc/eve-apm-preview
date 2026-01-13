@@ -315,6 +315,19 @@ void Config::loadCacheFromSettings() {
     QString styleKey = combatBorderStyleKey(eventType);
     m_cachedCombatBorderStyles[eventType] = static_cast<BorderStyle>(
         m_settings->value(styleKey, DEFAULT_COMBAT_BORDER_STYLE).toInt());
+
+    QString soundEnabledKey = combatEventSoundEnabledKey(eventType);
+    m_cachedCombatEventSoundsEnabled[eventType] =
+        m_settings->value(soundEnabledKey, DEFAULT_COMBAT_SOUND_ENABLED)
+            .toBool();
+
+    QString soundFileKey = combatEventSoundFileKey(eventType);
+    m_cachedCombatEventSoundFiles[eventType] =
+        m_settings->value(soundFileKey, QString()).toString();
+
+    QString soundVolumeKey = combatEventSoundVolumeKey(eventType);
+    m_cachedCombatEventSoundVolumes[eventType] =
+        m_settings->value(soundVolumeKey, DEFAULT_COMBAT_SOUND_VOLUME).toInt();
   }
 
   m_cachedEnabledCombatEventTypes =
@@ -1692,4 +1705,38 @@ void Config::setCombatBorderStyle(const QString &eventType, BorderStyle style) {
   QString key = combatBorderStyleKey(eventType);
   m_settings->setValue(key, static_cast<int>(style));
   m_cachedCombatBorderStyles[eventType] = style;
+}
+
+bool Config::combatEventSoundEnabled(const QString &eventType) const {
+  return m_cachedCombatEventSoundsEnabled.value(eventType,
+                                                DEFAULT_COMBAT_SOUND_ENABLED);
+}
+
+void Config::setCombatEventSoundEnabled(const QString &eventType,
+                                        bool enabled) {
+  QString key = combatEventSoundEnabledKey(eventType);
+  m_settings->setValue(key, enabled);
+  m_cachedCombatEventSoundsEnabled[eventType] = enabled;
+}
+
+QString Config::combatEventSoundFile(const QString &eventType) const {
+  return m_cachedCombatEventSoundFiles.value(eventType, QString());
+}
+
+void Config::setCombatEventSoundFile(const QString &eventType,
+                                     const QString &filePath) {
+  QString key = combatEventSoundFileKey(eventType);
+  m_settings->setValue(key, filePath);
+  m_cachedCombatEventSoundFiles[eventType] = filePath;
+}
+
+int Config::combatEventSoundVolume(const QString &eventType) const {
+  return m_cachedCombatEventSoundVolumes.value(eventType,
+                                               DEFAULT_COMBAT_SOUND_VOLUME);
+}
+
+void Config::setCombatEventSoundVolume(const QString &eventType, int volume) {
+  QString key = combatEventSoundVolumeKey(eventType);
+  m_settings->setValue(key, volume);
+  m_cachedCombatEventSoundVolumes[eventType] = volume;
 }

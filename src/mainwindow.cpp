@@ -9,6 +9,8 @@
 #include <QAction>
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QFont>
 #include <QGuiApplication>
 #include <QIcon>
@@ -17,6 +19,7 @@
 #include <QProcess>
 #include <QScreen>
 #include <QSet>
+#include <QUrl>
 #include <algorithm>
 
 static const QString NOT_LOGGED_IN_TEXT = QStringLiteral("Not Logged In");
@@ -30,6 +33,7 @@ QPointer<MainWindow> MainWindow::s_instance;
 MainWindow::MainWindow(QObject *parent)
     : QObject(parent), windowCapture(std::make_unique<WindowCapture>()),
       hotkeyManager(std::make_unique<HotkeyManager>()),
+      m_soundEffect(std::make_unique<QSoundEffect>()),
       m_notLoggedInCycleIndex(-1), m_nonEVECycleIndex(-1) {
   s_instance = this;
 
@@ -2195,6 +2199,22 @@ void MainWindow::onCombatEventDetected(const QString &characterName,
     widget->setCombatMessage(eventText, eventType);
     qDebug() << "MainWindow: Updated thumbnail for" << characterName
              << "with combat message:" << eventText;
+
+    // Play sound notification if enabled
+    if (cfg.combatEventSoundEnabled(eventType)) {
+      QString soundFile = cfg.combatEventSoundFile(eventType);
+      if (!soundFile.isEmpty() && QFile::exists(soundFile)) {
+        m_soundEffect->setSource(QUrl::fromLocalFile(soundFile));
+        qreal volume = cfg.combatEventSoundVolume(eventType) / 100.0;
+        m_soundEffect->setVolume(volume);
+        m_soundEffect->play();
+        qDebug() << "MainWindow: Playing sound for" << eventType
+                 << "- File:" << soundFile << "- Volume:" << volume;
+      } else {
+        qDebug() << "MainWindow: Sound file not found or not set for"
+                 << eventType;
+      }
+    }
   }
 }
 

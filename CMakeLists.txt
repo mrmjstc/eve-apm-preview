@@ -11,7 +11,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Gui Network Multimedia)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_BINARY_DIR}/include)  
@@ -76,6 +76,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Widgets 
     Qt6::Gui
     Qt6::Network
+    Qt6::Multimedia
 )
 
 if(WIN32)

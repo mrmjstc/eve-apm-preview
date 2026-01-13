@@ -12,10 +12,13 @@
 #include <QMap>
 #include <QPushButton>
 #include <QSet>
+#include <QSlider>
+#include <QSoundEffect>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QTableWidget>
 #include <QVariantMap>
+#include <memory>
 
 class HotkeyCapture;
 class QVBoxLayout;
@@ -352,6 +355,13 @@ private:
   QMap<QString, QLabel *> m_eventColorLabels;
   QMap<QString, QLabel *> m_eventBorderStyleLabels;
   QMap<QString, QCheckBox *> m_eventSuppressFocusedCheckBoxes;
+  QMap<QString, QCheckBox *> m_eventSoundCheckBoxes;
+  QMap<QString, QLabel *> m_eventSoundFileLabels;
+  QMap<QString, QPushButton *> m_eventSoundFileButtons;
+  QMap<QString, QPushButton *> m_eventSoundPlayButtons;
+  QMap<QString, QLabel *> m_eventSoundVolumeLabels;
+  QMap<QString, QSlider *> m_eventSoundVolumeSliders;
+  QMap<QString, QLabel *> m_eventSoundVolumeValueLabels;
   QLabel *m_miningTimeoutLabel;
 
   QVariantMap m_legacySettings;
@@ -384,6 +394,8 @@ private:
   QPushButton *m_downloadUpdateButton;
   QNetworkAccessManager *m_networkManager;
   QString m_latestReleaseUrl;
+
+  std::unique_ptr<QSoundEffect> m_testSoundEffect;
 
   SettingBindingManager m_bindingManager;
 };

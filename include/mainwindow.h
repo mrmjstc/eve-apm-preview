@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QPoint>
 #include <QPointer>
+#include <QSoundEffect>
 #include <QSystemTrayIcon>
 #include <QTimer>
 #include <QVector>
@@ -71,6 +72,7 @@ private:
   std::unique_ptr<WindowCapture> windowCapture;
   std::unique_ptr<HotkeyManager> hotkeyManager;
   std::unique_ptr<ChatLogReader> m_chatLogReader;
+  std::unique_ptr<QSoundEffect> m_soundEffect;
   QHash<HWND, ThumbnailWidget *> thumbnails;
   QHash<QString, HWND> m_characterToWindow;
   QHash<HWND, QString> m_windowToCharacter;
