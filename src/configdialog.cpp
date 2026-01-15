@@ -2522,10 +2522,9 @@ void ConfigDialog::createDataSourcesPage() {
   combatTabs->addTab(
       createEventTab("decloak", "Decloak Events", m_combatEventDecloakCheck),
       "Decloak");
-  combatTabs->addTab(
-    createEventTab("convo_request", "Convo Request", m_combatEventConvoRequestCheck),
-    "Convo Request"
-  );  
+  combatTabs->addTab(createEventTab("convo_request", "Convo Request",
+                                    m_combatEventConvoRequestCheck),
+                     "Convo Request");
   combatTabs->addTab(createEventTab("crystal_broke", "Mining Crystal Broke",
                                     m_combatEventCrystalBrokeCheck),
                      "Crystal Broke");
@@ -2880,7 +2879,7 @@ void ConfigDialog::createDataSourcesPage() {
   connectEventCheckbox("fleet_invite", m_combatEventFleetInviteCheck);
   connectEventCheckbox("follow_warp", m_combatEventFollowWarpCheck);
   connectEventCheckbox("regroup", m_combatEventRegroupCheck);
-  connectEventCheckbox("regroup", m_combatEventConvoRequestCheck);
+  connectEventCheckbox("convo_request", m_combatEventConvoRequestCheck);
   connectEventCheckbox("compression", m_combatEventCompressionCheck);
   connectEventCheckbox("decloak", m_combatEventDecloakCheck);
   connectEventCheckbox("crystal_broke", m_combatEventCrystalBrokeCheck);
@@ -3553,7 +3552,7 @@ void ConfigDialog::setupBindings() {
       },
       true));
 
-    m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_combatEventConvoRequestCheck,
       [&config]() { return config.isCombatEventTypeEnabled("convo_request"); },
       [&config](bool value) {
