@@ -1,3 +1,5 @@
+<img width="985" height="832" alt="PaeWES9OJ0" src="https://github.com/user-attachments/assets/f7a64339-f57b-4296-931e-43af7885e117" />
+
 # EVE-APM Preview
 
 ## What is EVE-APM Preview?
@@ -78,3 +80,4 @@ This is a C++ Qt reimplementation, and heavily inspired by the original EVE-O Pr
 ---
 
 *EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. All other trademarks are the property of their respective owners. This application is not affiliated with or endorsed by CCP hf.*
+
