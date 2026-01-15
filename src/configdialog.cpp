@@ -2522,6 +2522,9 @@ void ConfigDialog::createDataSourcesPage() {
   combatTabs->addTab(
       createEventTab("decloak", "Decloak Events", m_combatEventDecloakCheck),
       "Decloak");
+  combatTabs->addTab(createEventTab("convo_request", "Convo Request",
+                                    m_combatEventConvoRequestCheck),
+                     "Convo Request");
   combatTabs->addTab(createEventTab("crystal_broke", "Mining Crystal Broke",
                                     m_combatEventCrystalBrokeCheck),
                      "Crystal Broke");
@@ -2876,6 +2879,7 @@ void ConfigDialog::createDataSourcesPage() {
   connectEventCheckbox("fleet_invite", m_combatEventFleetInviteCheck);
   connectEventCheckbox("follow_warp", m_combatEventFollowWarpCheck);
   connectEventCheckbox("regroup", m_combatEventRegroupCheck);
+  connectEventCheckbox("convo_request", m_combatEventConvoRequestCheck);
   connectEventCheckbox("compression", m_combatEventCompressionCheck);
   connectEventCheckbox("decloak", m_combatEventDecloakCheck);
   connectEventCheckbox("crystal_broke", m_combatEventCrystalBrokeCheck);
@@ -2901,6 +2905,7 @@ void ConfigDialog::createDataSourcesPage() {
         m_combatEventCompressionCheck->setEnabled(checked);
         m_combatEventDecloakCheck->setEnabled(checked);
         m_combatEventCrystalBrokeCheck->setEnabled(checked);
+        m_combatEventConvoRequestCheck->setEnabled(checked);
         m_combatEventMiningStopCheck->setEnabled(checked);
 
         bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
@@ -2914,6 +2919,7 @@ void ConfigDialog::createDataSourcesPage() {
             {"compression", m_combatEventCompressionCheck},
             {"decloak", m_combatEventDecloakCheck},
             {"crystal_broke", m_combatEventCrystalBrokeCheck},
+            {"convo_request", m_combatEventConvoRequestCheck},
             {"mining_stopped", m_combatEventMiningStopCheck}};
 
         for (auto it = eventCheckboxes.constBegin();
@@ -3547,6 +3553,21 @@ void ConfigDialog::setupBindings() {
       true));
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_combatEventConvoRequestCheck,
+      [&config]() { return config.isCombatEventTypeEnabled("convo_request"); },
+      [&config](bool value) {
+        QStringList types = config.enabledCombatEventTypes();
+        if (value && !types.contains("convo_request")) {
+          types << "convo_request";
+          config.setEnabledCombatEventTypes(types);
+        } else if (!value) {
+          types.removeAll("convo_request");
+          config.setEnabledCombatEventTypes(types);
+        }
+      },
+      true));
+
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_combatEventMiningStopCheck,
       [&config]() { return config.isCombatEventTypeEnabled("mining_stopped"); },
       [&config](bool value) {
@@ -3854,6 +3875,7 @@ void ConfigDialog::loadSettings() {
   m_combatEventFollowWarpCheck->setEnabled(combatMessagesEnabled);
   m_combatEventRegroupCheck->setEnabled(combatMessagesEnabled);
   m_combatEventCompressionCheck->setEnabled(combatMessagesEnabled);
+  m_combatEventConvoRequestCheck->setEnabled(combatMessagesEnabled);
   m_combatEventMiningStopCheck->setEnabled(combatMessagesEnabled);
 
   bool miningStopChecked = m_combatEventMiningStopCheck->isChecked();
@@ -3865,6 +3887,7 @@ void ConfigDialog::loadSettings() {
       {"follow_warp", m_combatEventFollowWarpCheck},
       {"regroup", m_combatEventRegroupCheck},
       {"compression", m_combatEventCompressionCheck},
+      {"convo_request", m_combatEventConvoRequestCheck},
       {"mining_stopped", m_combatEventMiningStopCheck}};
 
   for (auto it = eventCheckboxes.constBegin(); it != eventCheckboxes.constEnd();
@@ -7433,6 +7456,8 @@ void ConfigDialog::onResetCombatMessagesDefaults() {
         checkbox = m_combatEventRegroupCheck;
       else if (eventType == "compression")
         checkbox = m_combatEventCompressionCheck;
+      else if (eventType == "convo_request")
+        checkbox = m_combatEventConvoRequestCheck;
       else if (eventType == "mining_stopped")
         checkbox = m_combatEventMiningStopCheck;
 

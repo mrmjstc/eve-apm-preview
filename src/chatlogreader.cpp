@@ -1260,6 +1260,9 @@ void ChatLogWorker::parseLogLine(const QString &line,
   if (nonePos != -1) {
     int jumpingPos =
         workingLine.indexOf("Jumping", nonePos, Qt::CaseInsensitive);
+    int convoRequestPos =
+        workingLine.indexOf("conversation", nonePos, Qt::CaseInsensitive);
+
     if (jumpingPos != -1) {
       static QRegularExpression jumpPattern(
           R"(\[\s*([\d.\s:]+)\]\s*\(None\)\s*Jumping from\s+(.+?)\s+to\s+(.+))");
@@ -1309,6 +1312,24 @@ void ChatLogWorker::parseLogLine(const QString &line,
                    << "ms, gamelog:" << newSystem << "at" << updateTime
                    << "ms), ignoring";
         }
+      }
+    }
+
+    // Check for conversation requests: "(None) <a href=showinfo:...> ... </a> is inviting you to a conversation"
+    // Note: Only works when coming from someone not in the receiver's contacts.
+    if (convoRequestPos != -1) {
+      static QRegularExpression convoRequestPattern(
+          R"(\[ ([^\]]+) \] \(None\) <a href=showinfo:\d+//\d+>([^<]+)</a> is inviting you to a conversation\.)");
+
+      QRegularExpressionMatch convoRequestMatch = convoRequestPattern.match(workingLine);
+      if (convoRequestMatch.hasMatch()) {
+        QString timestampStr = convoRequestMatch.captured(1).trimmed();
+        QString fromPilot = convoRequestMatch.captured(2).trimmed();
+        QString eventText = QString("Convo from: %1").arg(fromPilot);
+
+        qDebug() << "ChatLogWorker: Conversation request for"
+          << characterName << "- From:" << fromPilot;
+        emit combatEventDetected(characterName, "convo_request", eventText);
       }
     }
   }

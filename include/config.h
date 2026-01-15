@@ -347,7 +347,7 @@ public:
   static inline QStringList DEFAULT_COMBAT_MESSAGE_EVENT_TYPES() {
     return QStringList{"fleet_invite",  "follow_warp", "regroup",
                        "compression",   "decloak",     "crystal_broke",
-                       "mining_stopped"};
+                       "mining_stopped", "convo_request"};
   }
 
 private:
@@ -581,10 +581,10 @@ private:
 
   static inline QMap<QString, QString> DEFAULT_EVENT_COLORS() {
     return QMap<QString, QString>{
-        {"fleet_invite", "#4A9EFF"},  {"follow_warp", "#FFD700"},
-        {"regroup", "#FF8C42"},       {"compression", "#7FFF00"},
-        {"decloak", "#FFFFFF"},       {"crystal_broke", "#008080"},
-        {"mining_stopped", "#FF6B6B"}};
+        {"fleet_invite", "#4A9EFF"},    {"follow_warp", "#FFD700"},
+        {"regroup", "#FF8C42"},         {"compression", "#7FFF00"},
+        {"decloak", "#FFFFFF"},         {"crystal_broke", "#008080"},
+        {"mining_stopped", "#FF6B6B"}, {"convo_request", "#FFAAFF"}};
   }
 
   static constexpr const char *KEY_MINING_TIMEOUT_SECONDS =
