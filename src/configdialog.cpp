@@ -208,7 +208,7 @@ void ConfigDialog::createCategoryList() {
   m_categoryList->addItem("Hotkeys");
   m_categoryList->addItem("Behavior");
   m_categoryList->addItem("Non-EVE Thumbnails");
-  m_categoryList->addItem("Data Sources");
+  m_categoryList->addItem("Logs");
   m_categoryList->addItem("Legacy Settings");
   m_categoryList->addItem("About");
   m_categoryList->setCurrentRow(0);
@@ -739,7 +739,7 @@ void ConfigDialog::createAppearancePage() {
 
   QLabel *overlaysInfoTop =
       new QLabel("Configure text overlays displayed on thumbnail windows. "
-                 "System names require Data Sources > Chat log and Game log "
+                 "System names require Logs > Chat log and Game log "
                  "monitoring enabled.");
   overlaysInfoTop->setWordWrap(true);
   overlaysInfoTop->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
@@ -2168,7 +2168,7 @@ void ConfigDialog::createDataSourcesPage() {
 
   layout->addWidget(logMonitoringSection);
 
-  // Combat Event Messages Section with Tabs
+  // Combat Log Events Section with Tabs
   QWidget *combatSection = new QWidget();
   combatSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *combatSectionLayout = new QVBoxLayout(combatSection);
@@ -2178,7 +2178,7 @@ void ConfigDialog::createDataSourcesPage() {
   tagWidget(combatSection, {"combat", "event", "message", "notification",
                             "fleet", "warp", "regroup", "compression"});
 
-  QLabel *combatHeader = new QLabel("Combat Event Messages");
+  QLabel *combatHeader = new QLabel("Combat Log Events");
   combatHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
   combatSectionLayout->addWidget(combatHeader);
 
@@ -2191,7 +2191,7 @@ void ConfigDialog::createDataSourcesPage() {
   combatSectionLayout->addWidget(combatInfoLabel);
 
   // Master enable checkbox
-  m_showCombatMessagesCheck = new QCheckBox("Show combat event messages");
+  m_showCombatMessagesCheck = new QCheckBox("Show combat log event messages");
   m_showCombatMessagesCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
   combatSectionLayout->addWidget(m_showCombatMessagesCheck);
 
@@ -7455,8 +7455,8 @@ void ConfigDialog::onResetNonEVEDefaults() {
 
 void ConfigDialog::onResetCombatMessagesDefaults() {
   QMessageBox msgBox(this);
-  msgBox.setWindowTitle("Reset Combat Event Messages Settings");
-  msgBox.setText("Are you sure you want to reset all combat event messages "
+  msgBox.setWindowTitle("Reset Combat Log Events Settings");
+  msgBox.setText("Are you sure you want to reset all combat log events "
                  "settings to their default values?");
   msgBox.setInformativeText("This will reset position, font, event types, "
                             "colors, durations, and mining timeout.");
@@ -7536,7 +7536,7 @@ void ConfigDialog::onResetCombatMessagesDefaults() {
 
     QMessageBox::information(
         this, "Reset Complete",
-        "Combat event messages settings have been reset to defaults.\n\n"
+        "Combat log events settings have been reset to defaults.\n\n"
         "Click Apply or OK to save the changes.");
   }
 }
