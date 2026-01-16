@@ -903,13 +903,9 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
   QRectF borderRect(halfWidth, halfWidth, width() - 2 * halfWidth,
                     height() - 2 * halfWidth);
 
-  if (shouldDrawCombatBorder) {
-    QColor borderColor = cfg.combatEventColor(m_combatEventType);
-    int borderWidth = cfg.highlightBorderWidth();
-    BorderStyle style = cfg.combatBorderStyle(m_combatEventType);
-
-    drawBorderWithStyle(painter, borderRect, borderColor, borderWidth, style);
-  } else if (shouldDrawActiveBorder) {
+  // Draw both borders when both conditions are met
+  // Active border is drawn on the outside, combat border on the inside
+  if (shouldDrawActiveBorder) {
     QColor borderColor = cfg.getCharacterBorderColor(m_characterName);
     if (!borderColor.isValid()) {
       borderColor = cfg.highlightColor();
@@ -919,6 +915,25 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
     BorderStyle style = cfg.activeBorderStyle();
 
     drawBorderWithStyle(painter, borderRect, borderColor, borderWidth, style);
+  }
+
+  if (shouldDrawCombatBorder) {
+    QColor borderColor = cfg.combatEventColor(m_combatEventType);
+    int borderWidth = cfg.highlightBorderWidth();
+    BorderStyle style = cfg.combatBorderStyle(m_combatEventType);
+
+    // If active border is also being drawn, inset the combat border
+    QRectF combatBorderRect = borderRect;
+    if (shouldDrawActiveBorder) {
+      // Offset the combat border inside by the border width
+      qreal offset = borderWidth;
+      combatBorderRect = QRectF(halfWidth + offset, halfWidth + offset,
+                                width() - 2 * (halfWidth + offset),
+                                height() - 2 * (halfWidth + offset));
+    }
+
+    drawBorderWithStyle(painter, combatBorderRect, borderColor, borderWidth,
+                        style);
   }
 }
 
