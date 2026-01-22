@@ -1687,6 +1687,51 @@ void ConfigDialog::createBehaviorPage() {
 
   emit m_minimizeInactiveCheck->toggled(m_minimizeInactiveCheck->isChecked());
 
+  // Thumbnail Interactions Section
+  QWidget *interactionsSection = new QWidget();
+  interactionsSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *interactionsSectionLayout = new QVBoxLayout(interactionsSection);
+  interactionsSectionLayout->setContentsMargins(16, 12, 16, 12);
+  interactionsSectionLayout->setSpacing(10);
+
+  tagWidget(interactionsSection,
+            {"thumbnail", "interaction", "click", "mouse", "switch", "behavior",
+             "down", "up", "press", "release"});
+
+  QLabel *interactionsHeader = new QLabel("Thumbnail Interactions");
+  interactionsHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
+  interactionsSectionLayout->addWidget(interactionsHeader);
+
+  QLabel *interactionsInfoLabel = new QLabel(
+      "Configure how clicking on thumbnails behaves when switching windows.");
+  interactionsInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
+  interactionsSectionLayout->addWidget(interactionsInfoLabel);
+
+  QGridLayout *interactionsGrid = new QGridLayout();
+  interactionsGrid->setSpacing(10);
+  interactionsGrid->setColumnMinimumWidth(0, 120);
+  interactionsGrid->setColumnStretch(2, 1);
+
+  m_switchModeLabel = new QLabel("Switch trigger:");
+  m_switchModeLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_switchModeCombo = new QComboBox();
+  m_switchModeCombo->addItem("Mouse Up (Release)");
+  m_switchModeCombo->addItem("Mouse Down (Press)");
+  m_switchModeCombo->setFixedWidth(200);
+  m_switchModeCombo->setStyleSheet(
+      StyleSheet::getComboBoxWithDisabledStyleSheet());
+  m_switchModeCombo->setToolTip("Mouse Up: Switch windows when you release the "
+                                "mouse button (traditional).\n"
+                                "Mouse Down: Switch windows immediately when "
+                                "you press the mouse button (faster).");
+
+  interactionsGrid->addWidget(m_switchModeLabel, 0, 0, Qt::AlignLeft);
+  interactionsGrid->addWidget(m_switchModeCombo, 0, 1);
+
+  interactionsSectionLayout->addLayout(interactionsGrid);
+
+  layout->addWidget(interactionsSection);
+
   QWidget *positionSection = new QWidget();
   positionSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *positionSectionLayout = new QVBoxLayout(positionSection);
@@ -3267,6 +3312,11 @@ void ConfigDialog::setupBindings() {
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_alwaysOnTopCheck, [&config]() { return config.alwaysOnTop(); },
       [&config](bool value) { config.setAlwaysOnTop(value); }, true));
+
+  m_bindingManager.addBinding(BindingHelpers::bindComboBox(
+      m_switchModeCombo,
+      [&config]() { return config.switchOnMouseDown() ? 1 : 0; },
+      [&config](int value) { config.setSwitchOnMouseDown(value == 1); }, 0));
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_rememberPositionsCheck,

@@ -71,6 +71,9 @@ public:
   bool alwaysOnTop() const;
   void setAlwaysOnTop(bool enabled);
 
+  bool switchOnMouseDown() const;
+  void setSwitchOnMouseDown(bool enabled);
+
   bool minimizeInactiveClients() const;
   void setMinimizeInactiveClients(bool enabled);
 
@@ -306,6 +309,7 @@ public:
   static constexpr bool DEFAULT_WINDOW_MINIMIZE_INACTIVE = false;
   static constexpr int DEFAULT_WINDOW_MINIMIZE_DELAY = 100;
   static constexpr bool DEFAULT_WINDOW_SAVE_CLIENT_LOCATION = false;
+  static constexpr bool DEFAULT_WINDOW_SWITCH_ON_MOUSE_DOWN = false;
 
   static constexpr bool DEFAULT_POSITION_REMEMBER = true;
   static constexpr bool DEFAULT_POSITION_PRESERVE_LOGOUT = false;
@@ -345,8 +349,8 @@ public:
   static constexpr bool DEFAULT_COMBAT_SOUND_ENABLED = false;
   static constexpr int DEFAULT_COMBAT_SOUND_VOLUME = 70;
   static inline QStringList DEFAULT_COMBAT_MESSAGE_EVENT_TYPES() {
-    return QStringList{"fleet_invite",  "follow_warp", "regroup",
-                       "compression",   "decloak",     "crystal_broke",
+    return QStringList{"fleet_invite",   "follow_warp",  "regroup",
+                       "compression",    "decloak",      "crystal_broke",
                        "mining_stopped", "convo_request"};
   }
 
@@ -376,6 +380,7 @@ private:
   mutable QStringList m_cachedProcessNames;
 
   mutable bool m_cachedAlwaysOnTop;
+  mutable bool m_cachedSwitchOnMouseDown;
   mutable bool m_cachedMinimizeInactive;
   mutable int m_cachedMinimizeDelay;
   mutable QStringList m_cachedNeverMinimizeCharacters;
@@ -493,6 +498,8 @@ private:
       "thumbnail/hiddenCharacters";
   static constexpr const char *KEY_WINDOW_SAVE_CLIENT_LOCATION =
       "window/saveClientLocation";
+  static constexpr const char *KEY_WINDOW_SWITCH_ON_MOUSE_DOWN =
+      "window/switchOnMouseDown";
 
   static constexpr const char *KEY_POSITION_REMEMBER =
       "position/rememberPositions";
@@ -581,9 +588,9 @@ private:
 
   static inline QMap<QString, QString> DEFAULT_EVENT_COLORS() {
     return QMap<QString, QString>{
-        {"fleet_invite", "#4A9EFF"},    {"follow_warp", "#FFD700"},
-        {"regroup", "#FF8C42"},         {"compression", "#7FFF00"},
-        {"decloak", "#FFFFFF"},         {"crystal_broke", "#008080"},
+        {"fleet_invite", "#4A9EFF"},   {"follow_warp", "#FFD700"},
+        {"regroup", "#FF8C42"},        {"compression", "#7FFF00"},
+        {"decloak", "#FFFFFF"},        {"crystal_broke", "#008080"},
         {"mining_stopped", "#FF6B6B"}, {"convo_request", "#FFAAFF"}};
   }
 

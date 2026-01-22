@@ -150,6 +150,10 @@ void Config::loadCacheFromSettings() {
   m_cachedAlwaysOnTop =
       m_settings->value(KEY_WINDOW_ALWAYS_ON_TOP, DEFAULT_WINDOW_ALWAYS_ON_TOP)
           .toBool();
+  m_cachedSwitchOnMouseDown = m_settings
+                                  ->value(KEY_WINDOW_SWITCH_ON_MOUSE_DOWN,
+                                          DEFAULT_WINDOW_SWITCH_ON_MOUSE_DOWN)
+                                  .toBool();
   m_cachedMinimizeInactive = m_settings
                                  ->value(KEY_WINDOW_MINIMIZE_INACTIVE,
                                          DEFAULT_WINDOW_MINIMIZE_INACTIVE)
@@ -560,6 +564,13 @@ bool Config::alwaysOnTop() const { return m_cachedAlwaysOnTop; }
 void Config::setAlwaysOnTop(bool enabled) {
   m_settings->setValue(KEY_WINDOW_ALWAYS_ON_TOP, enabled);
   m_cachedAlwaysOnTop = enabled;
+}
+
+bool Config::switchOnMouseDown() const { return m_cachedSwitchOnMouseDown; }
+
+void Config::setSwitchOnMouseDown(bool enabled) {
+  m_settings->setValue(KEY_WINDOW_SWITCH_ON_MOUSE_DOWN, enabled);
+  m_cachedSwitchOnMouseDown = enabled;
 }
 
 bool Config::minimizeInactiveClients() const {

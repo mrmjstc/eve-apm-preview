@@ -432,6 +432,10 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
   if (cfg.lockThumbnailPositions() && !cfg.isConfigDialogOpen()) {
     if (event->button() == Qt::LeftButton) {
       m_isDragging = false;
+      // Check if we should switch on mouse down
+      if (cfg.switchOnMouseDown()) {
+        emit clicked(m_windowId);
+      }
     }
     QWidget::mousePressEvent(event);
     return;
@@ -462,6 +466,11 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
     m_dragPosition =
         event->globalPosition().toPoint() - frameGeometry().topLeft();
     m_isDragging = false;
+
+    // If switch on mouse down is enabled, emit clicked immediately
+    if (cfg.switchOnMouseDown()) {
+      emit clicked(m_windowId);
+    }
   } else if (event->button() == Qt::RightButton) {
     m_dragPosition =
         event->globalPosition().toPoint() - frameGeometry().topLeft();
@@ -554,9 +563,13 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
+  const Config &cfg = Config::instance();
   if (event->button() == Qt::LeftButton) {
     if (!m_isDragging) {
-      emit clicked(m_windowId);
+      // Only emit clicked on mouse up if not using mouse down mode
+      if (!cfg.switchOnMouseDown()) {
+        emit clicked(m_windowId);
+      }
     } else {
       if (m_isGroupDragging) {
         emit groupDragEnded(m_windowId);

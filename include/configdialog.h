@@ -204,6 +204,8 @@ private:
   bool m_skipProfileSwitchConfirmation;
 
   QCheckBox *m_alwaysOnTopCheck;
+  QComboBox *m_switchModeCombo;
+  QLabel *m_switchModeLabel;
   QCheckBox *m_rememberPositionsCheck;
   QCheckBox *m_preserveLogoutPositionsCheck;
   QCheckBox *m_enableSnappingCheck;
