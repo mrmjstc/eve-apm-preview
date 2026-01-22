@@ -32,6 +32,13 @@ Choice! You should use whatever you prefer and suits your needs, I designed this
 - **Profile Switching** - Create multiple configuration profiles and switch between them with hotkeys
 - **EVE-Focused Mode** - Optionally restrict hotkeys to only work when EVE windows have focus
 
+### Protocol Handler (eveapm://)
+- **Profile Switching** - Switch to different profiles using `eveapm://profile/<name>`
+- **Character Activation** - Bring specific characters to the front using `eveapm://character/<name>`
+- **Hotkey Management** - Suspend or resume hotkeys remotely with `eveapm://hotkey/suspend` or `eveapm://hotkey/resume`
+- **Thumbnail Control** - Hide or show thumbnails using `eveapm://thumbnail/hide` or `eveapm://thumbnail/show`
+- **Settings Access** - Open the configuration dialog with `eveapm://config/open`
+
 ### Position & Layout
 - **Remember Positions** - Thumbnails return to their saved positions when characters log in
 - **Preserve Logout Positions** - Keep thumbnail positions even after characters log out
