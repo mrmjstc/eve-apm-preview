@@ -741,27 +741,33 @@ void MainWindow::refreshWindows() {
         }
       }
 
+      // Determine if this thumbnail should be visible
+      bool shouldHideThisThumbnail = false;
+
       if (isEVEClient && characterName.isEmpty()) {
         QString newDisplayName =
             showNotLoggedInOverlay ? NOT_LOGGED_IN_TEXT : "";
         thumbWidget->setCharacterName(newDisplayName);
         thumbWidget->setSystemName(QString());
-        if (!m_thumbnailsManuallyHidden &&
-            !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) &&
-            !(hideActive && window.handle == activeWindow)) {
-          thumbWidget->show();
-        }
       } else if (!isEVEClient) {
         thumbWidget->setCharacterName(showNonEVEOverlay ? window.title : "");
       } else if (isEVEClient && !characterName.isEmpty()) {
         if (cfg.isCharacterHidden(characterName)) {
-          thumbWidget->hide();
-        } else if (!m_thumbnailsManuallyHidden &&
-                   !(hideWhenEVENotFocused && !isEVEFocused &&
-                     !m_configDialog) &&
-                   !(hideActive && window.handle == activeWindow)) {
-          thumbWidget->show();
+          shouldHideThisThumbnail = true;
         }
+      }
+
+      // Apply consistent show/hide logic for all window types
+      if (shouldHideThisThumbnail) {
+        thumbWidget->hide();
+      } else if (m_thumbnailsManuallyHidden) {
+        thumbWidget->hide();
+      } else if (hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) {
+        thumbWidget->hide();
+      } else if (hideActive && window.handle == activeWindow) {
+        thumbWidget->hide();
+      } else {
+        thumbWidget->show();
       }
     }
   }
@@ -2011,35 +2017,39 @@ void MainWindow::applySettings() {
 
     thumb->QWidget::update();
 
+    // Apply consistent show/hide logic for all window types (EVE and non-EVE)
+    bool shouldHideThumb = false;
+
     if (isEVEClient) {
       QString characterName = m_windowToCharacter.value(hwnd);
       if (!characterName.isEmpty() && cfg.isCharacterHidden(characterName)) {
-        thumb->hide();
-      } else if (m_thumbnailsManuallyHidden) {
-        thumb->hide();
-      } else {
-        if (hideWhenEVENotFocused && !isEVECurrentlyFocused &&
-            !m_configDialog) {
-          thumb->hide();
-        } else if (hideActive && hwnd == currentActiveWindow) {
-          thumb->hide();
-        } else {
-          if (thumb->isHidden()) {
-            wchar_t titleBuf[256];
-            if (GetWindowTextW(hwnd, titleBuf, 256) > 0) {
-              QString currentTitle = QString::fromWCharArray(titleBuf);
-              QString charName =
-                  OverlayInfo::extractCharacterName(currentTitle);
-              if (!charName.isEmpty()) {
-                thumb->setTitle(currentTitle);
-                thumb->setCharacterName(charName);
-              }
-            }
-          }
+        shouldHideThumb = true;
+      }
+    }
 
-          thumb->show();
+    if (shouldHideThumb) {
+      thumb->hide();
+    } else if (m_thumbnailsManuallyHidden) {
+      thumb->hide();
+    } else if (hideWhenEVENotFocused && !isEVECurrentlyFocused &&
+               !m_configDialog) {
+      thumb->hide();
+    } else if (hideActive && hwnd == currentActiveWindow) {
+      thumb->hide();
+    } else {
+      if (isEVEClient && thumb->isHidden()) {
+        wchar_t titleBuf[256];
+        if (GetWindowTextW(hwnd, titleBuf, 256) > 0) {
+          QString currentTitle = QString::fromWCharArray(titleBuf);
+          QString charName = OverlayInfo::extractCharacterName(currentTitle);
+          if (!charName.isEmpty()) {
+            thumb->setTitle(currentTitle);
+            thumb->setCharacterName(charName);
+          }
         }
       }
+
+      thumb->show();
     }
   }
 
@@ -2343,9 +2353,14 @@ void MainWindow::toggleThumbnailsVisibility() {
           !characterName.isEmpty() && cfg.isCharacterHidden(characterName);
       bool isActive = (hwnd == m_lastActiveWindow);
 
-      if (!isHidden && !(hideActive && isActive) &&
-          !(hideWhenEVENotFocused && !isEVECurrentlyFocused &&
-            !m_configDialog)) {
+      if (isHidden) {
+        thumbnail->hide();
+      } else if (hideActive && isActive) {
+        thumbnail->hide();
+      } else if (hideWhenEVENotFocused && !isEVECurrentlyFocused &&
+                 !m_configDialog) {
+        thumbnail->hide();
+      } else {
         thumbnail->show();
       }
     }
