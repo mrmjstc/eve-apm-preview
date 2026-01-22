@@ -461,35 +461,40 @@ void ConfigDialog::createAppearancePage() {
 
   layout->addWidget(customNamesSection);
 
+  // Window Highlighting Section
   QWidget *highlightSection = new QWidget();
   highlightSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *highlightSectionLayout = new QVBoxLayout(highlightSection);
   highlightSectionLayout->setContentsMargins(16, 12, 16, 12);
   highlightSectionLayout->setSpacing(10);
 
-  tagWidget(highlightSection, {"highlight", "active", "window", "border",
-                               "color", "cyan", "frame", "outline"});
+  tagWidget(highlightSection, {"highlight", "active", "inactive", "window",
+                               "border", "color", "cyan", "frame", "outline"});
 
-  QLabel *highlightHeader = new QLabel("Active Window Highlighting");
+  QLabel *highlightHeader = new QLabel("Window Highlighting");
   highlightHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
   highlightSectionLayout->addWidget(highlightHeader);
 
   QLabel *highlightInfoLabel = new QLabel(
-      "Highlight the active EVE client window with a colored border.");
+      "Display colored borders on EVE client thumbnails. Configure separate "
+      "border styles for active and inactive windows, or use per-character "
+      "colors below.");
   highlightInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
+  highlightInfoLabel->setWordWrap(true);
   highlightSectionLayout->addWidget(highlightInfoLabel);
 
-  m_highlightActiveCheck = new QCheckBox("Highlight active window");
+  // Active border settings
+  m_highlightActiveCheck = new QCheckBox("Show border on active window");
   m_highlightActiveCheck->setStyleSheet(StyleSheet::getCheckBoxStyleSheet());
   highlightSectionLayout->addWidget(m_highlightActiveCheck);
 
-  QGridLayout *highlightGrid = new QGridLayout();
-  highlightGrid->setSpacing(10);
-  highlightGrid->setColumnMinimumWidth(0, 120);
-  highlightGrid->setColumnStretch(2, 1);
-  highlightGrid->setContentsMargins(24, 0, 0, 0);
+  QGridLayout *activeGrid = new QGridLayout();
+  activeGrid->setSpacing(10);
+  activeGrid->setColumnMinimumWidth(0, 120);
+  activeGrid->setColumnStretch(2, 1);
+  activeGrid->setContentsMargins(24, 0, 0, 0);
 
-  m_highlightColorLabel = new QLabel("Color:");
+  m_highlightColorLabel = new QLabel("Active color:");
   m_highlightColorLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_highlightColorButton = new QPushButton();
   m_highlightColorButton->setFixedSize(150, 32);
@@ -497,7 +502,7 @@ void ConfigDialog::createAppearancePage() {
   connect(m_highlightColorButton, &QPushButton::clicked, this,
           &ConfigDialog::onColorButtonClicked);
 
-  m_highlightBorderWidthLabel = new QLabel("Border width:");
+  m_highlightBorderWidthLabel = new QLabel("Active width:");
   m_highlightBorderWidthLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_highlightBorderWidthSpin = new QSpinBox();
   m_highlightBorderWidthSpin->setRange(1, 10);
@@ -505,7 +510,7 @@ void ConfigDialog::createAppearancePage() {
   m_highlightBorderWidthSpin->setFixedWidth(150);
   m_highlightBorderWidthSpin->setStyleSheet(StyleSheet::getSpinBoxStyleSheet());
 
-  m_activeBorderStyleLabel = new QLabel("Border style:");
+  m_activeBorderStyleLabel = new QLabel("Active style:");
   m_activeBorderStyleLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
   m_activeBorderStyleCombo = new QComboBox();
   m_activeBorderStyleCombo->addItem("Solid",
@@ -541,14 +546,89 @@ void ConfigDialog::createAppearancePage() {
   m_activeBorderStyleCombo->setFixedWidth(150);
   m_activeBorderStyleCombo->setStyleSheet(StyleSheet::getComboBoxStyleSheet());
 
-  highlightGrid->addWidget(m_highlightColorLabel, 0, 0, Qt::AlignLeft);
-  highlightGrid->addWidget(m_highlightColorButton, 0, 1);
-  highlightGrid->addWidget(m_highlightBorderWidthLabel, 1, 0, Qt::AlignLeft);
-  highlightGrid->addWidget(m_highlightBorderWidthSpin, 1, 1);
-  highlightGrid->addWidget(m_activeBorderStyleLabel, 2, 0, Qt::AlignLeft);
-  highlightGrid->addWidget(m_activeBorderStyleCombo, 2, 1);
+  activeGrid->addWidget(m_highlightColorLabel, 0, 0, Qt::AlignLeft);
+  activeGrid->addWidget(m_highlightColorButton, 0, 1);
+  activeGrid->addWidget(m_highlightBorderWidthLabel, 1, 0, Qt::AlignLeft);
+  activeGrid->addWidget(m_highlightBorderWidthSpin, 1, 1);
+  activeGrid->addWidget(m_activeBorderStyleLabel, 2, 0, Qt::AlignLeft);
+  activeGrid->addWidget(m_activeBorderStyleCombo, 2, 1);
 
-  highlightSectionLayout->addLayout(highlightGrid);
+  highlightSectionLayout->addLayout(activeGrid);
+
+  // Inactive border settings
+  m_showInactiveBordersCheck = new QCheckBox("Show border on inactive windows");
+  m_showInactiveBordersCheck->setStyleSheet(
+      StyleSheet::getCheckBoxStyleSheet());
+  highlightSectionLayout->addWidget(m_showInactiveBordersCheck);
+
+  QGridLayout *inactiveGrid = new QGridLayout();
+  inactiveGrid->setSpacing(10);
+  inactiveGrid->setColumnMinimumWidth(0, 120);
+  inactiveGrid->setColumnStretch(2, 1);
+  inactiveGrid->setContentsMargins(24, 0, 0, 0);
+
+  m_inactiveBorderColorLabel = new QLabel("Inactive color:");
+  m_inactiveBorderColorLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_inactiveBorderColorButton = new QPushButton();
+  m_inactiveBorderColorButton->setFixedSize(150, 32);
+  m_inactiveBorderColorButton->setCursor(Qt::PointingHandCursor);
+  connect(m_inactiveBorderColorButton, &QPushButton::clicked, this,
+          &ConfigDialog::onColorButtonClicked);
+
+  m_inactiveBorderWidthLabel = new QLabel("Inactive width:");
+  m_inactiveBorderWidthLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_inactiveBorderWidthSpin = new QSpinBox();
+  m_inactiveBorderWidthSpin->setFixedWidth(150);
+  m_inactiveBorderWidthSpin->setMinimum(1);
+  m_inactiveBorderWidthSpin->setMaximum(20);
+  m_inactiveBorderWidthSpin->setSuffix(" px");
+  m_inactiveBorderWidthSpin->setStyleSheet(StyleSheet::getSpinBoxStyleSheet());
+
+  m_inactiveBorderStyleLabel = new QLabel("Inactive style:");
+  m_inactiveBorderStyleLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_inactiveBorderStyleCombo = new QComboBox();
+  m_inactiveBorderStyleCombo->addItem("Solid",
+                                      static_cast<int>(BorderStyle::Solid));
+  m_inactiveBorderStyleCombo->addItem("Dashed",
+                                      static_cast<int>(BorderStyle::Dashed));
+  m_inactiveBorderStyleCombo->addItem("Dotted",
+                                      static_cast<int>(BorderStyle::Dotted));
+  m_inactiveBorderStyleCombo->addItem("Dash-Dot",
+                                      static_cast<int>(BorderStyle::DashDot));
+  m_inactiveBorderStyleCombo->addItem(
+      "Faded Edges", static_cast<int>(BorderStyle::FadedEdges));
+  m_inactiveBorderStyleCombo->addItem(
+      "Corner Accents", static_cast<int>(BorderStyle::CornerAccents));
+  m_inactiveBorderStyleCombo->addItem(
+      "Rounded Corners", static_cast<int>(BorderStyle::RoundedCorners));
+  m_inactiveBorderStyleCombo->addItem("Neon",
+                                      static_cast<int>(BorderStyle::Neon));
+  m_inactiveBorderStyleCombo->addItem("Shimmer",
+                                      static_cast<int>(BorderStyle::Shimmer));
+  m_inactiveBorderStyleCombo->addItem("Thick/Thin",
+                                      static_cast<int>(BorderStyle::ThickThin));
+  m_inactiveBorderStyleCombo->addItem(
+      "Electric Arc", static_cast<int>(BorderStyle::ElectricArc));
+  m_inactiveBorderStyleCombo->addItem("Rainbow",
+                                      static_cast<int>(BorderStyle::Rainbow));
+  m_inactiveBorderStyleCombo->addItem(
+      "Breathing Glow", static_cast<int>(BorderStyle::BreathingGlow));
+  m_inactiveBorderStyleCombo->addItem(
+      "Double Glow", static_cast<int>(BorderStyle::DoubleGlow));
+  m_inactiveBorderStyleCombo->addItem("Zigzag",
+                                      static_cast<int>(BorderStyle::Zigzag));
+  m_inactiveBorderStyleCombo->setFixedWidth(150);
+  m_inactiveBorderStyleCombo->setStyleSheet(
+      StyleSheet::getComboBoxStyleSheet());
+
+  inactiveGrid->addWidget(m_inactiveBorderColorLabel, 0, 0, Qt::AlignLeft);
+  inactiveGrid->addWidget(m_inactiveBorderColorButton, 0, 1);
+  inactiveGrid->addWidget(m_inactiveBorderWidthLabel, 1, 0, Qt::AlignLeft);
+  inactiveGrid->addWidget(m_inactiveBorderWidthSpin, 1, 1);
+  inactiveGrid->addWidget(m_inactiveBorderStyleLabel, 2, 0, Qt::AlignLeft);
+  inactiveGrid->addWidget(m_inactiveBorderStyleCombo, 2, 1);
+
+  highlightSectionLayout->addLayout(inactiveGrid);
 
   layout->addWidget(highlightSection);
 
@@ -560,6 +640,16 @@ void ConfigDialog::createAppearancePage() {
             m_highlightBorderWidthSpin->setEnabled(checked);
             m_activeBorderStyleLabel->setEnabled(checked);
             m_activeBorderStyleCombo->setEnabled(checked);
+          });
+
+  connect(m_showInactiveBordersCheck, &QCheckBox::toggled, this,
+          [this](bool checked) {
+            m_inactiveBorderColorLabel->setEnabled(checked);
+            m_inactiveBorderColorButton->setEnabled(checked);
+            m_inactiveBorderWidthLabel->setEnabled(checked);
+            m_inactiveBorderWidthSpin->setEnabled(checked);
+            m_inactiveBorderStyleLabel->setEnabled(checked);
+            m_inactiveBorderStyleCombo->setEnabled(checked);
           });
 
   QWidget *charColorsSection = new QWidget();
@@ -576,12 +666,43 @@ void ConfigDialog::createAppearancePage() {
   charColorsSectionLayout->addWidget(charColorsHeader);
 
   QLabel *charColorsInfoTop =
-      new QLabel("Override the default highlight color for specific "
-                 "characters. When a character-specific color is set, it will "
-                 "be used instead of the global highlight color above.");
+      new QLabel("Override the default highlight colors for specific "
+                 "characters. Set both active and inactive border colors for "
+                 "each character. "
+                 "Per-character colors take priority over global settings.");
   charColorsInfoTop->setWordWrap(true);
   charColorsInfoTop->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
   charColorsSectionLayout->addWidget(charColorsInfoTop);
+
+  // Add header row for column labels
+  QWidget *headerRow = new QWidget();
+  QHBoxLayout *headerLayout = new QHBoxLayout(headerRow);
+  headerLayout->setContentsMargins(12, 0, 12, 0);
+  headerLayout->setSpacing(8);
+
+  QLabel *nameHeader = new QLabel("Character Name");
+  nameHeader->setStyleSheet("QLabel { color: #aaaaaa; font-weight: bold; }");
+  headerLayout->addWidget(nameHeader, 1);
+
+  QLabel *activeHeader = new QLabel("  Active");
+  activeHeader->setStyleSheet("QLabel { color: #aaaaaa; font-weight: bold; }");
+  activeHeader->setFixedWidth(80);
+  activeHeader->setAlignment(Qt::AlignLeft);
+  headerLayout->addWidget(activeHeader);
+
+  QLabel *inactiveHeader = new QLabel("Inactive");
+  inactiveHeader->setStyleSheet(
+      "QLabel { color: #aaaaaa; font-weight: bold; }");
+  inactiveHeader->setFixedWidth(80);
+  inactiveHeader->setAlignment(Qt::AlignLeft);
+  headerLayout->addWidget(inactiveHeader);
+
+  // Spacer for delete button column
+  QLabel *deleteHeader = new QLabel("");
+  deleteHeader->setFixedWidth(32);
+  headerLayout->addWidget(deleteHeader);
+
+  charColorsSectionLayout->addWidget(headerRow);
 
   m_characterColorsScrollArea = new QScrollArea();
   m_characterColorsScrollArea->setWidgetResizable(true);
@@ -3625,6 +3746,35 @@ void ConfigDialog::setupBindings() {
       static_cast<int>(BorderStyle::Solid)));
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_showInactiveBordersCheck,
+      [&config]() { return config.showInactiveBorders(); },
+      [&config](bool value) { config.setShowInactiveBorders(value); }, false));
+
+  auto inactiveBorderColorBinding = BindingHelpers::bindColorButton(
+      m_inactiveBorderColorButton,
+      [&config]() { return config.inactiveBorderColor(); },
+      [&config](const QColor &color) { config.setInactiveBorderColor(color); },
+      QColor(128, 128, 128),
+      [this](QPushButton *btn, const QColor &color) {
+        m_inactiveBorderColor = color;
+        updateColorButton(btn, color);
+      });
+  m_bindingManager.addBinding(std::move(inactiveBorderColorBinding));
+
+  m_bindingManager.addBinding(BindingHelpers::bindSpinBox(
+      m_inactiveBorderWidthSpin,
+      [&config]() { return config.inactiveBorderWidth(); },
+      [&config](int value) { config.setInactiveBorderWidth(value); }, 2));
+
+  m_bindingManager.addBinding(BindingHelpers::bindComboBox(
+      m_inactiveBorderStyleCombo,
+      [&config]() { return static_cast<int>(config.inactiveBorderStyle()); },
+      [&config](int value) {
+        config.setInactiveBorderStyle(static_cast<BorderStyle>(value));
+      },
+      static_cast<int>(BorderStyle::Solid)));
+
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
       m_showCharacterNameCheck,
       [&config]() { return config.showCharacterName(); },
       [&config](bool value) { config.setShowCharacterName(value); }, true));
@@ -4530,6 +4680,23 @@ void ConfigDialog::loadSettings() {
   }
 
   updateProcessNamesScrollHeight();
+
+  // Set initial enable/disable states based on loaded config
+  bool showInactiveBorders = config.showInactiveBorders();
+  m_inactiveBorderColorLabel->setEnabled(showInactiveBorders);
+  m_inactiveBorderColorButton->setEnabled(showInactiveBorders);
+  m_inactiveBorderWidthLabel->setEnabled(showInactiveBorders);
+  m_inactiveBorderWidthSpin->setEnabled(showInactiveBorders);
+  m_inactiveBorderStyleLabel->setEnabled(showInactiveBorders);
+  m_inactiveBorderStyleCombo->setEnabled(showInactiveBorders);
+
+  bool highlightActive = config.highlightActiveWindow();
+  m_highlightColorLabel->setEnabled(highlightActive);
+  m_highlightColorButton->setEnabled(highlightActive);
+  m_highlightBorderWidthLabel->setEnabled(highlightActive);
+  m_highlightBorderWidthSpin->setEnabled(highlightActive);
+  m_activeBorderStyleLabel->setEnabled(highlightActive);
+  m_activeBorderStyleCombo->setEnabled(highlightActive);
 }
 
 void ConfigDialog::saveSettings() {
@@ -4862,18 +5029,34 @@ void ConfigDialog::saveSettings() {
     if (charName.isEmpty())
       continue;
 
-    QPushButton *colorButton = nullptr;
+    // Find active and inactive color buttons
+    QPushButton *activeColorButton = nullptr;
+    QPushButton *inactiveColorButton = nullptr;
     QList<QPushButton *> buttons = rowWidget->findChildren<QPushButton *>();
     for (QPushButton *btn : buttons) {
       if (btn->property("color").isValid()) {
-        colorButton = btn;
-        break;
+        QString colorType = btn->property("colorType").toString();
+        if (colorType == "active") {
+          activeColorButton = btn;
+        } else if (colorType == "inactive") {
+          inactiveColorButton = btn;
+        }
       }
     }
 
-    if (colorButton) {
-      QColor color = colorButton->property("color").value<QColor>();
+    if (activeColorButton) {
+      QColor color = activeColorButton->property("color").value<QColor>();
       config.setCharacterBorderColor(charName, color);
+    }
+
+    if (inactiveColorButton) {
+      QColor inactiveColor =
+          inactiveColorButton->property("color").value<QColor>();
+      if (inactiveColor.isValid()) {
+        config.setCharacterInactiveBorderColor(charName, inactiveColor);
+      } else {
+        config.removeCharacterInactiveBorderColor(charName);
+      }
     }
   }
 
@@ -5111,6 +5294,9 @@ void ConfigDialog::onColorButtonClicked() {
   if (button == m_highlightColorButton) {
     currentColor = m_highlightColor;
     targetColor = &m_highlightColor;
+  } else if (button == m_inactiveBorderColorButton) {
+    currentColor = m_inactiveBorderColor;
+    targetColor = &m_inactiveBorderColor;
   } else if (button == m_characterNameColorButton) {
     currentColor = m_characterNameColor;
     targetColor = &m_characterNameColor;
@@ -5739,6 +5925,9 @@ QWidget *ConfigDialog::createCycleGroupFormRow(
 
 QWidget *ConfigDialog::createCharacterColorFormRow(const QString &characterName,
                                                    const QColor &color) {
+  Config &cfg = Config::instance();
+  QColor inactiveColor = cfg.getCharacterInactiveBorderColor(characterName);
+
   QWidget *rowWidget = new QWidget();
   rowWidget->setStyleSheet(
       "QWidget { background-color: #2a2a2a; border: 1px solid #3a3a3a; "
@@ -5754,14 +5943,29 @@ QWidget *ConfigDialog::createCharacterColorFormRow(const QString &characterName,
   nameEdit->setStyleSheet(StyleSheet::getTableCellEditorStyleSheet());
   rowLayout->addWidget(nameEdit, 1);
 
-  QPushButton *colorButton = new QPushButton();
-  colorButton->setFixedSize(150, 32);
+  // Active color button
+  QPushButton *colorButton = new QPushButton("Active");
+  colorButton->setFixedSize(80, 32);
   colorButton->setCursor(Qt::PointingHandCursor);
   colorButton->setProperty("color", color);
+  colorButton->setProperty("colorType", "active");
   updateColorButton(colorButton, color);
   connect(colorButton, &QPushButton::clicked, this,
           &ConfigDialog::onCharacterColorButtonClicked);
   rowLayout->addWidget(colorButton);
+
+  // Inactive color button
+  QPushButton *inactiveColorButton = new QPushButton("Inactive");
+  inactiveColorButton->setFixedSize(80, 32);
+  inactiveColorButton->setCursor(Qt::PointingHandCursor);
+  inactiveColorButton->setProperty("color", inactiveColor);
+  inactiveColorButton->setProperty("colorType", "inactive");
+  updateColorButton(inactiveColorButton, inactiveColor.isValid()
+                                             ? inactiveColor
+                                             : QColor("#808080"));
+  connect(inactiveColorButton, &QPushButton::clicked, this,
+          &ConfigDialog::onCharacterColorButtonClicked);
+  rowLayout->addWidget(inactiveColorButton);
 
   QPushButton *deleteButton = new QPushButton("×");
   deleteButton->setFixedSize(32, 32);

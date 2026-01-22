@@ -39,6 +39,18 @@ public:
   BorderStyle activeBorderStyle() const;
   void setActiveBorderStyle(BorderStyle style);
 
+  bool showInactiveBorders() const;
+  void setShowInactiveBorders(bool enabled);
+
+  QColor inactiveBorderColor() const;
+  void setInactiveBorderColor(const QColor &color);
+
+  int inactiveBorderWidth() const;
+  void setInactiveBorderWidth(int width);
+
+  BorderStyle inactiveBorderStyle() const;
+  void setInactiveBorderStyle(BorderStyle style);
+
   int thumbnailWidth() const;
   void setThumbnailWidth(int width);
 
@@ -115,6 +127,12 @@ public:
                                const QColor &color);
   void removeCharacterBorderColor(const QString &characterName);
   QHash<QString, QColor> getAllCharacterBorderColors() const;
+
+  QColor getCharacterInactiveBorderColor(const QString &characterName) const;
+  void setCharacterInactiveBorderColor(const QString &characterName,
+                                       const QColor &color);
+  void removeCharacterInactiveBorderColor(const QString &characterName);
+  QHash<QString, QColor> getAllCharacterInactiveBorderColors() const;
 
   QSize getThumbnailSize(const QString &characterName) const;
   void setThumbnailSize(const QString &characterName, const QSize &size);
@@ -315,6 +333,12 @@ public:
   static constexpr int DEFAULT_ACTIVE_BORDER_STYLE =
       static_cast<int>(BorderStyle::Solid);
 
+  static constexpr bool DEFAULT_UI_SHOW_INACTIVE_BORDERS = false;
+  static constexpr const char *DEFAULT_UI_INACTIVE_BORDER_COLOR = "#808080";
+  static constexpr int DEFAULT_UI_INACTIVE_BORDER_WIDTH = 2;
+  static constexpr int DEFAULT_INACTIVE_BORDER_STYLE =
+      static_cast<int>(BorderStyle::Solid);
+
   static constexpr int DEFAULT_THUMBNAIL_WIDTH = 240;
   static constexpr int DEFAULT_THUMBNAIL_HEIGHT = 135;
   static constexpr int DEFAULT_THUMBNAIL_OPACITY = 100;
@@ -391,6 +415,11 @@ private:
   mutable int m_cachedHighlightBorderWidth;
   mutable BorderStyle m_cachedActiveBorderStyle;
 
+  mutable bool m_cachedShowInactiveBorders;
+  mutable QColor m_cachedInactiveBorderColor;
+  mutable int m_cachedInactiveBorderWidth;
+  mutable BorderStyle m_cachedInactiveBorderStyle;
+
   mutable int m_cachedThumbnailWidth;
   mutable int m_cachedThumbnailHeight;
   mutable int m_cachedThumbnailOpacity;
@@ -462,6 +491,7 @@ private:
   mutable QMap<QString, int> m_cachedCombatEventSoundVolumes;
 
   mutable QHash<QString, QColor> m_cachedCharacterBorderColors;
+  mutable QHash<QString, QColor> m_cachedCharacterInactiveBorderColors;
   mutable QHash<QString, QPoint> m_cachedThumbnailPositions;
   mutable QHash<QString, QSize> m_cachedThumbnailSizes;
   mutable QHash<QString, QSize> m_cachedProcessThumbnailSizes;
@@ -495,6 +525,15 @@ private:
       "ui/highlightBorderWidth";
   static constexpr const char *KEY_UI_ACTIVE_BORDER_STYLE =
       "ui/activeBorderStyle";
+
+  static constexpr const char *KEY_UI_SHOW_INACTIVE_BORDERS =
+      "ui/showInactiveBorders";
+  static constexpr const char *KEY_UI_INACTIVE_BORDER_COLOR =
+      "ui/inactiveBorderColor";
+  static constexpr const char *KEY_UI_INACTIVE_BORDER_WIDTH =
+      "ui/inactiveBorderWidth";
+  static constexpr const char *KEY_UI_INACTIVE_BORDER_STYLE =
+      "ui/inactiveBorderStyle";
 
   static constexpr const char *KEY_THUMBNAIL_WIDTH = "thumbnail/width";
   static constexpr const char *KEY_THUMBNAIL_HEIGHT = "thumbnail/height";

@@ -271,6 +271,14 @@ private:
   QComboBox *m_activeBorderStyleCombo;
   QLabel *m_activeBorderStyleLabel;
   QColor m_highlightColor;
+  QCheckBox *m_showInactiveBordersCheck;
+  QPushButton *m_inactiveBorderColorButton;
+  QLabel *m_inactiveBorderColorLabel;
+  QSpinBox *m_inactiveBorderWidthSpin;
+  QLabel *m_inactiveBorderWidthLabel;
+  QComboBox *m_inactiveBorderStyleCombo;
+  QLabel *m_inactiveBorderStyleLabel;
+  QColor m_inactiveBorderColor;
   QScrollArea *m_characterColorsScrollArea;
   QWidget *m_characterColorsContainer;
   QVBoxLayout *m_characterColorsLayout;

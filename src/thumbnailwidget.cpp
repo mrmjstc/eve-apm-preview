@@ -881,8 +881,31 @@ void OverlayWidget::setActiveState(bool active) {
       m_animationPhase = 0.0;
       m_borderAnimationTimer->start();
     }
-  } else if (m_combatEventTypes.isEmpty()) {
-    m_borderAnimationTimer->stop();
+  } else {
+    // Check if inactive border needs animation
+    const Config &cfg = Config::instance();
+    QColor inactiveCharacterColor =
+        cfg.getCharacterInactiveBorderColor(m_characterName);
+    bool hasCustomInactiveColor = inactiveCharacterColor.isValid();
+    bool showGlobalInactiveBorder = cfg.showInactiveBorders();
+
+    bool needsInactiveAnimation = false;
+    if (hasCustomInactiveColor || showGlobalInactiveBorder) {
+      BorderStyle inactiveStyle = cfg.inactiveBorderStyle();
+      needsInactiveAnimation = (inactiveStyle == BorderStyle::Dashed ||
+                                inactiveStyle == BorderStyle::Neon ||
+                                inactiveStyle == BorderStyle::Shimmer ||
+                                inactiveStyle == BorderStyle::ElectricArc ||
+                                inactiveStyle == BorderStyle::Rainbow ||
+                                inactiveStyle == BorderStyle::BreathingGlow);
+    }
+
+    if (!needsInactiveAnimation && m_combatEventTypes.isEmpty()) {
+      m_borderAnimationTimer->stop();
+    } else if (needsInactiveAnimation && !m_borderAnimationTimer->isActive()) {
+      m_animationPhase = 0.0;
+      m_borderAnimationTimer->start();
+    }
   }
 
   update();
@@ -980,6 +1003,24 @@ void OverlayWidget::resumeAnimations() {
            style == BorderStyle::BreathingGlow);
     }
 
+    // Check if inactive border needs animation
+    if (!needsAnimation && !m_isActive) {
+      QColor inactiveCharacterColor =
+          cfg.getCharacterInactiveBorderColor(m_characterName);
+      bool hasCustomInactiveColor = inactiveCharacterColor.isValid();
+      bool showGlobalInactiveBorder = cfg.showInactiveBorders();
+
+      if (hasCustomInactiveColor || showGlobalInactiveBorder) {
+        BorderStyle inactiveStyle = cfg.inactiveBorderStyle();
+        needsAnimation = (inactiveStyle == BorderStyle::Dashed ||
+                          inactiveStyle == BorderStyle::Neon ||
+                          inactiveStyle == BorderStyle::Shimmer ||
+                          inactiveStyle == BorderStyle::ElectricArc ||
+                          inactiveStyle == BorderStyle::Rainbow ||
+                          inactiveStyle == BorderStyle::BreathingGlow);
+      }
+    }
+
     if (needsAnimation) {
       m_borderAnimationTimer->start();
     }
@@ -1004,7 +1045,7 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
   int borderWidth = cfg.highlightBorderWidth();
   qreal currentOffset = 0.0;
 
-  // Draw active border on the outside
+  // Draw active border on the outside (when active)
   if (shouldDrawActiveBorder) {
     QRectF borderRect(halfWidth + currentOffset, halfWidth + currentOffset,
                       width() - 2 * (halfWidth + currentOffset),
@@ -1020,6 +1061,35 @@ void OverlayWidget::paintEvent(QPaintEvent *) {
 
     // Move offset inward for next border
     currentOffset += borderWidth;
+  } else if (!m_isActive) {
+    // Draw inactive border (when not active and global setting is enabled OR
+    // per-character color is set)
+    QColor inactiveCharacterColor =
+        cfg.getCharacterInactiveBorderColor(m_characterName);
+    bool hasCustomInactiveColor = inactiveCharacterColor.isValid();
+    bool showGlobalInactiveBorder = cfg.showInactiveBorders();
+
+    if (hasCustomInactiveColor || showGlobalInactiveBorder) {
+      int inactiveBorderWidth = cfg.inactiveBorderWidth();
+      qreal inactiveHalfWidth = inactiveBorderWidth / 2.0;
+
+      QRectF borderRect(inactiveHalfWidth + currentOffset,
+                        inactiveHalfWidth + currentOffset,
+                        width() - 2 * (inactiveHalfWidth + currentOffset),
+                        height() - 2 * (inactiveHalfWidth + currentOffset));
+
+      QColor borderColor = hasCustomInactiveColor ? inactiveCharacterColor
+                                                  : cfg.inactiveBorderColor();
+
+      BorderStyle style = cfg.inactiveBorderStyle();
+      drawBorderWithStyle(painter, borderRect, borderColor, inactiveBorderWidth,
+                          style);
+
+      // Move offset inward for next border
+      currentOffset += inactiveBorderWidth;
+      borderWidth = inactiveBorderWidth;
+      halfWidth = inactiveHalfWidth;
+    }
   }
 
   // Draw all combat event borders nested inside

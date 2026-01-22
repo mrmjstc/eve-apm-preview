@@ -105,6 +105,24 @@ void Config::loadCacheFromSettings() {
       m_settings->value(KEY_UI_ACTIVE_BORDER_STYLE, DEFAULT_ACTIVE_BORDER_STYLE)
           .toInt());
 
+  m_cachedShowInactiveBorders = m_settings
+                                    ->value(KEY_UI_SHOW_INACTIVE_BORDERS,
+                                            DEFAULT_UI_SHOW_INACTIVE_BORDERS)
+                                    .toBool();
+  m_cachedInactiveBorderColor =
+      QColor(m_settings
+                 ->value(KEY_UI_INACTIVE_BORDER_COLOR,
+                         DEFAULT_UI_INACTIVE_BORDER_COLOR)
+                 .toString());
+  m_cachedInactiveBorderWidth = m_settings
+                                    ->value(KEY_UI_INACTIVE_BORDER_WIDTH,
+                                            DEFAULT_UI_INACTIVE_BORDER_WIDTH)
+                                    .toInt();
+  m_cachedInactiveBorderStyle = static_cast<BorderStyle>(
+      m_settings
+          ->value(KEY_UI_INACTIVE_BORDER_STYLE, DEFAULT_INACTIVE_BORDER_STYLE)
+          .toInt());
+
   m_cachedThumbnailWidth =
       m_settings->value(KEY_THUMBNAIL_WIDTH, DEFAULT_THUMBNAIL_WIDTH).toInt();
   m_cachedThumbnailHeight =
@@ -373,6 +391,17 @@ void Config::loadCacheFromSettings() {
   }
   m_settings->endGroup();
 
+  m_cachedCharacterInactiveBorderColors.clear();
+  m_settings->beginGroup("characterInactiveBorderColors");
+  QStringList inactiveCharacterNames = m_settings->childKeys();
+  for (const QString &characterName : inactiveCharacterNames) {
+    QColor color = m_settings->value(characterName).value<QColor>();
+    if (color.isValid()) {
+      m_cachedCharacterInactiveBorderColors[characterName] = color;
+    }
+  }
+  m_settings->endGroup();
+
   m_cachedSystemNameColors.clear();
   m_settings->beginGroup("systemNameColors");
   QStringList systemNames = m_settings->childKeys();
@@ -491,6 +520,38 @@ BorderStyle Config::activeBorderStyle() const {
 void Config::setActiveBorderStyle(BorderStyle style) {
   m_settings->setValue(KEY_UI_ACTIVE_BORDER_STYLE, static_cast<int>(style));
   m_cachedActiveBorderStyle = style;
+}
+
+bool Config::showInactiveBorders() const { return m_cachedShowInactiveBorders; }
+
+void Config::setShowInactiveBorders(bool enabled) {
+  m_settings->setValue(KEY_UI_SHOW_INACTIVE_BORDERS, enabled);
+  m_cachedShowInactiveBorders = enabled;
+}
+
+QColor Config::inactiveBorderColor() const {
+  return m_cachedInactiveBorderColor;
+}
+
+void Config::setInactiveBorderColor(const QColor &color) {
+  m_settings->setValue(KEY_UI_INACTIVE_BORDER_COLOR, color.name());
+  m_cachedInactiveBorderColor = color;
+}
+
+int Config::inactiveBorderWidth() const { return m_cachedInactiveBorderWidth; }
+
+void Config::setInactiveBorderWidth(int width) {
+  m_settings->setValue(KEY_UI_INACTIVE_BORDER_WIDTH, width);
+  m_cachedInactiveBorderWidth = width;
+}
+
+BorderStyle Config::inactiveBorderStyle() const {
+  return m_cachedInactiveBorderStyle;
+}
+
+void Config::setInactiveBorderStyle(BorderStyle style) {
+  m_settings->setValue(KEY_UI_INACTIVE_BORDER_STYLE, static_cast<int>(style));
+  m_cachedInactiveBorderStyle = style;
 }
 
 int Config::thumbnailWidth() const { return m_cachedThumbnailWidth; }
@@ -738,6 +799,28 @@ void Config::removeCharacterBorderColor(const QString &characterName) {
 
 QHash<QString, QColor> Config::getAllCharacterBorderColors() const {
   return m_cachedCharacterBorderColors;
+}
+
+QColor
+Config::getCharacterInactiveBorderColor(const QString &characterName) const {
+  return m_cachedCharacterInactiveBorderColors.value(characterName, QColor());
+}
+
+void Config::setCharacterInactiveBorderColor(const QString &characterName,
+                                             const QColor &color) {
+  QString key = QString("characterInactiveBorderColors/%1").arg(characterName);
+  m_settings->setValue(key, color.name());
+  m_cachedCharacterInactiveBorderColors[characterName] = color;
+}
+
+void Config::removeCharacterInactiveBorderColor(const QString &characterName) {
+  QString key = QString("characterInactiveBorderColors/%1").arg(characterName);
+  m_settings->remove(key);
+  m_cachedCharacterInactiveBorderColors.remove(characterName);
+}
+
+QHash<QString, QColor> Config::getAllCharacterInactiveBorderColors() const {
+  return m_cachedCharacterInactiveBorderColors;
 }
 
 QSize Config::getThumbnailSize(const QString &characterName) const {
@@ -1123,6 +1206,16 @@ void Config::initializeDefaultProfile() {
   m_settings->setValue(KEY_UI_HIGHLIGHT_COLOR, DEFAULT_UI_HIGHLIGHT_COLOR);
   m_settings->setValue(KEY_UI_HIGHLIGHT_BORDER_WIDTH,
                        DEFAULT_UI_HIGHLIGHT_BORDER_WIDTH);
+  m_settings->setValue(KEY_UI_ACTIVE_BORDER_STYLE, DEFAULT_ACTIVE_BORDER_STYLE);
+
+  m_settings->setValue(KEY_UI_SHOW_INACTIVE_BORDERS,
+                       DEFAULT_UI_SHOW_INACTIVE_BORDERS);
+  m_settings->setValue(KEY_UI_INACTIVE_BORDER_COLOR,
+                       DEFAULT_UI_INACTIVE_BORDER_COLOR);
+  m_settings->setValue(KEY_UI_INACTIVE_BORDER_WIDTH,
+                       DEFAULT_UI_INACTIVE_BORDER_WIDTH);
+  m_settings->setValue(KEY_UI_INACTIVE_BORDER_STYLE,
+                       DEFAULT_INACTIVE_BORDER_STYLE);
 
   m_settings->setValue(KEY_THUMBNAIL_WIDTH, DEFAULT_THUMBNAIL_WIDTH);
   m_settings->setValue(KEY_THUMBNAIL_HEIGHT, DEFAULT_THUMBNAIL_HEIGHT);
