@@ -211,10 +211,9 @@ void ThumbnailWidget::updateOverlays() {
           static_cast<OverlayPosition>(cfg.characterNamePosition());
       QFont characterFont = cfg.characterNameFont();
       characterFont.setBold(true);
-      OverlayElement charElement(displayName, cfg.characterNameColor(), pos,
-                                 true, characterFont,
-                                 cfg.characterNameOffsetX(),
-                                 cfg.characterNameOffsetY());
+      OverlayElement charElement(
+          displayName, cfg.characterNameColor(), pos, true, characterFont,
+          cfg.characterNameOffsetX(), cfg.characterNameOffsetY());
       m_overlays.append(charElement);
     }
   }
