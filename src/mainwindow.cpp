@@ -1765,6 +1765,10 @@ void MainWindow::activateWindow(HWND hwnd) {
   }
 
   updateActiveWindow();
+
+  // Ensure thumbnails remain on top after window activation
+  // BringWindowToTop can disrupt Z-order even with Qt::WindowStaysOnTopHint
+  ensureThumbnailsOnTop();
 }
 
 void MainWindow::minimizeInactiveWindows() {
@@ -2803,5 +2807,23 @@ void MainWindow::processProtocolUrl(const QString &url) {
   } else {
     qWarning() << "Protocol handler not initialized, cannot process URL:"
                << url;
+  }
+}
+
+/// Ensure all thumbnails remain on top after window operations
+/// BringWindowToTop() calls can disrupt Z-order even with
+/// Qt::WindowStaysOnTopHint
+void MainWindow::ensureThumbnailsOnTop() {
+  const Config &cfg = Config::instance();
+  if (!cfg.alwaysOnTop()) {
+    return; // Only restore if always-on-top is enabled
+  }
+
+  // Raise all visible thumbnails to restore proper Z-order
+  for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+    ThumbnailWidget *thumbnail = it.value();
+    if (thumbnail && thumbnail->isVisible()) {
+      thumbnail->raise();
+    }
   }
 }

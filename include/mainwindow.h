@@ -174,6 +174,7 @@ private:
   bool tryRestoreClientLocation(HWND hwnd, const QString &characterName);
   bool isWindowRectValid(const QRect &rect);
   void invalidateCycleIndicesForWindow(HWND hwnd);
+  void ensureThumbnailsOnTop();
 };
 
 #endif
