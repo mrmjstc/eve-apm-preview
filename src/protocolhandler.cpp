@@ -50,7 +50,7 @@ bool ProtocolHandler::parseAndEmit(const QUrl &url) {
   }
 
   // URL decode the path
-  QString decoded = QUrl::fromPercentEncoding(path.toUtf8()).toLower();
+  QString decoded = QUrl::fromPercentEncoding(path.toUtf8());
 
   if (host == "profile") {
     if (decoded.isEmpty()) {

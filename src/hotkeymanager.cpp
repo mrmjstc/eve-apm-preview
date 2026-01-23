@@ -671,7 +671,21 @@ void HotkeyManager::updateCharacterWindows(
 }
 
 HWND HotkeyManager::getWindowForCharacter(const QString &characterName) const {
-  return m_characterWindows.value(characterName, nullptr);
+  // Try exact match first
+  auto it = m_characterWindows.constFind(characterName);
+  if (it != m_characterWindows.constEnd()) {
+    return it.value();
+  }
+
+  // Fall back to case-insensitive search
+  for (auto iter = m_characterWindows.constBegin();
+       iter != m_characterWindows.constEnd(); ++iter) {
+    if (iter.key().compare(characterName, Qt::CaseInsensitive) == 0) {
+      return iter.value();
+    }
+  }
+
+  return nullptr;
 }
 
 QString HotkeyManager::getCharacterForWindow(HWND hwnd) const {
