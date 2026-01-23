@@ -657,6 +657,12 @@ void MainWindow::refreshWindows() {
 
       thumbnails.insert(window.handle, thumbWidget);
 
+      // Immediately update mapping cache for visibility logic to avoid cache
+      // miss during initial updateThumbnailVisibility() call
+      if (isEVEClient && !characterName.isEmpty()) {
+        m_windowToCharacter[window.handle] = characterName;
+      }
+
       m_needsMappingUpdate = true;
 
       updateSnappingLists();
