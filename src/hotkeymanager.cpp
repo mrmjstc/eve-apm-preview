@@ -334,6 +334,11 @@ bool HotkeyManager::registerHotkeys() {
   registerHotkeyList(m_toggleThumbnailsVisibilityHotkeys,
                      m_toggleThumbnailsVisibilityHotkeyIds, false);
 
+  registerHotkeyList(m_cycleProfileForwardHotkeys,
+                     m_cycleProfileForwardHotkeyIds, false);
+  registerHotkeyList(m_cycleProfileBackwardHotkeys,
+                     m_cycleProfileBackwardHotkeyIds, false);
+
   registerProfileHotkeys();
 
   if (hasMouseButtonHotkeys()) {
@@ -401,6 +406,16 @@ void HotkeyManager::unregisterHotkeys() {
     unregisterHotkey(hotkeyId);
   }
   m_toggleThumbnailsVisibilityHotkeyIds.clear();
+
+  for (int hotkeyId : m_cycleProfileForwardHotkeyIds) {
+    unregisterHotkey(hotkeyId);
+  }
+  m_cycleProfileForwardHotkeyIds.clear();
+
+  for (int hotkeyId : m_cycleProfileBackwardHotkeyIds) {
+    unregisterHotkey(hotkeyId);
+  }
+  m_cycleProfileBackwardHotkeyIds.clear();
 
   m_hotkeyIdToCharacter.clear();
   m_hotkeyIdToCharacters.clear();
@@ -665,6 +680,17 @@ HotkeyManager::getProfileHotkeys(const QString &profileName) const {
   return m_profileHotkeys.value(profileName);
 }
 
+void HotkeyManager::setCycleProfileHotkeys(
+    const QVector<HotkeyBinding> &forwardHotkeys,
+    const QVector<HotkeyBinding> &backwardHotkeys) {
+  m_cycleProfileForwardHotkeys = forwardHotkeys;
+  m_cycleProfileBackwardHotkeys = backwardHotkeys;
+  registerHotkeys();
+
+  // Save to global config
+  Config::instance().setCycleProfileHotkeys(forwardHotkeys, backwardHotkeys);
+}
+
 void HotkeyManager::updateCharacterWindows(
     const QHash<QString, HWND> &characterWindows) {
   m_characterWindows = characterWindows;
@@ -848,6 +874,14 @@ void HotkeyManager::loadFromConfig() {
   m_toggleThumbnailsVisibilityHotkeys =
       loadHotkeyList(settings, "toggleThumbnailsVisibility");
   settings.endGroup();
+
+  // Load cycle profile hotkeys from global settings
+  m_cycleProfileForwardHotkeys.clear();
+  m_cycleProfileBackwardHotkeys.clear();
+  m_cycleProfileForwardHotkeys =
+      Config::instance().getCycleProfileForwardHotkeys();
+  m_cycleProfileBackwardHotkeys =
+      Config::instance().getCycleProfileBackwardHotkeys();
 
   m_profileHotkeys.clear();
   QStringList profiles = Config::instance().listProfiles();
@@ -1096,6 +1130,16 @@ LRESULT CALLBACK HotkeyManager::MessageWindowProc(HWND hwnd, UINT msg,
 
       if (manager->m_toggleThumbnailsVisibilityHotkeyIds.contains(hotkeyId)) {
         emit manager->toggleThumbnailsVisibilityRequested();
+        return 0;
+      }
+
+      if (manager->m_cycleProfileForwardHotkeyIds.contains(hotkeyId)) {
+        emit manager->cycleProfileForwardRequested();
+        return 0;
+      }
+
+      if (manager->m_cycleProfileBackwardHotkeyIds.contains(hotkeyId)) {
+        emit manager->cycleProfileBackwardRequested();
         return 0;
       }
 

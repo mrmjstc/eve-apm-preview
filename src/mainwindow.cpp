@@ -67,6 +67,10 @@ MainWindow::MainWindow(QObject *parent)
   connect(hotkeyManager.get(),
           &HotkeyManager::toggleThumbnailsVisibilityRequested, this,
           &MainWindow::toggleThumbnailsVisibility);
+  connect(hotkeyManager.get(), &HotkeyManager::cycleProfileForwardRequested,
+          this, &MainWindow::handleCycleProfileForward);
+  connect(hotkeyManager.get(), &HotkeyManager::cycleProfileBackwardRequested,
+          this, &MainWindow::handleCycleProfileBackward);
 
   refreshTimer = new QTimer(this);
   connect(refreshTimer, &QTimer::timeout, this, &MainWindow::refreshWindows);
@@ -1933,6 +1937,58 @@ void MainWindow::handleProfileSwitch(const QString &profileName) {
   } else {
     qWarning() << "Failed to switch to profile:" << profileName;
   }
+}
+
+void MainWindow::handleCycleProfileForward() {
+  Config &cfg = Config::instance();
+  QStringList profiles = cfg.listProfiles();
+
+  if (profiles.isEmpty()) {
+    qWarning() << "No profiles available to cycle";
+    return;
+  }
+
+  QString currentProfile = cfg.getCurrentProfileName();
+  int currentIndex = profiles.indexOf(currentProfile);
+
+  if (currentIndex < 0) {
+    qWarning() << "Current profile not found in profiles list";
+    currentIndex = 0;
+  }
+
+  int nextIndex = (currentIndex + 1) % profiles.size();
+  QString nextProfile = profiles[nextIndex];
+
+  qDebug() << "Cycling profiles forward from" << currentProfile << "to"
+           << nextProfile;
+
+  handleProfileSwitch(nextProfile);
+}
+
+void MainWindow::handleCycleProfileBackward() {
+  Config &cfg = Config::instance();
+  QStringList profiles = cfg.listProfiles();
+
+  if (profiles.isEmpty()) {
+    qWarning() << "No profiles available to cycle";
+    return;
+  }
+
+  QString currentProfile = cfg.getCurrentProfileName();
+  int currentIndex = profiles.indexOf(currentProfile);
+
+  if (currentIndex < 0) {
+    qWarning() << "Current profile not found in profiles list";
+    currentIndex = 0;
+  }
+
+  int prevIndex = (currentIndex - 1 + profiles.size()) % profiles.size();
+  QString prevProfile = profiles[prevIndex];
+
+  qDebug() << "Cycling profiles backward from" << currentProfile << "to"
+           << prevProfile;
+
+  handleProfileSwitch(prevProfile);
 }
 
 void MainWindow::applySettings() {

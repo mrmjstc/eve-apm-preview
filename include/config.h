@@ -320,6 +320,11 @@ public:
                          const QVector<HotkeyBinding> &hotkeys);
   void clearProfileHotkey(const QString &profileName);
 
+  QVector<HotkeyBinding> getCycleProfileForwardHotkeys() const;
+  QVector<HotkeyBinding> getCycleProfileBackwardHotkeys() const;
+  void setCycleProfileHotkeys(const QVector<HotkeyBinding> &forwardHotkeys,
+                              const QVector<HotkeyBinding> &backwardHotkeys);
+
   static constexpr const char *DEFAULT_OVERLAY_FONT_FAMILY = "Segoe UI";
   static constexpr int DEFAULT_OVERLAY_FONT_SIZE = 10;
   static constexpr const char *KEY_GLOBAL_LAST_USED_PROFILE =
@@ -328,6 +333,10 @@ public:
   static constexpr const char *KEY_UI_SKIP_PROFILE_SWITCH_CONFIRMATION =
       "ui/skipProfileSwitchConfirmation";
   static constexpr bool DEFAULT_UI_SKIP_PROFILE_SWITCH_CONFIRMATION = false;
+  static constexpr const char *KEY_GLOBAL_CYCLE_PROFILE_FORWARD_HOTKEYS =
+      "global/cycleProfileForwardHotkeys";
+  static constexpr const char *KEY_GLOBAL_CYCLE_PROFILE_BACKWARD_HOTKEYS =
+      "global/cycleProfileBackwardHotkeys";
 
   static constexpr const char *CONFIG_VERSION = "1.0";
 

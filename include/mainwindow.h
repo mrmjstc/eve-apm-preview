@@ -60,6 +60,8 @@ private slots:
   void closeAllEVEClients();
   void minimizeAllEVEClients();
   void toggleThumbnailsVisibility();
+  void handleCycleProfileForward();
+  void handleCycleProfileBackward();
 
 private:
   QTimer *refreshTimer;

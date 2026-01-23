@@ -1463,6 +1463,79 @@ void ConfigDialog::createHotkeysPage() {
 
   layout->addWidget(toggleThumbnailsSection);
 
+  // Cycle Profile Hotkeys Section
+  QWidget *cycleProfileSection = new QWidget();
+  cycleProfileSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *cycleProfileSectionLayout = new QVBoxLayout(cycleProfileSection);
+  cycleProfileSectionLayout->setContentsMargins(16, 12, 16, 12);
+  cycleProfileSectionLayout->setSpacing(10);
+
+  tagWidget(cycleProfileSection,
+            {"cycle", "profile", "switch", "hotkey", "forward", "backward"});
+
+  QLabel *cycleProfileHeader = new QLabel("Cycle Profiles");
+  cycleProfileHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
+  cycleProfileSectionLayout->addWidget(cycleProfileHeader);
+
+  QLabel *cycleProfileInfoLabel = new QLabel(
+      "Hotkeys to cycle forward or backward through all available profiles. "
+      "These hotkeys are global and work regardless of which profile is "
+      "active.");
+  cycleProfileInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
+  cycleProfileSectionLayout->addWidget(cycleProfileInfoLabel);
+
+  QGridLayout *cycleProfileGrid = new QGridLayout();
+  cycleProfileGrid->setHorizontalSpacing(10);
+  cycleProfileGrid->setVerticalSpacing(8);
+  cycleProfileGrid->setColumnMinimumWidth(0, 120);
+  cycleProfileGrid->setColumnStretch(2, 1);
+
+  QLabel *cycleForwardLabel = new QLabel("Cycle forward:");
+  cycleForwardLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_cycleProfileForwardCapture = new HotkeyCapture();
+  m_cycleProfileForwardCapture->setFixedWidth(150);
+  m_cycleProfileForwardCapture->setStyleSheet(
+      StyleSheet::getHotkeyCaptureStandaloneStyleSheet());
+
+  connect(m_cycleProfileForwardCapture, &HotkeyCapture::hotkeyChanged, this,
+          &ConfigDialog::onHotkeyChanged);
+
+  QPushButton *clearCycleForwardButton = new QPushButton("Clear");
+  clearCycleForwardButton->setFixedWidth(60);
+  clearCycleForwardButton->setStyleSheet(
+      StyleSheet::getSecondaryButtonStyleSheet());
+  connect(clearCycleForwardButton, &QPushButton::clicked,
+          [this]() { m_cycleProfileForwardCapture->clearHotkey(); });
+
+  cycleProfileGrid->addWidget(cycleForwardLabel, 0, 0, Qt::AlignLeft);
+  cycleProfileGrid->addWidget(m_cycleProfileForwardCapture, 0, 1);
+  cycleProfileGrid->addWidget(clearCycleForwardButton, 0, 2, Qt::AlignLeft);
+
+  QLabel *cycleBackwardLabel = new QLabel("Cycle backward:");
+  cycleBackwardLabel->setStyleSheet(StyleSheet::getLabelStyleSheet());
+  m_cycleProfileBackwardCapture = new HotkeyCapture();
+  m_cycleProfileBackwardCapture->setFixedWidth(150);
+  m_cycleProfileBackwardCapture->setStyleSheet(
+      StyleSheet::getHotkeyCaptureStandaloneStyleSheet());
+
+  connect(m_cycleProfileBackwardCapture, &HotkeyCapture::hotkeyChanged, this,
+          &ConfigDialog::onHotkeyChanged);
+
+  QPushButton *clearCycleBackwardButton = new QPushButton("Clear");
+  clearCycleBackwardButton->setFixedWidth(60);
+  clearCycleBackwardButton->setStyleSheet(
+      StyleSheet::getSecondaryButtonStyleSheet());
+  connect(clearCycleBackwardButton, &QPushButton::clicked,
+          [this]() { m_cycleProfileBackwardCapture->clearHotkey(); });
+
+  cycleProfileGrid->addWidget(cycleBackwardLabel, 1, 0, Qt::AlignLeft);
+  cycleProfileGrid->addWidget(m_cycleProfileBackwardCapture, 1, 1);
+  cycleProfileGrid->addWidget(clearCycleBackwardButton, 1, 2, Qt::AlignLeft);
+
+  cycleProfileSectionLayout->addLayout(cycleProfileGrid);
+
+  layout->addWidget(cycleProfileSection);
+
   QWidget *charHotkeysSection = new QWidget();
   charHotkeysSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
   QVBoxLayout *charHotkeysSectionLayout = new QVBoxLayout(charHotkeysSection);
@@ -4166,6 +4239,36 @@ void ConfigDialog::loadSettings() {
       m_toggleThumbnailsVisibilityCapture->clearHotkey();
     }
 
+    QVector<HotkeyBinding> cycleProfileFwdBindings =
+        hotkeyMgr->getCycleProfileForwardHotkeys();
+    if (!cycleProfileFwdBindings.isEmpty()) {
+      QVector<HotkeyCombination> cycleProfileFwdCombos;
+      for (const HotkeyBinding &binding : cycleProfileFwdBindings) {
+        cycleProfileFwdCombos.append(HotkeyCombination(
+            binding.keyCode, binding.getModifiers() & MOD_CONTROL,
+            binding.getModifiers() & MOD_ALT,
+            binding.getModifiers() & MOD_SHIFT));
+      }
+      m_cycleProfileForwardCapture->setHotkeys(cycleProfileFwdCombos);
+    } else {
+      m_cycleProfileForwardCapture->clearHotkey();
+    }
+
+    QVector<HotkeyBinding> cycleProfileBwdBindings =
+        hotkeyMgr->getCycleProfileBackwardHotkeys();
+    if (!cycleProfileBwdBindings.isEmpty()) {
+      QVector<HotkeyCombination> cycleProfileBwdCombos;
+      for (const HotkeyBinding &binding : cycleProfileBwdBindings) {
+        cycleProfileBwdCombos.append(HotkeyCombination(
+            binding.keyCode, binding.getModifiers() & MOD_CONTROL,
+            binding.getModifiers() & MOD_ALT,
+            binding.getModifiers() & MOD_SHIFT));
+      }
+      m_cycleProfileBackwardCapture->setHotkeys(cycleProfileBwdCombos);
+    } else {
+      m_cycleProfileBackwardCapture->clearHotkey();
+    }
+
     QVector<HotkeyBinding> notLoggedInFwdBindings =
         hotkeyMgr->getNotLoggedInForwardHotkeys();
     if (!notLoggedInFwdBindings.isEmpty()) {
@@ -4819,6 +4922,24 @@ void ConfigDialog::saveSettings() {
           HotkeyBinding(combo.keyCode, combo.ctrl, combo.alt, combo.shift));
     }
     hotkeyMgr->setToggleThumbnailsVisibilityHotkeys(toggleThumbnailsBindings);
+
+    QVector<HotkeyBinding> cycleProfileFwdBindings;
+    QVector<HotkeyCombination> cycleProfileFwdCombos =
+        m_cycleProfileForwardCapture->getHotkeys();
+    for (const HotkeyCombination &combo : cycleProfileFwdCombos) {
+      cycleProfileFwdBindings.append(
+          HotkeyBinding(combo.keyCode, combo.ctrl, combo.alt, combo.shift));
+    }
+
+    QVector<HotkeyBinding> cycleProfileBwdBindings;
+    QVector<HotkeyCombination> cycleProfileBwdCombos =
+        m_cycleProfileBackwardCapture->getHotkeys();
+    for (const HotkeyCombination &combo : cycleProfileBwdCombos) {
+      cycleProfileBwdBindings.append(
+          HotkeyBinding(combo.keyCode, combo.ctrl, combo.alt, combo.shift));
+    }
+    hotkeyMgr->setCycleProfileHotkeys(cycleProfileFwdBindings,
+                                      cycleProfileBwdBindings);
 
     QVector<HotkeyBinding> notLoggedInFwdBindings;
     QVector<HotkeyCombination> notLoggedInFwdCombos =

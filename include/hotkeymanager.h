@@ -160,6 +160,15 @@ public:
   void registerProfileHotkeys();
   void unregisterProfileHotkeys();
 
+  void setCycleProfileHotkeys(const QVector<HotkeyBinding> &forwardHotkeys,
+                              const QVector<HotkeyBinding> &backwardHotkeys);
+  QVector<HotkeyBinding> getCycleProfileForwardHotkeys() const {
+    return m_cycleProfileForwardHotkeys;
+  }
+  QVector<HotkeyBinding> getCycleProfileBackwardHotkeys() const {
+    return m_cycleProfileBackwardHotkeys;
+  }
+
   void uninstallMouseHook();
 
   void loadFromConfig();
@@ -180,6 +189,8 @@ signals:
   void nonEVECycleBackwardPressed();
   void suspendedChanged(bool suspended);
   void profileSwitchRequested(QString profileName);
+  void cycleProfileForwardRequested();
+  void cycleProfileBackwardRequested();
   void closeAllClientsRequested();
   void minimizeAllClientsRequested();
   void toggleThumbnailsVisibilityRequested();
@@ -225,6 +236,11 @@ private:
 
   QVector<HotkeyBinding> m_toggleThumbnailsVisibilityHotkeys;
   QSet<int> m_toggleThumbnailsVisibilityHotkeyIds;
+
+  QVector<HotkeyBinding> m_cycleProfileForwardHotkeys;
+  QVector<HotkeyBinding> m_cycleProfileBackwardHotkeys;
+  QSet<int> m_cycleProfileForwardHotkeyIds;
+  QSet<int> m_cycleProfileBackwardHotkeyIds;
 
   int m_nextHotkeyId;
 

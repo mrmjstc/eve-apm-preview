@@ -1189,6 +1189,78 @@ void Config::saveGlobalSettings() {
   }
 }
 
+QVector<HotkeyBinding> Config::getCycleProfileForwardHotkeys() const {
+  if (!m_globalSettings) {
+    return QVector<HotkeyBinding>();
+  }
+
+  QString value =
+      m_globalSettings
+          ->value(KEY_GLOBAL_CYCLE_PROFILE_FORWARD_HOTKEYS, QString())
+          .toString();
+  QVector<HotkeyBinding> result;
+
+  QStringList bindingStrs = value.split('|', Qt::SkipEmptyParts);
+  for (const QString &bindingStr : bindingStrs) {
+    HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
+    if (binding.enabled && binding.keyCode != 0) {
+      if (!result.contains(binding)) {
+        result.append(binding);
+      }
+    }
+  }
+
+  return result;
+}
+
+QVector<HotkeyBinding> Config::getCycleProfileBackwardHotkeys() const {
+  if (!m_globalSettings) {
+    return QVector<HotkeyBinding>();
+  }
+
+  QString value =
+      m_globalSettings
+          ->value(KEY_GLOBAL_CYCLE_PROFILE_BACKWARD_HOTKEYS, QString())
+          .toString();
+  QVector<HotkeyBinding> result;
+
+  QStringList bindingStrs = value.split('|', Qt::SkipEmptyParts);
+  for (const QString &bindingStr : bindingStrs) {
+    HotkeyBinding binding = HotkeyBinding::fromString(bindingStr);
+    if (binding.enabled && binding.keyCode != 0) {
+      if (!result.contains(binding)) {
+        result.append(binding);
+      }
+    }
+  }
+
+  return result;
+}
+
+void Config::setCycleProfileHotkeys(
+    const QVector<HotkeyBinding> &forwardHotkeys,
+    const QVector<HotkeyBinding> &backwardHotkeys) {
+  if (!m_globalSettings) {
+    return;
+  }
+
+  QStringList forwardBindingStrs;
+  for (const HotkeyBinding &binding : forwardHotkeys) {
+    forwardBindingStrs.append(binding.toString());
+  }
+  m_globalSettings->setValue(KEY_GLOBAL_CYCLE_PROFILE_FORWARD_HOTKEYS,
+                             forwardBindingStrs.join('|'));
+
+  QStringList backwardBindingStrs;
+  for (const HotkeyBinding &binding : backwardHotkeys) {
+    backwardBindingStrs.append(binding.toString());
+  }
+  m_globalSettings->setValue(KEY_GLOBAL_CYCLE_PROFILE_BACKWARD_HOTKEYS,
+                             backwardBindingStrs.join('|'));
+
+  m_globalSettings->sync();
+}
+
 void Config::migrateToProfileSystem() {
   QString exePath = QCoreApplication::applicationDirPath();
   QString oldSettingsPath = exePath + "/settings.ini";
