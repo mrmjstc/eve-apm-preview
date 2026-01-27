@@ -176,6 +176,9 @@ public:
   bool hotkeysOnlyWhenEVEFocused() const;
   void setHotkeysOnlyWhenEVEFocused(bool enabled);
 
+  bool resetGroupIndexOnNonGroupFocus() const;
+  void setResetGroupIndexOnNonGroupFocus(bool enabled);
+
   bool isConfigDialogOpen() const;
   void setConfigDialogOpen(bool open);
 
@@ -382,6 +385,8 @@ public:
 
   static constexpr bool DEFAULT_HOTKEY_WILDCARD = false;
   static constexpr bool DEFAULT_HOTKEY_ONLY_WHEN_EVE_FOCUSED = false;
+  static constexpr bool DEFAULT_HOTKEY_RESET_GROUP_INDEX_ON_NON_GROUP_FOCUS =
+      false;
   static constexpr int DEFAULT_EVE_FOCUS_DEBOUNCE_INTERVAL = 200;
 
   static constexpr bool DEFAULT_OVERLAY_SHOW_CHARACTER = true;
@@ -469,6 +474,7 @@ private:
 
   mutable bool m_cachedWildcardHotkeys;
   mutable bool m_cachedHotkeysOnlyWhenEVEFocused;
+  mutable bool m_cachedResetGroupIndexOnNonGroupFocus;
 
   mutable bool m_cachedShowCharacterName;
   mutable QColor m_cachedCharacterNameColor;
@@ -610,6 +616,8 @@ private:
   static constexpr const char *KEY_HOTKEY_WILDCARD = "hotkey/wildcardMode";
   static constexpr const char *KEY_HOTKEY_ONLY_WHEN_EVE_FOCUSED =
       "hotkey/onlyWhenEVEFocused";
+  static constexpr const char *KEY_HOTKEY_RESET_GROUP_INDEX_ON_NON_GROUP_FOCUS =
+      "hotkey/resetGroupIndexOnNonGroupFocus";
 
   static constexpr const char *KEY_OVERLAY_SHOW_CHARACTER =
       "overlay/showCharacterName";

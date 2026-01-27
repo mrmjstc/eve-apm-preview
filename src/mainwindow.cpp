@@ -1819,7 +1819,10 @@ void MainWindow::activateCharacter(const QString &characterName) {
   if (hwnd) {
     activateWindow(hwnd);
 
+    const Config &cfg = Config::instance();
     QHash<QString, CycleGroup> allGroups = hotkeyManager->getAllCycleGroups();
+    bool foundInAnyGroup = false;
+
     for (auto it = allGroups.begin(); it != allGroups.end(); ++it) {
       const QString &groupName = it.key();
       const CycleGroup &group = it.value();
@@ -1830,6 +1833,18 @@ void MainWindow::activateCharacter(const QString &characterName) {
       if (index != -1) {
         m_cycleIndexByGroup[groupName] = index;
         m_lastActivatedWindowByGroup[groupName] = hwnd;
+        foundInAnyGroup = true;
+      }
+    }
+
+    // Reset all group cycle indices to 0 if enabled and character not in any
+    // group
+    if (cfg.resetGroupIndexOnNonGroupFocus() && !foundInAnyGroup &&
+        !allGroups.isEmpty()) {
+      for (auto it = allGroups.begin(); it != allGroups.end(); ++it) {
+        const QString &groupName = it.key();
+        m_cycleIndexByGroup[groupName] = -1;
+        m_lastActivatedWindowByGroup.remove(groupName);
       }
     }
   }

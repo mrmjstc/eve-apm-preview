@@ -229,6 +229,11 @@ void Config::loadCacheFromSettings() {
           ->value(KEY_HOTKEY_ONLY_WHEN_EVE_FOCUSED,
                   DEFAULT_HOTKEY_ONLY_WHEN_EVE_FOCUSED)
           .toBool();
+  m_cachedResetGroupIndexOnNonGroupFocus =
+      m_settings
+          ->value(KEY_HOTKEY_RESET_GROUP_INDEX_ON_NON_GROUP_FOCUS,
+                  DEFAULT_HOTKEY_RESET_GROUP_INDEX_ON_NON_GROUP_FOCUS)
+          .toBool();
 
   m_cachedShowCharacterName =
       m_settings
@@ -979,6 +984,16 @@ bool Config::hotkeysOnlyWhenEVEFocused() const {
 void Config::setHotkeysOnlyWhenEVEFocused(bool enabled) {
   m_settings->setValue(KEY_HOTKEY_ONLY_WHEN_EVE_FOCUSED, enabled);
   m_cachedHotkeysOnlyWhenEVEFocused = enabled;
+}
+
+bool Config::resetGroupIndexOnNonGroupFocus() const {
+  return m_cachedResetGroupIndexOnNonGroupFocus;
+}
+
+void Config::setResetGroupIndexOnNonGroupFocus(bool enabled) {
+  m_settings->setValue(KEY_HOTKEY_RESET_GROUP_INDEX_ON_NON_GROUP_FOCUS,
+                       enabled);
+  m_cachedResetGroupIndexOnNonGroupFocus = enabled;
 }
 
 bool Config::isConfigDialogOpen() const { return m_configDialogOpen; }

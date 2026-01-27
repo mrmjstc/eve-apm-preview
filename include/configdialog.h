@@ -432,6 +432,7 @@ private:
   HotkeyCapture *m_cycleProfileBackwardCapture;
   QCheckBox *m_wildcardHotkeysCheck;
   QCheckBox *m_hotkeysOnlyWhenEVEFocusedCheck;
+  QCheckBox *m_resetGroupIndexOnNonGroupFocusCheck;
 
   QLabel *m_updateStatusLabel;
   QPushButton *m_checkUpdateButton;

@@ -1865,6 +1865,36 @@ void ConfigDialog::createHotkeysPage() {
 
   layout->addWidget(eveFocusSection);
 
+  QWidget *groupResetSection = new QWidget();
+  groupResetSection->setStyleSheet(StyleSheet::getSectionStyleSheet());
+  QVBoxLayout *groupResetSectionLayout = new QVBoxLayout(groupResetSection);
+  groupResetSectionLayout->setContentsMargins(16, 12, 16, 12);
+  groupResetSectionLayout->setSpacing(10);
+
+  tagWidget(groupResetSection,
+            {"group", "cycle", "reset", "index", "hotkey", "character"});
+
+  QLabel *groupResetHeader = new QLabel("Cycle Group Reset");
+  groupResetHeader->setStyleSheet(StyleSheet::getSectionHeaderStyleSheet());
+  groupResetSectionLayout->addWidget(groupResetHeader);
+
+  QLabel *groupResetInfoLabel =
+      new QLabel("When enabled, activating a character that is not in any "
+                 "cycle group will reset all group cycle indices to 0. "
+                 "This ensures that the next cycle always starts from the "
+                 "first character in each group.");
+  groupResetInfoLabel->setWordWrap(true);
+  groupResetInfoLabel->setStyleSheet(StyleSheet::getInfoLabelStyleSheet());
+  groupResetSectionLayout->addWidget(groupResetInfoLabel);
+
+  m_resetGroupIndexOnNonGroupFocusCheck = new QCheckBox(
+      "Reset group cycle index when focusing non-grouped character");
+  m_resetGroupIndexOnNonGroupFocusCheck->setStyleSheet(
+      StyleSheet::getCheckBoxStyleSheet());
+  groupResetSectionLayout->addWidget(m_resetGroupIndexOnNonGroupFocusCheck);
+
+  layout->addWidget(groupResetSection);
+
   QHBoxLayout *resetLayout = new QHBoxLayout();
   resetLayout->addStretch();
   QPushButton *resetButton = new QPushButton("Reset to Defaults");
@@ -4009,6 +4039,14 @@ void ConfigDialog::setupBindings() {
       m_hotkeysOnlyWhenEVEFocusedCheck,
       [&config]() { return config.hotkeysOnlyWhenEVEFocused(); },
       [&config](bool value) { config.setHotkeysOnlyWhenEVEFocused(value); },
+      false));
+
+  m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
+      m_resetGroupIndexOnNonGroupFocusCheck,
+      [&config]() { return config.resetGroupIndexOnNonGroupFocus(); },
+      [&config](bool value) {
+        config.setResetGroupIndexOnNonGroupFocus(value);
+      },
       false));
 
   m_bindingManager.addBinding(BindingHelpers::bindCheckBox(
