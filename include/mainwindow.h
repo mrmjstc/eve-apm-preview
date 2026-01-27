@@ -22,6 +22,17 @@ class ChatLogReader;
 class ProtocolHandler;
 struct CycleGroup;
 
+/// Pre-computed shared state for bulk thumbnail visibility updates
+struct VisibilityContext {
+  HWND activeWindow;
+  bool isEVEFocused;
+  bool hideWhenEVENotFocused;
+  bool hideActive;
+  bool anyThumbnailDragging;
+  bool manuallyHidden;
+  bool configDialogOpen;
+};
+
 class MainWindow : public QObject {
   Q_OBJECT
 
@@ -39,6 +50,7 @@ signals:
 private slots:
   void refreshWindows();
   void updateActiveWindow();
+  void processEVEFocusChange();
   void onThumbnailClicked(quintptr windowId);
   void onThumbnailPositionChanged(quintptr windowId, QPoint position);
   void onGroupDragStarted(quintptr windowId);
@@ -67,6 +79,7 @@ private:
   QTimer *refreshTimer;
   QTimer *minimizeTimer;
   QTimer *m_cycleThrottleTimer;
+  QTimer *m_eveFocusDebounceTimer;
   QSystemTrayIcon *m_trayIcon;
   QMenu *m_trayMenu;
   QMenu *m_profilesMenu;
@@ -119,6 +132,10 @@ private:
   bool m_needsEnumeration = true;
   bool m_needsMappingUpdate = false;
   bool m_thumbnailsManuallyHidden = false;
+  bool m_pendingEVEFocusState = false;
+  bool m_hasPendingEVEFocusChange = false;
+
+  VisibilityContext m_cachedVisibilityContext;
 
   QHash<HWND, QString> m_lastKnownTitles;
   QHash<HWND, QString> m_windowProcessNames;
@@ -164,7 +181,10 @@ private:
   void updateSnappingLists();
   void refreshSingleThumbnail(HWND hwnd);
   void handleWindowTitleChange(HWND hwnd);
+  void updateVisibilityContext();
+  bool calculateThumbnailVisibility(HWND hwnd);
   void updateThumbnailVisibility(HWND hwnd);
+  void updateAllThumbnailsVisibility();
   void scheduleLocationRefresh(HWND hwnd);
   void cleanupLocationRefreshTimer(HWND hwnd);
   QPoint calculateNotLoggedInPosition(int index);

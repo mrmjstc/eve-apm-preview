@@ -805,7 +805,9 @@ void ThumbnailWidget::resizeEvent(QResizeEvent *event) {
 void ThumbnailWidget::moveEvent(QMoveEvent *event) {
   QWidget::moveEvent(event);
 
-  if (m_overlayWidget && !m_isDragging) {
+  // Don't update overlay position during any drag operation or when mouse is
+  // pressed This prevents flicker when starting a drag
+  if (m_overlayWidget && !m_isDragging && !m_mousePressed) {
     m_overlayWidget->move(pos());
   }
 }

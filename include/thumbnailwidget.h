@@ -113,6 +113,7 @@ private:
 
   HTHUMBNAIL m_dwmThumbnail = nullptr;
   QTimer *m_updateTimer = nullptr;
+  bool m_isUpdatingDwm = false;
 
   OverlayWidget *m_overlayWidget = nullptr;
 

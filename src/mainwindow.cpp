@@ -85,6 +85,12 @@ MainWindow::MainWindow(QObject *parent)
   m_cycleThrottleTimer->setSingleShot(true);
   m_cycleThrottleTimer->setInterval(30);
 
+  m_eveFocusDebounceTimer = new QTimer(this);
+  m_eveFocusDebounceTimer->setSingleShot(true);
+  m_eveFocusDebounceTimer->setInterval(100);
+  connect(m_eveFocusDebounceTimer, &QTimer::timeout, this,
+          &MainWindow::processEVEFocusChange);
+
   m_trayMenu = new QMenu();
 
   QAction *settingsAction = new QAction(SETTINGS_TEXT, this);
@@ -301,6 +307,10 @@ MainWindow::MainWindow(QObject *parent)
   }
 
   hotkeyManager->registerHotkeys();
+
+  // Initialize visibility context before any visibility checks
+  updateVisibilityContext();
+
   refreshWindows();
 }
 
@@ -476,10 +486,6 @@ void MainWindow::refreshWindows() {
   const bool showNotLoggedInOverlay = cfg.showNotLoggedInOverlay();
   const bool showNonEVEOverlay = cfg.showNonEVEOverlay();
   const double thumbnailOpacity = cfg.thumbnailOpacity() / 100.0;
-  const bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
-  const bool hideActive = cfg.hideActiveClientThumbnail();
-  const HWND activeWindow = GetForegroundWindow();
-  const bool isEVEFocused = thumbnails.contains(activeWindow);
 
   QVector<WindowInfo> windows;
 
@@ -580,6 +586,9 @@ void MainWindow::refreshWindows() {
 
   int notLoggedInCount = 0;
 
+  // Update visibility context once before processing all windows
+  updateVisibilityContext();
+
   for (const auto &window : windows) {
     m_windowCreationTimes[window.handle] = window.creationTime;
     m_windowProcessNames[window.handle] = window.processName;
@@ -627,6 +636,9 @@ void MainWindow::refreshWindows() {
 
       thumbWidget = new ThumbnailWidget(window.id, window.title, nullptr);
       thumbWidget->setFixedSize(actualThumbWidth, actualThumbHeight);
+
+      // Hide by default - updateThumbnailVisibility() will show if appropriate
+      thumbWidget->hide();
 
       thumbWidget->setCharacterName(displayName);
       thumbWidget->setWindowOpacity(thumbnailOpacity);
@@ -792,13 +804,6 @@ void MainWindow::refreshWindows() {
             thumbWidget->setCharacterName(newDisplayName);
             thumbWidget->setSystemName(QString());
 
-            if (!m_thumbnailsManuallyHidden &&
-                !(hideWhenEVENotFocused && !isEVEFocused && !m_configDialog) &&
-                !(hideActive && window.handle == activeWindow)) {
-              // Don't call show() directly - visibility will be handled after
-              // title update by the refreshWindows loop or updateActiveWindow
-            }
-
             if (!cfg.preserveLogoutPositions()) {
               QPoint pos = calculateNotLoggedInPosition(notLoggedInCount);
               thumbWidget->move(pos);
@@ -938,19 +943,65 @@ void MainWindow::refreshSingleThumbnail(HWND hwnd) {
     return;
   }
 
+  // Skip refresh if any thumbnail is currently being dragged to prevent flicker
+  for (auto thumbIt = thumbnails.constBegin(); thumbIt != thumbnails.constEnd();
+       ++thumbIt) {
+    ThumbnailWidget *thumb = thumbIt.value();
+    if (thumb && (thumb->isDragging() || thumb->isGroupDragging() ||
+                  thumb->isMousePressed())) {
+      return;
+    }
+  }
+
   ThumbnailWidget *thumbWidget = it.value();
   thumbWidget->forceUpdate();
 }
 
-/// Centralized visibility control - uses cached state with fresh fallback
-void MainWindow::updateThumbnailVisibility(HWND hwnd) {
-  auto it = thumbnails.find(hwnd);
-  if (it == thumbnails.end()) {
-    return;
+/// Update the cached visibility context with current state
+void MainWindow::updateVisibilityContext() {
+  const Config &cfg = Config::instance();
+
+  m_cachedVisibilityContext.activeWindow = GetForegroundWindow();
+  m_cachedVisibilityContext.isEVEFocused =
+      thumbnails.contains(m_cachedVisibilityContext.activeWindow);
+  m_cachedVisibilityContext.hideWhenEVENotFocused =
+      cfg.hideThumbnailsWhenEVENotFocused();
+  m_cachedVisibilityContext.hideActive = cfg.hideActiveClientThumbnail();
+  m_cachedVisibilityContext.manuallyHidden = m_thumbnailsManuallyHidden;
+  m_cachedVisibilityContext.configDialogOpen = (m_configDialog != nullptr);
+
+  // Check dragging state
+  m_cachedVisibilityContext.anyThumbnailDragging = false;
+  for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+    ThumbnailWidget *thumb = it.value();
+    if (thumb && (thumb->isDragging() || thumb->isGroupDragging() ||
+                  thumb->isMousePressed())) {
+      m_cachedVisibilityContext.anyThumbnailDragging = true;
+      break;
+    }
+  }
+}
+
+/// Calculate whether a thumbnail should be visible based on current rules
+/// Returns true if should be visible, false if should be hidden
+bool MainWindow::calculateThumbnailVisibility(HWND hwnd) {
+  ThumbnailWidget *thumbnail = thumbnails.value(hwnd, nullptr);
+  if (!thumbnail) {
+    return false;
   }
 
-  ThumbnailWidget *thumbnail = it.value();
   const Config &cfg = Config::instance();
+
+  // Use cached context (updated by caller)
+  const HWND activeWindow = m_cachedVisibilityContext.activeWindow;
+  const bool isEVEFocused = m_cachedVisibilityContext.isEVEFocused;
+  const bool hideWhenEVENotFocused =
+      m_cachedVisibilityContext.hideWhenEVENotFocused;
+  const bool hideActive = m_cachedVisibilityContext.hideActive;
+  const bool anyThumbnailDragging =
+      m_cachedVisibilityContext.anyThumbnailDragging;
+  const bool manuallyHidden = m_cachedVisibilityContext.manuallyHidden;
+  const bool configDialogOpen = m_cachedVisibilityContext.configDialogOpen;
 
   // Get current window info
   QString processName = m_windowProcessNames.value(hwnd, "");
@@ -972,7 +1023,7 @@ void MainWindow::updateThumbnailVisibility(HWND hwnd) {
   bool shouldShow = true;
 
   // Rule 1: Manual hide (highest priority)
-  if (m_thumbnailsManuallyHidden) {
+  if (manuallyHidden) {
     shouldShow = false;
   }
   // Rule 2: Character-specific hiding
@@ -980,46 +1031,89 @@ void MainWindow::updateThumbnailVisibility(HWND hwnd) {
            cfg.isCharacterHidden(characterName)) {
     shouldShow = false;
   }
-  // Rule 3: Hide when EVE not focused (cache active window)
-  else if (cfg.hideThumbnailsWhenEVENotFocused()) {
-    HWND activeWindow = GetForegroundWindow();
-    bool isEVEFocused = thumbnails.contains(activeWindow);
-    if (!isEVEFocused && !m_configDialog) {
-      // Don't hide if any thumbnail is being dragged or mouse pressed
-      bool anyThumbnailDragging = false;
-      for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd();
-           ++it) {
-        ThumbnailWidget *thumb = it.value();
-        if (thumb && (thumb->isDragging() || thumb->isGroupDragging() ||
-                      thumb->isMousePressed())) {
-          anyThumbnailDragging = true;
-          break;
-        }
-      }
-      if (!anyThumbnailDragging) {
-        shouldShow = false;
-      }
-    }
-    // Early return - if already hidden, skip Rule 4 check
-    if (!shouldShow) {
-      thumbnail->hide();
-      return;
+  // Rule 3: Hide when EVE not focused
+  else if (hideWhenEVENotFocused && !isEVEFocused && !configDialogOpen) {
+    if (!anyThumbnailDragging) {
+      shouldShow = false;
     }
   }
-  // Rule 4: Hide active client (reuse cached active window from Rule 3 if
-  // possible)
-  if (shouldShow && cfg.hideActiveClientThumbnail()) {
-    HWND activeWindow = GetForegroundWindow();
+  // Rule 4: Hide active client
+  if (shouldShow && hideActive) {
     if (hwnd == activeWindow) {
       shouldShow = false;
     }
   }
 
+  return shouldShow;
+}
+
+/// Update single thumbnail visibility (used for individual updates)
+void MainWindow::updateThumbnailVisibility(HWND hwnd) {
+  ThumbnailWidget *thumbnail = thumbnails.value(hwnd, nullptr);
+  if (!thumbnail) {
+    return;
+  }
+
+  bool shouldShow = calculateThumbnailVisibility(hwnd);
+
   // Apply visibility
   if (shouldShow) {
-    thumbnail->show();
+    // Only call show() if not already visible to prevent flicker
+    if (!thumbnail->isVisible()) {
+      thumbnail->show();
+    }
   } else {
-    thumbnail->hide();
+    // Only call hide() if currently visible
+    if (thumbnail->isVisible()) {
+      thumbnail->hide();
+    }
+  }
+}
+
+/// Update all thumbnails' visibility using shared state for efficiency
+void MainWindow::updateAllThumbnailsVisibility() {
+  if (thumbnails.isEmpty()) {
+    return;
+  }
+
+  // Update cached context once
+  updateVisibilityContext();
+
+  // Skip visibility updates entirely if any thumbnail is being dragged
+  if (m_cachedVisibilityContext.anyThumbnailDragging) {
+    return;
+  }
+
+  // Batch visibility changes to make them appear/disappear simultaneously
+  // First pass: collect visibility decisions without triggering window updates
+  QVector<QPair<HWND, bool>> visibilityChanges;
+  visibilityChanges.reserve(thumbnails.size());
+
+  for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+    HWND hwnd = it.key();
+    ThumbnailWidget *thumbnail = it.value();
+    if (!thumbnail) {
+      continue;
+    }
+
+    bool shouldShow = calculateThumbnailVisibility(hwnd);
+
+    // Only add to batch if visibility needs to change
+    if (shouldShow != thumbnail->isVisible()) {
+      visibilityChanges.append(qMakePair(hwnd, shouldShow));
+    }
+  }
+
+  // Second pass: apply all visibility changes at once
+  for (const auto &change : visibilityChanges) {
+    ThumbnailWidget *thumbnail = thumbnails.value(change.first, nullptr);
+    if (thumbnail) {
+      if (change.second) {
+        thumbnail->show();
+      } else {
+        thumbnail->hide();
+      }
+    }
   }
 }
 
@@ -1182,48 +1276,32 @@ void MainWindow::updateActiveWindow() {
   static bool wasEVEFocused = true;
   bool eveFocusChanged = (wasEVEFocused != isEVEFocused);
 
-  if (hideWhenEVENotFocused && !isEVEFocused && !m_thumbnailsManuallyHidden &&
-      !m_configDialog) {
-    // Don't hide thumbnails if any of them are being dragged or mouse pressed
-    bool anyThumbnailDragging = false;
-    for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
-      ThumbnailWidget *thumb = it.value();
-      if (thumb && (thumb->isDragging() || thumb->isGroupDragging() ||
-                    thumb->isMousePressed())) {
-        anyThumbnailDragging = true;
-        break;
-      }
-    }
+  // Debounce EVE focus changes to prevent flickering during rapid window
+  // switching
+  if (hideWhenEVENotFocused && eveFocusChanged) {
+    // Store the pending focus state
+    m_pendingEVEFocusState = isEVEFocused;
+    m_hasPendingEVEFocusChange = true;
 
-    if (!anyThumbnailDragging) {
-      for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd();
-           ++it) {
-        HWND hwnd = it.key();
-        updateThumbnailVisibility(hwnd);
-      }
-      wasEVEFocused = false;
-      return;
-    }
-  }
+    // Start/restart the debounce timer
+    m_eveFocusDebounceTimer->start();
 
-  if (hideWhenEVENotFocused && isEVEFocused && eveFocusChanged) {
-    wasEVEFocused = true;
-    // EVE regained focus - update all thumbnail visibility
-    for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
-      HWND hwnd = it.key();
-      ThumbnailWidget *thumbnail = it.value();
-      if (!thumbnail)
-        continue;
+    // Update wasEVEFocused to prevent multiple timer starts
+    wasEVEFocused = isEVEFocused;
 
-      bool isActive = (hwnd == activeWindow);
+    // Don't process the change immediately - let the timer handle it
+    // But still handle other visibility updates for the active window
+    if (activeWindow != nullptr && thumbnails.contains(activeWindow)) {
+      ThumbnailWidget *thumbnail = thumbnails.value(activeWindow);
+      if (thumbnail) {
+        bool isActive = true;
 
-      if (highlightActive) {
-        thumbnail->setActive(isActive);
-      } else {
-        thumbnail->setActive(false);
-      }
+        if (highlightActive) {
+          thumbnail->setActive(isActive);
+        } else {
+          thumbnail->setActive(false);
+        }
 
-      if (isActive) {
         thumbnail->forceUpdate();
 
         // Immediately restore topmost after DWM update which can disrupt
@@ -1242,12 +1320,6 @@ void MainWindow::updateActiveWindow() {
           }
         }
       }
-
-      // Use centralized visibility
-      updateThumbnailVisibility(hwnd);
-    }
-
-    if (activeWindow != nullptr && thumbnails.contains(activeWindow)) {
       updateAllCycleIndices(activeWindow);
     }
     return;
@@ -1307,6 +1379,11 @@ void MainWindow::updateActiveWindow() {
     // Use centralized visibility
     updateThumbnailVisibility(hwnd);
   };
+
+  // Update context once before processing windows
+  if (previousActiveWindow != nullptr || activeWindow != nullptr) {
+    updateVisibilityContext();
+  }
 
   if (previousActiveWindow != nullptr && previousActiveWindow != activeWindow) {
     updateWindow(previousActiveWindow);
@@ -1876,6 +1953,8 @@ void MainWindow::onGroupDragEnded(quintptr) {
 
   if (!cfg.rememberPositions()) {
     m_groupDragInitialPositions.clear();
+    // Update visibility now that dragging has ended
+    updateAllThumbnailsVisibility();
     return;
   }
 
@@ -1902,6 +1981,10 @@ void MainWindow::onGroupDragEnded(quintptr) {
   }
 
   m_groupDragInitialPositions.clear();
+
+  // Update visibility now that dragging has ended to ensure correct state
+  // (in case EVE focus changed during drag)
+  updateAllThumbnailsVisibility();
 }
 
 void MainWindow::showSettings() {
@@ -1940,12 +2023,9 @@ void MainWindow::showSettings() {
 
   if (!m_thumbnailsManuallyHidden) {
     // Update all thumbnail visibility when opening settings
+    updateAllThumbnailsVisibility();
     for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
-      HWND hwnd = it.key();
-      ThumbnailWidget *thumb = it.value();
-
-      updateThumbnailVisibility(hwnd);
-      thumb->forceOverlayRender();
+      it.value()->forceOverlayRender();
     }
   } else {
     for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
@@ -2489,10 +2569,7 @@ void MainWindow::toggleThumbnailsVisibility() {
   }
 
   // Update all thumbnail visibility using centralized logic
-  for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
-    HWND hwnd = it.key();
-    updateThumbnailVisibility(hwnd);
-  }
+  updateAllThumbnailsVisibility();
 }
 
 void MainWindow::saveCurrentClientLocations() {
@@ -2741,10 +2818,7 @@ void MainWindow::handleProtocolThumbnailHide() {
     m_thumbnailsManuallyHidden = true;
 
     // Update all thumbnail visibility using centralized logic
-    for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
-      HWND hwnd = it.key();
-      updateThumbnailVisibility(hwnd);
-    }
+    updateAllThumbnailsVisibility();
 
     if (m_hideThumbnailsAction) {
       m_hideThumbnailsAction->setChecked(true);
@@ -2763,10 +2837,7 @@ void MainWindow::handleProtocolThumbnailShow() {
     m_thumbnailsManuallyHidden = false;
 
     // Update all thumbnail visibility using centralized logic
-    for (auto it = thumbnails.begin(); it != thumbnails.end(); ++it) {
-      HWND hwnd = it.key();
-      updateThumbnailVisibility(hwnd);
-    }
+    updateAllThumbnailsVisibility();
 
     if (m_hideThumbnailsAction) {
       m_hideThumbnailsAction->setChecked(false);
@@ -2845,5 +2916,87 @@ void MainWindow::ensureThumbnailsOnTop() {
     if (thumbnail && thumbnail->isVisible()) {
       thumbnail->ensureTopmost();
     }
+  }
+}
+
+/// Process debounced EVE focus state changes to prevent flickering
+void MainWindow::processEVEFocusChange() {
+  if (!m_hasPendingEVEFocusChange) {
+    return;
+  }
+
+  m_hasPendingEVEFocusChange = false;
+  const Config &cfg = Config::instance();
+  bool isEVEFocused = m_pendingEVEFocusState;
+  bool hideWhenEVENotFocused = cfg.hideThumbnailsWhenEVENotFocused();
+  bool highlightActive = cfg.highlightActiveWindow();
+  HWND activeWindow = GetForegroundWindow();
+
+  // Re-validate the focus state in case it changed during debounce
+  bool currentIsEVEFocused = thumbnails.contains(activeWindow);
+
+  // If focus state changed again during debounce, don't process the stale state
+  if (currentIsEVEFocused != isEVEFocused) {
+    return;
+  }
+
+  if (hideWhenEVENotFocused && !isEVEFocused && !m_thumbnailsManuallyHidden &&
+      !m_configDialog) {
+    // Don't hide thumbnails if any of them are being dragged or mouse pressed
+    bool anyThumbnailDragging = false;
+    for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+      ThumbnailWidget *thumb = it.value();
+      if (thumb && (thumb->isDragging() || thumb->isGroupDragging() ||
+                    thumb->isMousePressed())) {
+        anyThumbnailDragging = true;
+        break;
+      }
+    }
+
+    if (!anyThumbnailDragging) {
+      updateAllThumbnailsVisibility();
+    }
+    return;
+  }
+
+  if (hideWhenEVENotFocused && isEVEFocused) {
+    // EVE regained focus - update all thumbnail visibility
+    for (auto it = thumbnails.constBegin(); it != thumbnails.constEnd(); ++it) {
+      HWND hwnd = it.key();
+      ThumbnailWidget *thumbnail = it.value();
+      if (!thumbnail)
+        continue;
+
+      bool isActive = (hwnd == activeWindow);
+
+      if (highlightActive) {
+        thumbnail->setActive(isActive);
+      } else {
+        thumbnail->setActive(false);
+      }
+
+      if (isActive) {
+        thumbnail->forceUpdate();
+
+        // Immediately restore topmost after DWM update which can disrupt
+        // Z-order
+        if (cfg.alwaysOnTop()) {
+          thumbnail->ensureTopmost();
+        }
+
+        if (thumbnail->hasCombatEvent()) {
+          QString currentEventType = thumbnail->getCombatEventType();
+          if (!currentEventType.isEmpty() &&
+              cfg.combatEventSuppressFocused(currentEventType)) {
+            thumbnail->setCombatMessage("", "");
+            qDebug() << "MainWindow: Cleared combat event for focused window:"
+                     << currentEventType;
+          }
+        }
+      }
+    }
+
+    // Use centralized visibility update
+    updateAllThumbnailsVisibility();
   }
 }
