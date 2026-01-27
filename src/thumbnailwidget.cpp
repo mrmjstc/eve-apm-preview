@@ -444,9 +444,14 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
     return;
   }
 
-  if (event->button() == Qt::LeftButton) {
-    m_mousePressed = true;
-    if (event->modifiers() & Qt::ShiftModifier) {
+  // Handle group dragging with the configured drag button (Shift + drag button)
+  if (event->modifiers() & Qt::ShiftModifier) {
+    bool isGroupDragButton =
+        (!cfg.useDragWithRightClick() && event->button() == Qt::LeftButton) ||
+        (cfg.useDragWithRightClick() && event->button() == Qt::RightButton);
+
+    if (isGroupDragButton) {
+      m_mousePressed = true;
       m_dragPosition =
           event->globalPosition().toPoint() - frameGeometry().topLeft();
       m_isGroupDragging = true;
@@ -466,6 +471,10 @@ void ThumbnailWidget::mousePressEvent(QMouseEvent *event) {
       event->accept();
       return;
     }
+  }
+
+  if (event->button() == Qt::LeftButton) {
+    m_mousePressed = true;
 
     // Left-click behavior depends on drag button setting
     if (!cfg.useDragWithRightClick()) {
@@ -512,8 +521,12 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
-  // Handle group dragging (Shift+drag, always left-click)
-  if ((event->buttons() & Qt::LeftButton) && m_isGroupDragging &&
+  // Handle group dragging with the configured drag button
+  bool isGroupDragButtonPressed =
+      (!cfg.useDragWithRightClick() && (event->buttons() & Qt::LeftButton)) ||
+      (cfg.useDragWithRightClick() && (event->buttons() & Qt::RightButton));
+
+  if (isGroupDragButtonPressed && m_isGroupDragging &&
       m_dragPosition != QPoint()) {
     QPoint newPos = event->globalPosition().toPoint() - m_dragPosition;
     newPos = snapPosition(newPos, m_otherThumbnails);
@@ -605,18 +618,32 @@ void ThumbnailWidget::mouseMoveEvent(QMouseEvent *event) {
 void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
   const Config &cfg = Config::instance();
 
-  if (event->button() == Qt::LeftButton) {
+  // Handle drag end based on configured drag button
+  bool isDragButton =
+      (!cfg.useDragWithRightClick() && event->button() == Qt::LeftButton) ||
+      (cfg.useDragWithRightClick() && event->button() == Qt::RightButton);
+  bool isClickButton =
+      (cfg.useDragWithRightClick() && event->button() == Qt::LeftButton) ||
+      (!cfg.useDragWithRightClick() && event->button() == Qt::RightButton);
+
+  // Clear mouse pressed flag when any button is released
+  if (event->button() == Qt::LeftButton || event->button() == Qt::RightButton) {
     m_mousePressed = false;
+  }
+
+  if (isDragButton) {
     if (!m_isDragging) {
-      // Left-click for switching (works for both drag button modes)
-      if (!cfg.switchOnMouseDown()) {
+      // Drag button clicked without dragging - treat as click if it's also the
+      // click button
+      if (!cfg.useDragWithRightClick() && !cfg.switchOnMouseDown()) {
+        // Left-click is both drag and click button
         emit clicked(m_windowId);
       }
       // Reset state even for non-drag clicks
       m_dragPosition = QPoint();
       setCursor(Qt::PointingHandCursor);
     } else {
-      // Ending a drag operation (left-click drag or group drag)
+      // Ending a drag operation (normal drag or group drag)
       if (m_isGroupDragging) {
         emit groupDragEnded(m_windowId);
         m_isGroupDragging = false;
@@ -640,32 +667,9 @@ void ThumbnailWidget::mouseReleaseEvent(QMouseEvent *event) {
       m_dragPosition = QPoint();
       setCursor(Qt::PointingHandCursor);
     }
-  } else if (event->button() == Qt::RightButton) {
-    // Right-click behavior depends on drag setting
-    if (cfg.useDragWithRightClick() && m_isDragging) {
-      m_mousePressed = false;
-      // Right-click drag end (when right-click is drag button)
-      emit positionChanged(m_windowId, pos());
-
-      if (!m_updateTimer->isActive()) {
-        m_updateTimer->start(60000);
-        updateDwmThumbnail();
-      }
-
-      if (m_overlayWidget) {
-        m_overlayWidget->move(pos());
-        m_overlayWidget->show();
-        m_overlayWidget->raise();
-        m_overlayWidget->resumeAnimations();
-      }
-
-      m_isDragging = false;
-      m_dragPosition = QPoint();
-      setCursor(Qt::PointingHandCursor);
-    } else if (!cfg.useDragWithRightClick() && !cfg.switchOnMouseDown()) {
-      // Right-click for switching (when left-click is drag button)
-      emit clicked(m_windowId);
-    }
+  } else if (isClickButton && !cfg.switchOnMouseDown()) {
+    // Click button released without dragging (for switching)
+    emit clicked(m_windowId);
   }
   QWidget::mouseReleaseEvent(event);
 }
