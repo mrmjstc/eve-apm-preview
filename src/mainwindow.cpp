@@ -1906,6 +1906,20 @@ void MainWindow::onThumbnailPositionChanged(quintptr windowId,
     return;
   }
 
+  // Validate position before saving (issue #27)
+  // Windows uses (-32000, -32000) for minimized windows
+  if (position.x() == -32000 && position.y() == -32000) {
+    qDebug() << "Refusing to save invalid thumbnail position (-32000, -32000)";
+    return;
+  }
+
+  // Check if position is actually visible on any screen
+  QScreen *screen = QApplication::screenAt(position);
+  if (!screen) {
+    qDebug() << "Thumbnail position" << position << "is off-screen, not saving";
+    return;
+  }
+
   HWND hwnd = reinterpret_cast<HWND>(windowId);
 
   QString processName = m_windowProcessNames.value(hwnd, "");
@@ -1978,6 +1992,15 @@ void MainWindow::onGroupDragEnded(quintptr) {
     HWND hwnd = it.key();
     ThumbnailWidget *thumb = it.value();
 
+    QPoint pos = thumb->pos();
+
+    // Validate position before saving (issue #27)
+    if (pos.x() == -32000 && pos.y() == -32000) {
+      qDebug() << "Skipping invalid thumbnail position (-32000, -32000) for"
+               << hwnd;
+      continue;
+    }
+
     QString processName = m_windowProcessNames.value(hwnd, "");
     bool isEVEClient =
         processName.compare("exefile.exe", Qt::CaseInsensitive) == 0;
@@ -1985,13 +2008,13 @@ void MainWindow::onGroupDragEnded(quintptr) {
     if (isEVEClient) {
       QString characterName = m_windowToCharacter.value(hwnd);
       if (!characterName.isEmpty()) {
-        cfg.setThumbnailPosition(characterName, thumb->pos());
+        cfg.setThumbnailPosition(characterName, pos);
       }
     } else {
       // Use only process name as key for non-EVE apps to avoid issues with
       // dynamic window titles
       if (!processName.isEmpty()) {
-        cfg.setThumbnailPosition(processName, thumb->pos());
+        cfg.setThumbnailPosition(processName, pos);
       }
     }
   }
@@ -2601,13 +2624,29 @@ void MainWindow::saveCurrentClientLocations() {
       continue;
     }
 
-    RECT rect;
-    if (GetWindowRect(hwnd, &rect)) {
-      QRect qRect(rect.left, rect.top, rect.right - rect.left,
-                  rect.bottom - rect.top);
-      cfg.setClientWindowRect(characterName, qRect);
-      savedCount++;
-      qDebug() << "Saved window location for" << characterName << ":" << qRect;
+    // Use GetWindowPlacement instead of GetWindowRect to get the correct
+    // position even when the window is minimized. GetWindowRect returns
+    // (-32000, -32000) for minimized windows, which causes issue #27.
+    WINDOWPLACEMENT placement;
+    placement.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(hwnd, &placement)) {
+      // rcNormalPosition gives the window position in its restored state,
+      // which is valid even when the window is minimized or maximized
+      QRect qRect(
+          placement.rcNormalPosition.left, placement.rcNormalPosition.top,
+          placement.rcNormalPosition.right - placement.rcNormalPosition.left,
+          placement.rcNormalPosition.bottom - placement.rcNormalPosition.top);
+
+      // Validate the rectangle before saving
+      if (isWindowRectValid(qRect)) {
+        cfg.setClientWindowRect(characterName, qRect);
+        savedCount++;
+        qDebug() << "Saved window location for" << characterName << ":"
+                 << qRect;
+      } else {
+        qDebug() << "Skipping invalid window location for" << characterName
+                 << ":" << qRect;
+      }
     }
   }
 

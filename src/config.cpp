@@ -435,6 +435,12 @@ void Config::loadCacheFromSettings() {
   QStringList thumbnailCharNames = m_settings->childKeys();
   for (const QString &characterName : thumbnailCharNames) {
     QPoint pos = m_settings->value(characterName).toPoint();
+    // Skip invalid positions (issue #27)
+    // Windows uses (-32000, -32000) for minimized windows
+    if (pos.x() == -32000 && pos.y() == -32000) {
+      qDebug() << "Skipping invalid thumbnail position for" << characterName;
+      continue;
+    }
     m_cachedThumbnailPositions[characterName] = pos;
   }
   m_settings->endGroup();
