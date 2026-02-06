@@ -142,12 +142,17 @@ void WindowCapture::activateWindow(HWND hwnd) {
     return;
   }
 
-  // Check if window is maximized to restore it properly
-  bool isMaximized = IsZoomed(hwnd);
+  // Save the current window placement to preserve maximized state
+  WINDOWPLACEMENT placement;
+  placement.length = sizeof(WINDOWPLACEMENT);
+  GetWindowPlacement(hwnd, &placement);
 
-  if (IsIconic(hwnd)) {
+  bool wasMinimized = (placement.showCmd == SW_SHOWMINIMIZED);
+  bool wasMaximized = (placement.showCmd == SW_SHOWMAXIMIZED);
+
+  if (wasMinimized) {
     // Restore minimized window to its previous state (maximized or normal)
-    ShowWindowAsync(hwnd, isMaximized ? SW_SHOWMAXIMIZED : SW_RESTORE);
+    ShowWindowAsync(hwnd, wasMaximized ? SW_SHOWMAXIMIZED : SW_RESTORE);
     // Give the window time to restore before setting focus
     // This prevents input issues where clicks are ignored
     Sleep(30);
@@ -170,8 +175,12 @@ void WindowCapture::activateWindow(HWND hwnd) {
     }
 
     BringWindowToTop(hwnd);
-    // Restore window to its previous state (maximized or normal)
-    ShowWindowAsync(hwnd, isMaximized ? SW_SHOWMAXIMIZED : SW_RESTORE);
+
+    // Only restore if it was minimized; otherwise just bring to front
+    if (wasMinimized) {
+      ShowWindowAsync(hwnd, wasMaximized ? SW_SHOWMAXIMIZED : SW_RESTORE);
+    }
+
     SetForegroundWindow(hwnd);
     SetFocus(hwnd);
 
