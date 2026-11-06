@@ -1,3 +1,10 @@
+> [!IMPORTANT]
+> **EVE-APM Preview is no longer developed. Please switch to [EVE-Maj Preview](https://github.com/mrmjstc/eve-maj-preview).**
+>
+> EVE-Maj Preview does everything this app does, and more. It can import your EVE-APM settings: open its settings, choose **Import Settings** from the profile menu, and pick a profile `.ini` from EVE-APM's `profiles` folder (next to `EVEAPMPreview.exe`).
+>
+> **[Download the latest release →](https://github.com/mrmjstc/eve-maj-preview/releases/latest)**
+
 <img width="985" height="832" alt="PaeWES9OJ0" src="https://github.com/user-attachments/assets/f7a64339-f57b-4296-931e-43af7885e117" />
 
 # EVE-APM Preview
